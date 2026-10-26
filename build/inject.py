@@ -626,55 +626,57 @@ def script_body(block: str) -> str:
 def main() -> int:
     src_index = SRC_DIR / "index.html"
     src_css = SRC_DIR / "styles.css"
-    src_js = SRC_DIR / "app.js"
-    for p in (src_index, src_css, src_js):
+    js_dir = SRC_DIR / "js"
+    for p in (src_index, src_css, js_dir):
         if not p.exists():
             print(f"missing source: {p}", file=sys.stderr)
             return 1
 
     html = src_index.read_text(encoding="utf-8")
     css = src_css.read_text(encoding="utf-8")
-    js = src_js.read_text(encoding="utf-8")
 
-    # 业务补丁打在 app.js 上（src/ 是唯一源，补丁点固定）
-    if CLEAR_OLD in js:
-        js = js.replace(CLEAR_OLD, CLEAR_NEW, 1)
-    elif "S.pomodoros = []; markSeeded()" not in js:
-        print("warning: clear-all patch anchor not found", file=sys.stderr)
+    # 业务补丁按文件落位：源文件拆分后，补丁锚点各自归属明确
+    patches: dict[str, list[tuple[str, str]]] = {
+        "02-model.js": [(CDS_OLD, CDS_NEW), (CD_OBJ_OLD, CD_OBJ_NEW)],
+        "09-app.js": [
+            (CLEAR_OLD, CLEAR_NEW),
+            (CLEAR_ALL_OLD, CLEAR_ALL_NEW),
+            (CLEAR_ALL_TIP_OLD, CLEAR_ALL_TIP_NEW),
+        ],
+    }
 
-    if CDS_OLD in js:
-        js = js.replace(CDS_OLD, CDS_NEW, 1)
-        js = js.replace(CD_OBJ_OLD, CD_OBJ_NEW, 1)
-    else:
-        print("warning: seed countdown patch anchor not found", file=sys.stderr)
-
-    if CLEAR_ALL_OLD in js:
-        js = js.replace(CLEAR_ALL_OLD, CLEAR_ALL_NEW, 1)
-        js = js.replace(CLEAR_ALL_TIP_OLD, CLEAR_ALL_TIP_NEW, 1)
-    else:
-        print("warning: clear-all-data patch anchor not found", file=sys.stderr)
-
-    head_shim = '<script src="shim-head.js"></script>\n    <link rel="stylesheet" href="styles.css">'
-    body_shim = '<script src="app.js"></script>\n    <script src="shim-body.js"></script>'
-    page = html.replace('<link rel="stylesheet" href="styles.css">', head_shim, 1)
-    page = page.replace('<script src="app.js"></script>', body_shim, 1)
+    js_files = sorted(js_dir.glob("*.js"))
+    if not js_files:
+        print("no js sources found", file=sys.stderr)
+        return 1
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    (OUT_DIR / "js").mkdir(exist_ok=True)
+
+    total = 0
+    for f in js_files:
+        text = f.read_text(encoding="utf-8")
+        for old, new in patches.get(f.name, []):
+            if old in text:
+                text = text.replace(old, new, 1)
+            else:
+                print(f"warning: patch anchor missing in {f.name}", file=sys.stderr)
+        (OUT_DIR / "js" / f.name).write_text(text, encoding="utf-8", newline="")
+        total += len(text.encode())
+
     files = {
-        "index.html": page,
+        "index.html": html,
         "styles.css": css,
-        "app.js": js,
         "shim-head.js": script_body(BRIDGE),
         "shim-body.js": script_body(DESKTOP) + "\n" + script_body(EXPORT_PATCH),
     }
     for name, content in files.items():
         (OUT_DIR / name).write_text(content, encoding="utf-8", newline="")
+        total += len(content.encode())
 
-    total = sum(len(v.encode()) for v in files.values())
-    print("built src-web/build:")
-    for name, content in files.items():
-        print(f"  {name:<16} {len(content)/1024:>7.1f} KB")
-    print(f"  {'total':<16} {total/1024:>7.1f} KB")
+    print(f"built into {OUT_DIR}:")
+    print(f"  index.html + styles.css + 2 shims + {len(js_files)} js modules")
+    print(f"  total {total/1024:.1f} KB")
     return 0
 
 

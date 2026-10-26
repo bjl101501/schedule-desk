@@ -90,11 +90,21 @@ CI 使用 `windows-latest`，同样输出无需 DLL 的 exe。
 ## 目录
 
 ```
-build/inject.py               构建：把 src/ 打包成 build/，并打业务补丁
-build/split.py                一次性脚本：把原始单文件拆成 src/
+build/inject.py               构建：src/ → build/，并打业务补丁
+build/split.py                一次性脚本：把原始单文件拆成 src/（HTML/CSS/JS）
+build/split-js.py             一次性脚本：把 app.js 按功能区块拆成 src/js/ 下 9 个文件
 src-web/src/index.html        页面骨架（177 行）
 src-web/src/styles.css        样式（1578 行）
-src-web/src/app.js            应用脚本（6315 行）
+src-web/src/js/               应用脚本，按功能域拆分：
+  01-core.js                    数据库绑定 / 全局状态 / 工具
+  02-model.js                   数据层 / 拆分与排期 / 示例数据
+  03-ui.js                      通用 UI / 桌面面板 / 快照 / 换肤 / 计算 / 刷新
+  04-views.js                   侧栏 / 清单视图
+  05-dnd.js                     拖拽：排序 / 看板换列 / 日历改期 / 时间线
+  06-boards.js                  四象限 / 习惯打卡 / 倒数纪念日 / 数据统计
+  07-pomodoro.js                番茄专注 / 任务详情
+  08-editors.js                 任务编辑器 / 快速添加 / 过滤器 / 提醒 / 习惯与纪念日编辑器
+  09-app.js                     备份导出 / 导航事件 / 启动 / 每日快照 / 快捷键
 src-web/build/                构建产物，不入库（Tauri 的 frontendDist）
 src-web/index.original.html   拆分前的单文件，仅作归档
 src-tauri/src/store.rs        数据模型、原子写、快照、记录级合并
