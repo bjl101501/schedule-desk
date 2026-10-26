@@ -358,7 +358,8 @@ DESKTOP = DESK_BEGIN + r"""
       if (msg) msg.textContent = '正在检查…';
       invoke('update_check').then(function (r) {
         if (!msg) return;
-        if (!r || r.__error) { msg.textContent = '检查失败'; return; }
+        if (!r || r.__error) { msg.textContent = '检查失败：' + ((r && r.__error) || '未知错误'); return; }
+        if (r.error) { msg.textContent = '检查失败：' + r.error; return; }
         if (r.available) {
           msg.innerHTML = '发现新版本 ' + esc(r.version) + '　<a href="#" id="sdDoUpdate" style="color:var(--brand)">立即更新</a>';
           var link = msg.querySelector('#sdDoUpdate');
