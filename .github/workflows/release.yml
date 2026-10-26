@@ -27,9 +27,11 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item src-tauri/target/release/schedule-desk.exe dist/ScheduleDesk.exe
-          # MSVC 目标把 WebView2 加载器静态链接进 exe；GNU 目标才需要旁边放 DLL
-          $dll = "src-tauri/target/release/WebView2Loader.dll"
-          if (Test-Path $dll) { Copy-Item $dll dist/WebView2Loader.dll }
+          # 无论 MSVC 还是 GNU 构建，运行时都需要 WebView2Loader.dll；
+          # 它由 webview2-com-sys 在构建目录里产出，不在 target/release 根下。
+          $dll = Get-ChildItem "src-tauri/target/release/build/webview2-com-sys-*/out/x64/WebView2Loader.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $dll) { throw "WebView2Loader.dll not found in build output" }
+          Copy-Item $dll.FullName dist/WebView2Loader.dll
           Copy-Item docs/使用说明.txt dist/使用说明.txt
           Compress-Archive -Path dist/* -DestinationPath ScheduleDesk.zip -Force
           Get-ChildItem dist | Select-Object Name, Length

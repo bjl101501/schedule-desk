@@ -692,7 +692,16 @@ fn main() {
             notify_now
         ])
         .setup(|app| {
-            let cfg = Config::load();
+            let mut cfg = Config::load();
+
+            // --data-dir <path>：临时覆盖数据目录（隔离测试 / 便携模式），不写入配置
+            let argv: Vec<String> = std::env::args().collect();
+            if let Some(pos) = argv.iter().position(|a| a == "--data-dir") {
+                if let Some(v) = argv.get(pos + 1) {
+                    cfg.data_dir = v.clone();
+                }
+            }
+
             let dir = cfg.resolved_data_dir();
             let _ = fs::create_dir_all(&dir);
             import_legacy_v1(&dir);

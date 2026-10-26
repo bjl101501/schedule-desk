@@ -3002,7 +3002,7 @@ dependencies = [
 
 [[package]]
 name = "schedule-desk"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "chrono",
  "serde",

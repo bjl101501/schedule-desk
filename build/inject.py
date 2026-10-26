@@ -565,6 +565,30 @@ def strip_editor_marks(html: str) -> tuple[str, int]:
     return html, removed
 
 
+# 网页版的示例倒数日只有 3 条，「下一个假期」要等假期接口返回后才异步补上。
+# 首次启动若网络慢，用户会以为示例里没有这一项。这里直接内置一条兜底记录，
+# 之后 ensureHolidayCountdown() 拿到真实数据会把它更新掉。
+CDS_OLD = """  var cds = [
+    { name: '项目上线日', type: '倒数日', date: ymd(addDays(t, 23)), note: '二期正式发布', color: '#177CB0' },
+    { name: '和老婆的纪念日', type: '纪念日', date: '2021-06-18', note: '每年都要记住', color: '#7A4E63' },
+    { name: '年度旅行出发', type: '倒数日', date: ymd(addDays(t, 47)), note: '大理 · 7 天', color: '#5E8C6A' }
+  ];"""
+
+CDS_NEW = """  var cds = [
+    { name: '项目上线日', type: '倒数日', date: ymd(addDays(t, 23)), note: '二期正式发布', color: '#177CB0' },
+    { name: '和老婆的纪念日', type: '纪念日', date: '2021-06-18', note: '每年都要记住', color: '#7A4E63' },
+    { name: '年度旅行出发', type: '倒数日', date: ymd(addDays(t, 47)), note: '大理 · 7 天', color: '#5E8C6A' },
+    (function () {
+      var fh = fallbackHoliday(ymd(t));
+      return { name: '下一个假期 · ' + fh.name, type: '倒数日', date: fh.date, note: '预估 · 官方未公布', color: '#C3272B', group: '假期', sys: 'holiday' };
+    })()
+  ];"""
+
+CD_OBJ_OLD = """    var c = { id: '', name: x.name, type: x.type, date: x.date, note: x.note, color: x.color, createdAt: ymd(t) };"""
+
+CD_OBJ_NEW = """    var c = { id: '', name: x.name, type: x.type, date: x.date, note: x.note, color: x.color, group: x.group || '', sys: x.sys || '', createdAt: ymd(t) };"""
+
+
 def replace_block(html: str, begin: str, end: str, payload: str, anchor: str) -> str:
     if begin in html:
         start = html.index(begin)
@@ -598,6 +622,12 @@ def main() -> int:
         html = html.replace(CLEAR_OLD, CLEAR_NEW, 1)
     elif "S.pomodoros = []; markSeeded()" not in html:
         print("warning: clear-all patch anchor not found", file=sys.stderr)
+
+    if CDS_OLD in html:
+        html = html.replace(CDS_OLD, CDS_NEW, 1)
+        html = html.replace(CD_OBJ_OLD, CD_OBJ_NEW, 1)
+    else:
+        print("warning: seed countdown patch anchor not found", file=sys.stderr)
 
     TARGET.write_text(html, encoding="utf-8", newline="")
     print(f"built {TARGET} ({TARGET.stat().st_size} bytes)")
