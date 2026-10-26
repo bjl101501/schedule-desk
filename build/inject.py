@@ -589,6 +589,19 @@ CD_OBJ_OLD = """    var c = { id: '', name: x.name, type: x.type, date: x.date, 
 CD_OBJ_NEW = """    var c = { id: '', name: x.name, type: x.type, date: x.date, note: x.note, color: x.color, group: x.group || '', sys: x.sys || '', createdAt: ymd(t) };"""
 
 
+# 「清空全部数据」原实现只删任务/习惯/纪念日，专注记录仅清内存不删库，
+# 重启后会被 loadAll 读回来，等于假清空。这里补上真删除，并改掉弹窗文案。
+CLEAR_ALL_TIP_OLD = """'会删除所有任务、习惯、纪念日（专注记录保留），且无法撤销。<br>删除前已在本机留了一份快照。'"""
+CLEAR_ALL_TIP_NEW = """'会删除所有任务、习惯、纪念日、专注记录，且无法撤销。<br>删除前已在本机留了一份快照。'"""
+
+CLEAR_ALL_OLD = """          S.countdowns.forEach(function (c) { jobs.push(apiDeleteCountdown(c.id)); });"""
+CLEAR_ALL_NEW = """          S.countdowns.forEach(function (c) { jobs.push(apiDeleteCountdown(c.id)); });
+          S.pomodoros.forEach(function (p) {
+            var _pdb = getDB();
+            if (_pdb) jobs.push(_pdb.deleteRecord({ databaseId: DB_IDS.pomodoros, recordId: p.id }));
+          });"""
+
+
 def replace_block(html: str, begin: str, end: str, payload: str, anchor: str) -> str:
     if begin in html:
         start = html.index(begin)
@@ -628,6 +641,12 @@ def main() -> int:
         html = html.replace(CD_OBJ_OLD, CD_OBJ_NEW, 1)
     else:
         print("warning: seed countdown patch anchor not found", file=sys.stderr)
+
+    if CLEAR_ALL_OLD in html:
+        html = html.replace(CLEAR_ALL_OLD, CLEAR_ALL_NEW, 1)
+        html = html.replace(CLEAR_ALL_TIP_OLD, CLEAR_ALL_TIP_NEW, 1)
+    else:
+        print("warning: clear-all-data patch anchor not found", file=sys.stderr)
 
     TARGET.write_text(html, encoding="utf-8", newline="")
     print(f"built {TARGET} ({TARGET.stat().st_size} bytes)")
