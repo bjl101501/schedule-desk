@@ -196,7 +196,7 @@ function openBackup() {
     '<div class="m-head"><h3>数据备份</h3><button class="m-close">' + svgIcon('close') + '</button></div>' +
     '<div class="m-body">' +
     '<div class="banner" style="background:var(--green-soft);border-color:var(--green);color:var(--text);margin:0">' +
-    svgIcon('check') + '<span>数据已存在资料库在线表格中，换设备登录同一账号即可看到。建议每月额外导出一份 JSON 本地留底。</span></div>' +
+    svgIcon('check') + '<span>数据保存在本机，路径见设置里的「数据目录」。配置 WebDAV 或把目录放进同步盘即可多设备共用。</span></div>' +
     '<div class="field"><label>当前数据</label><div style="font-size:12.5px;color:var(--text-2);line-height:1.9">' +
     '任务 <b>' + S.tasks.length + '</b> 条 · 习惯 <b>' + S.habits.length + '</b> 个 · 纪念日 <b>' + S.countdowns.length + '</b> 个 · 专注记录 <b>' + S.pomodoros.length + '</b> 条</div></div>' +
     '<div style="display:flex;flex-direction:column;gap:8px">' +
@@ -264,12 +264,6 @@ function openSettings() {
   openModal('<div class="modal settings">' +
     '<div class="m-head"><h3>设置</h3><button class="m-close">' + svgIcon('close') + '</button></div>' +
     '<div class="m-body">' +
-    '<div class="field"><label>数据存储</label><div style="font-size:13.5px;color:var(--text-2);line-height:1.85">' +
-    '工作台数据保存在你的资料库在线表格（4 张表：日程任务 / 习惯打卡 / 倒数纪念日 / 专注记录）。<br>' +
-    '本机同时保留一份缓存，断网时可继续查看和操作。' +
-    '</div></div>' +
-    '<div class="field"><label>同步状态</label><div style="font-size:13.5px;color:var(--text-2)" id="stSync">' +
-    (S.online ? '已连接资料库，数据实时同步' : '当前为离线模式，改动会在恢复后需要手动刷新') + '</div></div>' +
     '<div class="field"><label>本地快照<span class="hint">每天首次打开自动存一份，保留 7 天</span></label>' +
     '<div id="stSnaps" style="display:flex;flex-direction:column;gap:7px">' + dailySnapHtml() + '</div></div>' +
     '<div class="field"><label>艾宾浩斯提醒</label><div style="font-size:13.5px;color:var(--text-2);line-height:1.85">' +
@@ -285,26 +279,15 @@ function openSettings() {
     '<div style="font-size:13.5px;color:var(--text-2);line-height:1.955">' +
     '· <b>图标</b>：全部内联 SVG 手写，未使用图标库<br>' +
     '· <b>图表</b>：手写 SVG / CSS 绘制，未使用图表库<br>' +
-    '· <b>数据存储</b>：WorkBuddy 资料库在线数据表（4 张表）<br>' +
+    '· <b>数据存储</b>：本机 JSON 文件，可选 WebDAV 同步<br>' +
     '· <b>配色</b>：中国传统色 —— 靛青 #177CB0（主色）、朱砂 #C3272B、杏黄 #C8892B、竹青 #5E8C6A、绛紫 #7A4E63、石青 #1685A9、宣纸 #F7F3EA（底）、玄色 #2A2925（字）；色名与色值参照 sealuo.com/category/all 传统色卡整理<br>' +
     '· <b>字体</b>：霞鹜文楷 GB — LXGW WenKai GB，作者 LXGW，SIL Open Font License 1.1；经 jsDelivr CDN 分片加载（lxgw-wenkai-gb-web），加载失败自动回落到系统字体<br>' +
     '· <b>节假日数据</b>：holiday.ailcc.com 公开接口（GET /api/holiday/next/{date}），仅取「下一个法定节假日」，每日缓存 6 小时；接口不可用时用内置的固定日期表兜底，并标注「预估」' +
     '</div></div>' +
-    '<div class="field"><label>单网页做不到的事</label><div style="font-size:13.5px;color:var(--text-2);line-height:1.95">' +
-    '· 系统级推送通知：页面在 iframe 里无法注册 Service Worker，关掉页面就收不到提醒<br>' +
-    '· 真正的离线可用：同理，没有 Service Worker 缓存<br>' +
-    '· 桌面 / 锁屏小组件：系统能力，网页无入口<br>' +
-    '· 多人实时协同：没有长连接，只能靠刷新；同一账号多端会互相覆盖<br>' +
-    '· 假期数据准确性：第三方免费接口，限流 31 次/分钟，官方未公布次年安排时会用固定日期预估' +
-    '</div></div>' +
-    '<div class="field"><label>隐私</label><div style="font-size:13.5px;color:var(--text-2);line-height:1.85">' +
-    '页面发布后链接可访问，但数据在你的资料库账号下，其他人打开看到的是空数据。' +
-    '</div></div>' +
     '<div style="display:flex;flex-direction:column;gap:8px">' +
-    '<button class="btn btn-sec" id="stReload" style="justify-content:flex-start;height:42px">' + svgIcon('refresh') + ' 重新从云端加载</button>' +
     '<button class="btn btn-danger" id="stClearAll" style="justify-content:flex-start;height:42px">' + svgIcon('trash') + ' 清空全部数据（含习惯 / 纪念日）</button>' +
     '</div></div>' +
-    '<div class="m-foot"><div style="font-size:11px;color:var(--text-3)">日程台 ' + APP_VERSION + ' · 作者 workbuddy &amp; bjl1015 · 单文件工作台</div></div></div>', {
+    '<div class="m-foot"><div style="font-size:11px;color:var(--text-3)">日程台 · 作者 workbuddy &amp; bjl101501</div></div></div>', {
     onMount: function (root) {
       Array.prototype.forEach.call(root.querySelectorAll('[data-ththeme]'), function (b) {
         b.addEventListener('click', function () {
@@ -320,9 +303,6 @@ function openSettings() {
           closeModal();
           setTimeout(function () { restoreDailySnap(day); }, 220);
         });
-      });
-      root.querySelector('#stReload').addEventListener('click', function () {
-        closeModal(); loadAll(); toast('正在重新加载…');
       });
       root.querySelector('#stClearAll').addEventListener('click', function () {
         takeSnapshot('清空全部数据前');

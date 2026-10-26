@@ -186,6 +186,15 @@ fn finish_onboarding(
 }
 
 #[tauri::command]
+fn data_dir_info(app: AppHandle) -> serde_json::Value {
+    let dir = data_dir_of(&app);
+    serde_json::json!({
+        "dataDir": dir.to_string_lossy(),
+        "version": env!("CARGO_PKG_VERSION"),
+    })
+}
+
+#[tauri::command]
 fn open_data_dir(app: AppHandle) {
     let dir = data_dir_of(&app);
     let _ = fs::create_dir_all(&dir);
@@ -682,6 +691,7 @@ fn main() {
             choose_data_dir,
             choose_data_dir_quiet,
             finish_onboarding,
+            data_dir_info,
             open_data_dir,
             restart_app,
             webdav_test,

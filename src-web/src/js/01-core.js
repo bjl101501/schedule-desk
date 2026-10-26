@@ -25,7 +25,6 @@ function themedColor(c) {
 var TAG_COLORS = ['c0', 'c1', 'c2', 'c3', 'c4'];
 
 /* ---------- 全局状态 ---------- */
-var APP_VERSION = 'v2.1.4';
 var S = {
   view: 'today',
   vmode: 'list',
