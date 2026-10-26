@@ -283,13 +283,16 @@ DESKTOP = DESK_BEGIN + r"""
   function sectionHtml() {
     var dav = config.webdav || {};
     return '' +
+      '<div class="field" data-sd-block="desktop" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--line)">' +
+      '<span style="font-size:13px;color:var(--text-2)">第一次用？先看一遍使用说明</span>' +
+      '<button class="btn btn-sec" id="sdHelp" style="height:34px;font-size:12.5px;white-space:nowrap">使用说明</button>' +
+      '</div>' +
       '<div class="field" data-sd-block="desktop"><label>数据目录<span class="hint">本机文件，可放同步盘</span></label>' +
       '<div id="sdDirPath" style="font-size:13px;color:var(--text-2);line-height:1.8;word-break:break-all">' +
       esc(config.dataDir || '默认目录') + '</div>' +
       '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">' +
       '<button class="btn btn-sec" id="sdChangeDir" style="height:34px;font-size:12.5px">更换目录</button>' +
       '<button class="btn btn-sec" id="sdOpenDir" style="height:34px;font-size:12.5px">打开目录</button>' +
-      '<button class="btn btn-sec" id="sdHelp" style="height:34px;font-size:12.5px">使用说明</button>' +
       '</div></div>' +
 
       '<div class="field" data-sd-block="desktop"><label>WebDAV 同步<span class="hint">多设备共用一份数据</span></label>' +
@@ -407,14 +410,15 @@ DESKTOP = DESK_BEGIN + r"""
   function showHelp() {
     if (typeof window.openModal !== 'function') return;
     var icon = window.svgIcon ? window.svgIcon('close') : '×';
-    var html = '<div class="modal sm"><div class="m-head"><h3>使用说明</h3>' +
+    var html = '<div class="modal wide"><div class="m-head"><h3>使用说明</h3>' +
       '<button class="m-close">' + icon + '</button></div>' +
       '<div class="m-body" style="font-size:13.5px;line-height:1.95;color:var(--text-2)">' +
       '<p><b>数据在哪</b><br>全部保存在本机文件，路径见设置里的「数据目录」。不上传任何服务器，除非你主动配置 WebDAV。</p>' +
       '<p><b>换电脑</b><br>把数据目录复制到新机器，在首次引导或设置里指向它；也可以在「备份」里导出 JSON。</p>' +
       '<p><b>多设备同步</b><br>设置里填 WebDAV 地址与账号，各设备指向同一个远端文件。同步按「每条记录的修改时间」合并，较新的改动覆盖较旧的，删除也会同步。</p>' +
       '<p><b>提醒</b><br>到点由 Windows 原生通知弹出；关闭窗口会留在托盘继续计时与提醒，右键托盘图标可退出。</p>' +
-      '<p><b>更新</b><br>设置里点「检查更新」，发现新版本可一键下载替换并自动重启。</p>' +
+      '<p><b>清除示例</b><br>首次启动会预置一批示例数据。备份里的「清空全部任务」只清任务与专注记录；设置里的「清空全部数据」会清掉任务、习惯、纪念日、专注记录四类，执行前自动留一份快照。清空后重启会重新生成一条「下一个假期」，那是系统项，不是示例。</p>' +
+              '<p><b>更新</b><br>设置里点「检查更新」，发现新版本可一键下载替换并自动重启。</p>' +
       '</div><div class="m-foot"><button class="btn m-close" style="white-space:nowrap;padding:0 22px">知道了</button></div></div>';
     window.openModal(html, { stack: true });
   }

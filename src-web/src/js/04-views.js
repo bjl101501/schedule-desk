@@ -260,8 +260,11 @@ function taskRowHtml(t) {
     due = '<span class="m ' + dcls + '">' + svgIcon('calendar') + shortDate(d) + (t.time ? ' ' + timeRangeText(t) : '') + '</span>';
   }
   var r = nextReminder(t);
-  // 任务本身已逾期时优先显示「已逾期」，别让提醒状态盖过更重要的信息
-  var rm = r ? '<span class="m due-remind">' + svgIcon('bell') + (overdue ? '已逾期' : (r.overdue ? '待复习' : relTime(r.at))) + '</span>' : '';
+  // 待复习是艾宾浩斯专属说法；普通提醒或没有提醒的任务逾期时按日期算
+  var isEb = t.remindMode === '艾宾浩斯';
+  var rmLabel = isEb ? (r && r.overdue ? '待复习' : (r ? relTime(r.at) : ''))
+    : (overdue ? '已逾期' : (r && r.overdue ? '已提醒' : (r ? relTime(r.at) : '')));
+  var rm = (r || (overdue && !isEb)) ? '<span class="m due-remind">' + svgIcon('bell') + rmLabel + '</span>' : '';
   var tags = t.tags.map(function (g) {
     return '<span class="tag-chip ' + tagColor(g) + '">#' + esc(g) + '</span>';
   }).join('');
