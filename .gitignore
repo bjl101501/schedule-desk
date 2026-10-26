@@ -1,0 +1,10 @@
+# 构建产物与本机环境，不入库
+/src-tauri/target/
+/src-tauri/gen/
+/src-tauri/.cargo/
+/src-web/index.html
+/dist/
+*.tmp
+.DS_Store
+Thumbs.db
+*.zip
