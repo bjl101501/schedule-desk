@@ -59,7 +59,7 @@ impl Default for Config {
             data_dir: String::new(),
             device_id: String::new(),
             webdav: WebDav::default(),
-            repo: String::new(),
+            repo: "bjl101501/schedule-desk".to_string(),
             last_sync: 0,
             first_run_done: false,
             close_to_tray: true,
