@@ -247,7 +247,13 @@ function openBackup() {
         takeSnapshot('清空任务前');
         typedConfirm('清空全部任务', '这会删除 <b>' + S.tasks.length + '</b> 条任务，且无法撤销。<br>删除前已在本机留了一份快照，可在「数据备份」里恢复。', '清空', function () {
           Promise.all(S.tasks.map(function (t) { return apiDeleteTask(t.id); })).then(function () {
-            S.tasks = []; markSeeded(); cacheLocal(); refreshAll(); toast('已清空');
+            var _db = getDB();
+            if (!_db) return null;
+            return Promise.all(S.pomodoros.map(function (p) {
+              return _db.deleteRecord({ databaseId: DB_IDS.pomodoros, recordId: p.id });
+            }));
+          }).then(function () {
+            S.tasks = []; S.pomodoros = []; markSeeded(); cacheLocal(); refreshAll(); toast('已清空');
           });
         }, true);
       });
@@ -320,11 +326,15 @@ function openSettings() {
       });
       root.querySelector('#stClearAll').addEventListener('click', function () {
         takeSnapshot('清空全部数据前');
-        typedConfirm('清空全部数据', '会删除所有任务、习惯、纪念日（专注记录保留），且无法撤销。<br>删除前已在本机留了一份快照。', '全部清空', function () {
+        typedConfirm('清空全部数据', '会删除所有任务、习惯、纪念日、专注记录，且无法撤销。<br>删除前已在本机留了一份快照。', '全部清空', function () {
           var jobs = [];
           S.tasks.forEach(function (t) { jobs.push(apiDeleteTask(t.id)); });
           S.habits.forEach(function (h) { jobs.push(apiDeleteHabit(h.id)); });
           S.countdowns.forEach(function (c) { jobs.push(apiDeleteCountdown(c.id)); });
+          S.pomodoros.forEach(function (p) {
+            var _pdb = getDB();
+            if (_pdb) jobs.push(_pdb.deleteRecord({ databaseId: DB_IDS.pomodoros, recordId: p.id }));
+          });
           Promise.all(jobs).then(function () {
             S.tasks = []; S.habits = []; S.countdowns = []; S.pomodoros = [];
             markSeeded(); cacheLocal(); refreshAll(); toast('已全部清空');

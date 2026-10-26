@@ -565,7 +565,12 @@ function seedDemo() {
   var cds = [
     { name: '项目上线日', type: '倒数日', date: ymd(addDays(t, 23)), note: '二期正式发布', color: '#177CB0' },
     { name: '和老婆的纪念日', type: '纪念日', date: '2021-06-18', note: '每年都要记住', color: '#7A4E63' },
-    { name: '年度旅行出发', type: '倒数日', date: ymd(addDays(t, 47)), note: '大理 · 7 天', color: '#5E8C6A' }
+    { name: '年度旅行出发', type: '倒数日', date: ymd(addDays(t, 47)), note: '大理 · 7 天', color: '#5E8C6A' },
+    // 示例里直接给一条假期倒数：接口慢或未公布时也能看到这一项
+    (function () {
+      var fh = fallbackHoliday(ymd(t));
+      return { name: '下一个假期 · ' + fh.name, type: '倒数日', date: fh.date, note: '预估 · 官方未公布', color: '#C3272B', group: '假期', sys: 'holiday' };
+    })()
   ];
   S.busy++;
   var jobs = [];
@@ -594,7 +599,7 @@ function seedDemo() {
     });
   });
   cds.forEach(function (x) {
-    var c = { id: '', name: x.name, type: x.type, date: x.date, note: x.note, color: x.color, createdAt: ymd(t) };
+    var c = { id: '', name: x.name, type: x.type, date: x.date, note: x.note, color: x.color, group: x.group || '', sys: x.sys || '', createdAt: ymd(t) };
     jobs.push(function () { return apiSaveCountdown(c).then(function () { S.countdowns.push(c); }); });
   });
   var pomoSeed = [];

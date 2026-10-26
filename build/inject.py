@@ -22,11 +22,7 @@ WEB = pathlib.Path(__file__).resolve().parent.parent / "src-web"
 SRC_DIR = WEB / "src"
 # Tauri 的 frontendDist 指向这里
 OUT_DIR = WEB / "build"
-# 拆分前的单文件，仅作归档，不参与构建
-ORIGINAL = WEB / "index.original.html"
-TARGET = OUT_DIR / "index.html"
 
-INJECTOR_MARK = 'src="/page/page_comm/inject.js"'
 
 BRIDGE_BEGIN = "<!-- ==== desktop bridge: begin (generated) ==== -->"
 BRIDGE_END = "<!-- ==== desktop bridge: end ==== -->"
@@ -533,87 +529,6 @@ EXPORT_PATCH = EXPORT_BEGIN + r"""
 """ + EXPORT_END
 
 
-# 原页面「清空全部任务」只删任务，示例专注记录会残留在「最近专注」里。
-# 这里做一次定点修补：清空任务时一并清掉专注记录。
-CLEAR_OLD = """          Promise.all(S.tasks.map(function (t) { return apiDeleteTask(t.id); })).then(function () {
-            S.tasks = []; markSeeded(); cacheLocal(); refreshAll(); toast('已清空');
-          });"""
-
-CLEAR_NEW = """          Promise.all(S.tasks.map(function (t) { return apiDeleteTask(t.id); })).then(function () {
-            var _db = getDB();
-            if (!_db) return null;
-            return Promise.all(S.pomodoros.map(function (p) {
-              return _db.deleteRecord({ databaseId: DB_IDS.pomodoros, recordId: p.id });
-            }));
-          }).then(function () {
-            S.tasks = []; S.pomodoros = []; markSeeded(); cacheLocal(); refreshAll(); toast('已清空');
-          });"""
-
-
-EDITOR_MARKS = [
-    re.compile(r"<!--pnid:[^>]*-->"),
-    re.compile(r"<!--\s*本工作台通过 WorkBuddy[^>]*-->"),
-    re.compile(r'\sdata-page-node-id="[^"]*"'),
-    re.compile(r'\sdata-pnid-children="[^"]*"'),
-]
-
-
-def strip_editor_marks(html: str) -> tuple[str, int]:
-    """Drop WorkBuddy editor bookkeeping (node ids / child ids).
-
-    None of it is referenced by CSS or the app script; it is only used by the
-    page builder to track elements while editing.
-    """
-    removed = 0
-    for pattern in EDITOR_MARKS:
-        html, n = pattern.subn("", html)
-        removed += n
-    return html, removed
-
-
-# 网页版的示例倒数日只有 3 条，「下一个假期」要等假期接口返回后才异步补上。
-# 首次启动若网络慢，用户会以为示例里没有这一项。这里直接内置一条兜底记录，
-# 之后 ensureHolidayCountdown() 拿到真实数据会把它更新掉。
-CDS_OLD = """  var cds = [
-    { name: '项目上线日', type: '倒数日', date: ymd(addDays(t, 23)), note: '二期正式发布', color: '#177CB0' },
-    { name: '和老婆的纪念日', type: '纪念日', date: '2021-06-18', note: '每年都要记住', color: '#7A4E63' },
-    { name: '年度旅行出发', type: '倒数日', date: ymd(addDays(t, 47)), note: '大理 · 7 天', color: '#5E8C6A' }
-  ];"""
-
-CDS_NEW = """  var cds = [
-    { name: '项目上线日', type: '倒数日', date: ymd(addDays(t, 23)), note: '二期正式发布', color: '#177CB0' },
-    { name: '和老婆的纪念日', type: '纪念日', date: '2021-06-18', note: '每年都要记住', color: '#7A4E63' },
-    { name: '年度旅行出发', type: '倒数日', date: ymd(addDays(t, 47)), note: '大理 · 7 天', color: '#5E8C6A' },
-    (function () {
-      var fh = fallbackHoliday(ymd(t));
-      return { name: '下一个假期 · ' + fh.name, type: '倒数日', date: fh.date, note: '预估 · 官方未公布', color: '#C3272B', group: '假期', sys: 'holiday' };
-    })()
-  ];"""
-
-CD_OBJ_OLD = """    var c = { id: '', name: x.name, type: x.type, date: x.date, note: x.note, color: x.color, createdAt: ymd(t) };"""
-
-CD_OBJ_NEW = """    var c = { id: '', name: x.name, type: x.type, date: x.date, note: x.note, color: x.color, group: x.group || '', sys: x.sys || '', createdAt: ymd(t) };"""
-
-
-# 「清空全部数据」原实现只删任务/习惯/纪念日，专注记录仅清内存不删库，
-# 重启后会被 loadAll 读回来，等于假清空。这里补上真删除，并改掉弹窗文案。
-CLEAR_ALL_TIP_OLD = """'会删除所有任务、习惯、纪念日（专注记录保留），且无法撤销。<br>删除前已在本机留了一份快照。'"""
-CLEAR_ALL_TIP_NEW = """'会删除所有任务、习惯、纪念日、专注记录，且无法撤销。<br>删除前已在本机留了一份快照。'"""
-
-CLEAR_ALL_OLD = """          S.countdowns.forEach(function (c) { jobs.push(apiDeleteCountdown(c.id)); });"""
-CLEAR_ALL_NEW = """          S.countdowns.forEach(function (c) { jobs.push(apiDeleteCountdown(c.id)); });
-          S.pomodoros.forEach(function (p) {
-            var _pdb = getDB();
-            if (_pdb) jobs.push(_pdb.deleteRecord({ databaseId: DB_IDS.pomodoros, recordId: p.id }));
-          });"""
-
-
-def replace_block(html: str, begin: str, end: str, payload: str, anchor: str) -> str:
-    if begin in html:
-        start = html.index(begin)
-        stop = html.index(end) + len(end)
-        return html[:start] + payload + html[stop:]
-    return html.replace(anchor, payload + "\n" + anchor, 1)
 
 
 def script_body(block: str) -> str:
@@ -635,16 +550,6 @@ def main() -> int:
     html = src_index.read_text(encoding="utf-8")
     css = src_css.read_text(encoding="utf-8")
 
-    # 业务补丁按文件落位：源文件拆分后，补丁锚点各自归属明确
-    patches: dict[str, list[tuple[str, str]]] = {
-        "02-model.js": [(CDS_OLD, CDS_NEW), (CD_OBJ_OLD, CD_OBJ_NEW)],
-        "09-app.js": [
-            (CLEAR_OLD, CLEAR_NEW),
-            (CLEAR_ALL_OLD, CLEAR_ALL_NEW),
-            (CLEAR_ALL_TIP_OLD, CLEAR_ALL_TIP_NEW),
-        ],
-    }
-
     js_files = sorted(js_dir.glob("*.js"))
     if not js_files:
         print("no js sources found", file=sys.stderr)
@@ -656,11 +561,6 @@ def main() -> int:
     total = 0
     for f in js_files:
         text = f.read_text(encoding="utf-8")
-        for old, new in patches.get(f.name, []):
-            if old in text:
-                text = text.replace(old, new, 1)
-            else:
-                print(f"warning: patch anchor missing in {f.name}", file=sys.stderr)
         (OUT_DIR / "js" / f.name).write_text(text, encoding="utf-8", newline="")
         total += len(text.encode())
 
