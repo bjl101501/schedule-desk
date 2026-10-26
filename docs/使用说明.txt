@@ -3,10 +3,10 @@
 
 启动
 ----
-双击 ScheduleDesk.exe。
+双击 ScheduleDesk.exe，单文件即可运行，无需安装。
 
-重要：ScheduleDesk.exe 与 WebView2Loader.dll 必须放在同一文件夹，
-请勿只单独复制 exe，否则无法启动。
+（GitHub 发布版用 MSVC 构建，WebView2 加载器已静态链接进 exe。
+若你自行用 GNU 工具链构建，则需要把 WebView2Loader.dll 放在同目录。）
 
 首次打开
 --------

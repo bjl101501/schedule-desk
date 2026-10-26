@@ -73,12 +73,13 @@ cargo build --release                  # 产物 target/release/schedule-desk.exe
 ```
 build/inject.py               前端注入脚本（幂等，可重复执行）
 src-web/index.original.html   网页版原始文件（不改动）
-src-web/index.html            注入适配层后的构建产物
+src-web/index.html            构建产物，不入库（由 inject.py 生成）
 src-tauri/src/store.rs        数据模型、原子写、快照、记录级合并
 src-tauri/src/sync.rs         WebDAV 客户端
 src-tauri/src/remind.rs       提醒调度
 src-tauri/src/update.rs       GitHub 更新
-dist/                         发布产物
+docs/                         截图与使用说明
+dist/                         本地构建输出，不入库
 CHANGELOG.md                  版本记录
 ```
 
