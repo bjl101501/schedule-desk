@@ -26,12 +26,18 @@ jobs:
       - name: Package
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
-          Copy-Item src-tauri/target/release/schedule-desk.exe dist/ScheduleDesk.exe
-          # 无论 MSVC 还是 GNU 构建，运行时都需要 WebView2Loader.dll；
-          # 它由 webview2-com-sys 在构建目录里产出，不在 target/release 根下。
-          $dll = Get-ChildItem "src-tauri/target/release/build/webview2-com-sys-*/out/x64/WebView2Loader.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $dll) { throw "WebView2Loader.dll not found in build output" }
-          Copy-Item $dll.FullName dist/WebView2Loader.dll
+          $exe = "src-tauri/target/release/schedule-desk.exe"
+          Copy-Item $exe dist/ScheduleDesk.exe
+          # MSVC 目标静态链接 WebView2 加载器，只有动态依赖时才需要随包附带 DLL。
+          $needsDll = [System.Text.Encoding]::ASCII.GetString([System.IO.File]::ReadAllBytes($exe)).Contains('WebView2Loader.dll')
+          if ($needsDll) {
+            $dll = Get-ChildItem "src-tauri/target/release/build/webview2-com-sys-*/out/x64/WebView2Loader.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $dll) { throw "exe depends on WebView2Loader.dll but it was not produced by the build" }
+            Copy-Item $dll.FullName dist/WebView2Loader.dll
+            Write-Output "dynamic link: bundling WebView2Loader.dll"
+          } else {
+            Write-Output "static link: single file, no dll"
+          }
           Copy-Item docs/使用说明.txt dist/使用说明.txt
           Compress-Archive -Path dist/* -DestinationPath ScheduleDesk.zip -Force
           Get-ChildItem dist | Select-Object Name, Length
