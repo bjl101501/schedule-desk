@@ -27,8 +27,11 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item src-tauri/target/release/schedule-desk.exe dist/ScheduleDesk.exe
-          Copy-Item src-tauri/target/release/WebView2Loader.dll dist/WebView2Loader.dll
-          Compress-Archive -Path dist/ScheduleDesk.exe, dist/WebView2Loader.dll, src-web/使用说明.txt -DestinationPath ScheduleDesk.zip -Force
+          # MSVC 目标把 WebView2 加载器静态链接进 exe；GNU 目标才需要旁边放 DLL
+          $dll = "src-tauri/target/release/WebView2Loader.dll"
+          if (Test-Path $dll) { Copy-Item $dll dist/WebView2Loader.dll }
+          Compress-Archive -Path dist/* -DestinationPath ScheduleDesk.zip -Force
+          Get-ChildItem dist | Select-Object Name, Length
 
       - uses: softprops/action-gh-release@v2
         with:
