@@ -18,12 +18,22 @@
 
 ## 下载与安装
 
-1. 到 [Releases](../../releases) 下载最新的 `ScheduleDesk.zip`
-2. 解压到任意目录（**exe 与 `WebView2Loader.dll` 必须放在一起**）
-3. 双击 `ScheduleDesk.exe`
+1. 到 [Releases](../../releases) 下载 `ScheduleDesk.zip`，或直接取 `ScheduleDesk.exe`
+2. 解压到任意目录，双击 `ScheduleDesk.exe`
+3. 首次运行会引导选择数据目录
 
-首次运行会引导选择数据目录。Windows SmartScreen 可能提示未签名，
-点「更多信息 → 仍要运行」即可。
+Release 里的 exe 是**单文件**：WebView2 加载器已静态链接进程序，不需要旁边放 DLL。
+只有自行用 GNU 工具链构建时，才需要把 `WebView2Loader.dll` 放在同目录。
+
+**关于 SmartScreen**：未签名的程序首次运行可能提示「Windows 已保护你的电脑」。
+两种处理方式，选一种即可：
+
+- 解压前右键 zip → 属性 → 勾选「解除锁定」→ 确定（推荐，之后不再提示）
+- 或在提示里点「更多信息 → 仍要运行」
+
+已经解压的，可在程序目录执行 `Get-ChildItem -Recurse | Unblock-File`，
+效果相同。这个提示与程序本身无关，是 Windows 对「来自网络且无下载记录的文件」
+的默认拦截；用的人多了会自行消失。
 
 运行环境：Windows 10 1809+ / Windows 11，需要 WebView2 运行时
 （Windows 11 与装了 Edge 的系统自带）。
@@ -54,7 +64,11 @@ snapshots/             每日快照，保留 7 天
 ## 更新
 
 设置 →「检查更新」读取 GitHub Releases 的最新版本，确认后自动下载、
-替换程序并重启。更新源是 `config.json` 里的 `repo` 字段（`owner/repo`）。
+替换程序并重启。Release 同时提供裸 exe 与 zip：更新器取 exe，手动下载取 zip。
+更新源是 `config.json` 里的 `repo` 字段（`owner/repo`）。
+
+未认证的 GitHub API 每小时有 60 次配额，被限流时设置面板会显示具体原因，
+不会提示「已是最新」。
 
 ## 从源码构建
 
@@ -64,9 +78,10 @@ cd src-tauri
 cargo build --release                  # 产物 target/release/schedule-desk.exe
 ```
 
-装有 Visual Studio Build Tools 的机器可直接构建；CI 使用 `windows-latest`。
+装有 Visual Studio Build Tools 的机器可直接构建，产物为单文件；
+CI 使用 `windows-latest`，同样输出无需 DLL 的 exe。
 本仓库开发机没有 MSVC，本地走 Rust GNU 目标，需要 MinGW binutils
-（`dlltool`、`windres`），细节见 `build/README-build.md`。
+（`dlltool`、`windres`）与 `WebView2Loader.dll` 同目录运行。
 
 ## 目录
 
@@ -90,5 +105,5 @@ CHANGELOG.md                  版本记录
 
 ## 许可
 
-界面与交互设计：workbuddy & bjl1015。
+界面与交互设计：workbuddy & bjl101501。
 桌面端代码：MIT。
