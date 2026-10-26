@@ -1,0 +1,36 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build front end
+        run: python build/inject.py
+
+      - name: Build app
+        working-directory: src-tauri
+        run: cargo build --release
+
+      - name: Package
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item src-tauri/target/release/schedule-desk.exe dist/ScheduleDesk.exe
+          Copy-Item src-tauri/target/release/WebView2Loader.dll dist/WebView2Loader.dll
+          Compress-Archive -Path dist/ScheduleDesk.exe, dist/WebView2Loader.dll, src-web/使用说明.txt -DestinationPath ScheduleDesk.zip -Force
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: ScheduleDesk.zip
+          generate_release_notes: true
