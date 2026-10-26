@@ -18,8 +18,13 @@ import re
 import sys
 
 WEB = pathlib.Path(__file__).resolve().parent.parent / "src-web"
+# 拆分后的唯一源：index.html / styles.css / app.js
+SRC_DIR = WEB / "src"
+# Tauri 的 frontendDist 指向这里
+OUT_DIR = WEB / "build"
+# 拆分前的单文件，仅作归档，不参与构建
 ORIGINAL = WEB / "index.original.html"
-TARGET = WEB / "index.html"
+TARGET = OUT_DIR / "index.html"
 
 INJECTOR_MARK = 'src="/page/page_comm/inject.js"'
 
@@ -611,46 +616,65 @@ def replace_block(html: str, begin: str, end: str, payload: str, anchor: str) ->
     return html.replace(anchor, payload + "\n" + anchor, 1)
 
 
+def script_body(block: str) -> str:
+    """把带注释标记与 <script> 包裹的片段还原成纯 JS/CSS 文本。"""
+    block = re.sub(r"<!--[^>]*-->", "", block)
+    block = re.sub(r"</?script[^>]*>", "", block)
+    return block.strip() + "\n"
+
+
 def main() -> int:
-    if not ORIGINAL.exists():
-        print(f"missing pristine source: {ORIGINAL}", file=sys.stderr)
-        return 1
+    src_index = SRC_DIR / "index.html"
+    src_css = SRC_DIR / "styles.css"
+    src_js = SRC_DIR / "app.js"
+    for p in (src_index, src_css, src_js):
+        if not p.exists():
+            print(f"missing source: {p}", file=sys.stderr)
+            return 1
 
-    html = ORIGINAL.read_text(encoding="utf-8")
-    html, stripped = strip_editor_marks(html)
-    print(f"stripped {stripped} editor marks")
+    html = src_index.read_text(encoding="utf-8")
+    css = src_css.read_text(encoding="utf-8")
+    js = src_js.read_text(encoding="utf-8")
 
-    # strip the WorkBuddy runtime injector (server-only)
-    lines = html.split("\n")
-    html = "\n".join(
-        "<!-- workbuddy runtime injector removed for desktop build -->"
-        if INJECTOR_MARK in line else line
-        for line in lines
-    )
-
-    html = replace_block(html, BRIDGE_BEGIN, BRIDGE_END, BRIDGE, "</head>")
-    html = replace_block(html, DESK_BEGIN, DESK_END, DESKTOP, "</body>")
-    html = replace_block(html, EXPORT_BEGIN, EXPORT_END, EXPORT_PATCH, "</body>")
-
-    if CLEAR_OLD in html:
-        html = html.replace(CLEAR_OLD, CLEAR_NEW, 1)
-    elif "S.pomodoros = []; markSeeded()" not in html:
+    # 业务补丁打在 app.js 上（src/ 是唯一源，补丁点固定）
+    if CLEAR_OLD in js:
+        js = js.replace(CLEAR_OLD, CLEAR_NEW, 1)
+    elif "S.pomodoros = []; markSeeded()" not in js:
         print("warning: clear-all patch anchor not found", file=sys.stderr)
 
-    if CDS_OLD in html:
-        html = html.replace(CDS_OLD, CDS_NEW, 1)
-        html = html.replace(CD_OBJ_OLD, CD_OBJ_NEW, 1)
+    if CDS_OLD in js:
+        js = js.replace(CDS_OLD, CDS_NEW, 1)
+        js = js.replace(CD_OBJ_OLD, CD_OBJ_NEW, 1)
     else:
         print("warning: seed countdown patch anchor not found", file=sys.stderr)
 
-    if CLEAR_ALL_OLD in html:
-        html = html.replace(CLEAR_ALL_OLD, CLEAR_ALL_NEW, 1)
-        html = html.replace(CLEAR_ALL_TIP_OLD, CLEAR_ALL_TIP_NEW, 1)
+    if CLEAR_ALL_OLD in js:
+        js = js.replace(CLEAR_ALL_OLD, CLEAR_ALL_NEW, 1)
+        js = js.replace(CLEAR_ALL_TIP_OLD, CLEAR_ALL_TIP_NEW, 1)
     else:
         print("warning: clear-all-data patch anchor not found", file=sys.stderr)
 
-    TARGET.write_text(html, encoding="utf-8", newline="")
-    print(f"built {TARGET} ({TARGET.stat().st_size} bytes)")
+    head_shim = '<script src="shim-head.js"></script>\n    <link rel="stylesheet" href="styles.css">'
+    body_shim = '<script src="app.js"></script>\n    <script src="shim-body.js"></script>'
+    page = html.replace('<link rel="stylesheet" href="styles.css">', head_shim, 1)
+    page = page.replace('<script src="app.js"></script>', body_shim, 1)
+
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    files = {
+        "index.html": page,
+        "styles.css": css,
+        "app.js": js,
+        "shim-head.js": script_body(BRIDGE),
+        "shim-body.js": script_body(DESKTOP) + "\n" + script_body(EXPORT_PATCH),
+    }
+    for name, content in files.items():
+        (OUT_DIR / name).write_text(content, encoding="utf-8", newline="")
+
+    total = sum(len(v.encode()) for v in files.values())
+    print("built src-web/build:")
+    for name, content in files.items():
+        print(f"  {name:<16} {len(content)/1024:>7.1f} KB")
+    print(f"  {'total':<16} {total/1024:>7.1f} KB")
     return 0
 
 

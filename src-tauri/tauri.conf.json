@@ -4,7 +4,7 @@
   "version": "2.0.4",
   "identifier": "com.scheduledesk.app",
   "build": {
-    "frontendDist": "../src-web"
+    "frontendDist": "../src-web/build"
   },
   "app": {
     "windows": [],

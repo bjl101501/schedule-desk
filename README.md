@@ -73,10 +73,14 @@ snapshots/             每日快照，保留 7 天
 ## 从源码构建
 
 ```bash
-python build/inject.py                 # 由 index.original.html 生成 index.html
+python build/inject.py                 # src/ → src-web/build/（含业务补丁）
 cd src-tauri
 cargo build --release                  # 产物 target/release/schedule-desk.exe
 ```
+
+`build/inject.py` 只做两件事：把 `src/` 的三个文件复制到 `build/`，并把
+「清空全部数据」「示例假期倒数」等补丁打到 `app.js` 上。补丁锚点找不到时会打印
+警告而不是静默产出错误版本。
 
 装有 Visual Studio Build Tools 的机器可直接构建，产物为单文件；
 CI 使用 `windows-latest`，同样输出无需 DLL 的 exe。
@@ -86,9 +90,13 @@ CI 使用 `windows-latest`，同样输出无需 DLL 的 exe。
 ## 目录
 
 ```
-build/inject.py               前端注入脚本（幂等，可重复执行）
-src-web/index.original.html   网页版原始文件（不改动）
-src-web/index.html            构建产物，不入库（由 inject.py 生成）
+build/inject.py               构建：把 src/ 打包成 build/，并打业务补丁
+build/split.py                一次性脚本：把原始单文件拆成 src/
+src-web/src/index.html        页面骨架（177 行）
+src-web/src/styles.css        样式（1578 行）
+src-web/src/app.js            应用脚本（6315 行）
+src-web/build/                构建产物，不入库（Tauri 的 frontendDist）
+src-web/index.original.html   拆分前的单文件，仅作归档
 src-tauri/src/store.rs        数据模型、原子写、快照、记录级合并
 src-tauri/src/sync.rs         WebDAV 客户端
 src-tauri/src/remind.rs       提醒调度

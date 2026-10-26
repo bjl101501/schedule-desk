@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<!--pnid:5kydyxMqKT7oZP0jgQnPeb--><!-- 本工作台通过 WorkBuddy「资料库」skill 搭建、存储和部署 -->
+<html data-page-node-id="WBeOZOQEY6milFvxt2B2XR" lang="zh-CN">
+<head data-page-node-id="I1YJJnM7V1KTWM0HZ3UL1M">
+<meta data-page-node-id="tEYeO0zwE20h8HfBiZdbFr" charset="UTF-8">
+<meta data-page-node-id="ivoYO4KLakrrYBmjjzv6p3" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport">
+<meta data-page-node-id="TUYnKIqDTma9ckgPEUedvJ" content="#F7F3EA" name="theme-color">
+<script data-page-node-id="iPufxuBA1R75dPFyhc2psf" data-pnid-children="j1OKHy0zypfdckFjn1meup">try{var _t=localStorage.getItem("wb_theme");if(_t)document.documentElement.setAttribute("data-theme",_t);}catch(e){}</script>
+<link data-page-node-id="bZUsflLzTxCXJ8k2iP8cow" crossorigin href="https://cdn.jsdelivr.net" rel="preconnect">
+<link data-page-node-id="n73ROY3U98zksGraOBKeCe" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-gb-web@latest/lxgwwenkaigb-regular/result.css" rel="stylesheet">
+<link data-page-node-id="Uu1jxQcXlFOQaL4mqtW879" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-gb-web@latest/lxgwwenkaigb-medium/result.css" rel="stylesheet">
+<title data-page-node-id="68tRrmvqLhPOWw8QOpFmUr" data-pnid-children="doWp2nH0MvaO3n32Q0lUo4">日程台 · 个人日程工作台</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-page-node-id="F35OqvyZ0gd4C5zyQuiGjj">
+<div data-page-node-id="wXsLYMILfinYDr7gOi1GLS" class="app">
+  <div data-page-node-id="Rh5Kk4tUT7Kvo5iT99MvfH" class="drawer-mask" id="drawerMask"></div>
+
+  <aside data-page-node-id="BjfjhQ3LZTdgFyZuwzxvIb" class="sidebar" id="sidebar">
+    <div data-page-node-id="CTZaygvS8u9PvKuWoabl7F" class="brand">
+      <div data-page-node-id="2ptarUSOjABOMHY8oVo2zg" class="brand-mark">
+        <svg data-page-node-id="Xo8q51707dlOHqVszkeIRr" viewBox="0 0 24 24"><path data-page-node-id="vscPig2BYyLwmao66HAvKx" d="M9 11l3 3L22 4"/><path data-page-node-id="yNNZxOALVEgJ9BdcbHN7RT" d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      </div>
+      <div data-page-node-id="raumvdkqsnGx5EZtlBYv12">
+        <div data-page-node-id="4iQoYKGlUwE0ygtL1ueQes" class="brand-name"><!--pnid:iv4Pz7Ej3bpxTDgcguf8uz-->日程台</div>
+        <div data-page-node-id="J0cjdXt5llUKRVrEJ7Jxuv" class="brand-sub"><!--pnid:MFTLtldPP0jRP814I5yJzL-->SCHEDULE DESK</div>
+      </div>
+    </div>
+
+    <button data-page-node-id="UVdf6ExIP66F0vfe77pumz" class="quick-add" id="btnQuickAdd">
+      <svg data-page-node-id="d7eYRZ7PAp4C7GfkrAPikp" viewBox="0 0 24 24"><path data-page-node-id="8exOULgUnrvs08tOmHzK7C" d="M12 5v14M5 12h14"/></svg><!--pnid:gE5jFxJshd04iBBFxT1ogu-->
+      添加日程
+    </button>
+
+    <div data-page-node-id="kw27e926hLNYLA3YMLy8Nk" class="side-scroll">
+      <nav data-page-node-id="6oKqGybI9rovgZd15yy6qO" class="nav" id="navMain">
+        <div data-page-node-id="Bs1V2iFiB4wCLoSZCQAvBT" class="nav-item" data-view="today">
+          <svg data-page-node-id="AKUDiIUzBKgrfqKocXSAts" viewBox="0 0 24 24"><rect data-page-node-id="E3BEcjz39Xg6MlPktlBgVL" height="18" rx="2" width="18" x="3" y="4"/><path data-page-node-id="QrtQoZtgS41BUqLKvgnWdS" d="M16 2v4M8 2v4M3 10h18"/><path data-page-node-id="tQykqirexkJPFpQncZOEJ9" d="M9 15l2 2 4-4"/></svg>
+          <span data-page-node-id="EqKKxoJH1PJkWglakRYshB" class="lbl"><!--pnid:rH1zW1GIwsWQD41VFIMZ7x-->今天</span><span data-page-node-id="6JbXLtiH4DlFeCpItpjr4M" class="cnt" id="cntToday"></span>
+        </div>
+        <div data-page-node-id="P2fsQjUCTSn8qrEDCSbNEf" class="nav-item" data-view="next7">
+          <svg data-page-node-id="2YCWrsNrGPrIJuWAJ4dk3H" viewBox="0 0 24 24"><rect data-page-node-id="a9ANujq132Q9f3yCfcUsK3" height="18" rx="2" width="18" x="3" y="4"/><path data-page-node-id="PeuFXxJiyJPxsXJ1ypPYPd" d="M16 2v4M8 2v4M3 10h18"/><path data-page-node-id="pyLBNwrogzJjiETV2l4Lmn" d="M8 15h8M8 18h5"/></svg>
+          <span data-page-node-id="Cmp9Of7YqOu6WwH0lMQNVn" class="lbl"><!--pnid:rWWsw97KCXIuHjyKf7w6xd-->最近 7 天</span><span data-page-node-id="jLYyv7SA3hkurK4Jyz7cH0" class="cnt" id="cntNext7"></span>
+        </div>
+        <div data-page-node-id="8uBAysNGJsNaO2BoLG7UC1" class="nav-item" data-view="inbox">
+          <svg data-page-node-id="gYrEbHAEFtXVHxWnei2odv" viewBox="0 0 24 24"><path data-page-node-id="yaXU6Oy8LZJTMiAD97bEtc" d="M22 12h-6l-2 3h-4l-2-3H2"/><path data-page-node-id="jhgVtWYrWNdHmGCxGkpD8C" d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+          <span data-page-node-id="tKtcMb8GimDhKatW0bT2hX" class="lbl"><!--pnid:Yr4KbaE2QhVgnDbwSZatYp-->收集箱</span><span data-page-node-id="Y09YYDEoE4eL5TWlC2nmSr" class="cnt" id="cntInbox"></span>
+        </div>
+        <div data-page-node-id="s3inyPXQc9uNqiweiLuJ3O" class="nav-item" data-view="calendar">
+          <svg data-page-node-id="tiYj3ogtH6SSNgXP1yaPER" viewBox="0 0 24 24"><rect data-page-node-id="l09pbXJysz1hLJlGWXkMSt" height="18" rx="2" width="18" x="3" y="4"/><path data-page-node-id="ciE2mqiJenO8titd9B5lbx" d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <span data-page-node-id="d9NxyvoTUatQjmBlIBkn8e" class="lbl"><!--pnid:qzF0aMmikidu5tzfFmDjVm-->日历</span>
+        </div>
+        <div data-page-node-id="Te5lOk7OmlIY4DOi0GmglQ" class="nav-item" data-view="quadrant">
+          <svg data-page-node-id="iBUlHNBiHxhvrklTmwVIm5" viewBox="0 0 24 24"><rect data-page-node-id="t7KXZ829aExkDXWt3YUdfL" height="7" rx="1" width="7" x="3" y="3"/><rect data-page-node-id="DgIod6vJzkxTVfsd0en7N0" height="7" rx="1" width="7" x="14" y="3"/><rect data-page-node-id="1PMf97EtC8rOr7mr8AUOJV" height="7" rx="1" width="7" x="3" y="14"/><rect data-page-node-id="PbnUhspfIZsT2Vdofz9IUe" height="7" rx="1" width="7" x="14" y="14"/></svg>
+          <span data-page-node-id="nYLilu6sKEemwgbUFQ0TzC" class="lbl"><!--pnid:dmsYe8kLBrhc4e1AYUrnOq-->四象限</span>
+        </div>
+        <div data-page-node-id="0qAdUPQBp1t9WiqKLdAMGN" class="nav-item" data-view="habit">
+          <svg data-page-node-id="5NoAE0bl3lbrmoD1VTSQaa" viewBox="0 0 24 24"><path data-page-node-id="rnplAZj9EEpmoAttVCPVeK" d="M17 2l4 4-4 4"/><path data-page-node-id="Diouq2wnwwLLi0KmxodGf5" d="M3 11v-1a4 4 0 0 1 4-4h14"/><path data-page-node-id="IBXkFxOCrbgnQkUEWsM0KR" d="M7 22l-4-4 4-4"/><path data-page-node-id="6v70ilu7s2MQ7MXCrl0hzN" d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+          <span data-page-node-id="jJ4xYTs9IOrObr1D0VefdQ" class="lbl"><!--pnid:mygYMJnUqiYZH4cT7RcsXW-->习惯打卡</span><span data-page-node-id="nhguEVbZj2EaM7RnLKUN2V" class="cnt" id="cntHabit"></span>
+        </div>
+        <div data-page-node-id="CiZMwctjN4kWXklb8Jy6KQ" class="nav-item" data-view="countdown">
+          <svg data-page-node-id="Riq48NWv3osVcOUkFttBXC" viewBox="0 0 24 24"><circle data-page-node-id="8Qba8JZHRABFaxrEUXdDGg" cx="12" cy="13" r="8"/><path data-page-node-id="C7JFNJlkczdhJ0Ak4WwI0h" d="M12 9v4l2 2M9 2h6"/></svg>
+          <span data-page-node-id="Q4xir6GWfFc6SmrVkNdH16" class="lbl"><!--pnid:u0ew6FPxxT9FfI8AXuk6lz-->倒数纪念日</span>
+        </div>
+        <div data-page-node-id="Q4Eq6xhzvVqRSrVcWAo6aE" class="nav-item" data-view="focus">
+          <svg data-page-node-id="ihw2JuYO4h0LQhACvBZMvO" viewBox="0 0 24 24"><circle data-page-node-id="MsVSZqdRYfrIY47IUBd5Vf" cx="12" cy="13" r="9"/><circle data-page-node-id="HdvBwEgncUqGpT5lHDPuC8" cx="12" cy="13" r="4"/><path data-page-node-id="lRlIcejDK2eq8nQmEDudSP" d="M12 2v2"/></svg>
+          <span data-page-node-id="ZFnOUpr7ViyI5PjOYL4UAx" class="lbl"><!--pnid:yo4dUoN6Awc4FxVVMOkswx-->番茄专注</span>
+        </div>
+        <div data-page-node-id="6ZSScCCvGuFiQTKZojhYnz" class="nav-item" data-view="stats">
+          <svg data-page-node-id="4ucPcZtiofMAmi0CzwXesk" viewBox="0 0 24 24"><path data-page-node-id="VVynhqVfNhfjeq8LXaldpH" d="M3 3v18h18"/><path data-page-node-id="mIXUGit4gdiKmxogti208d" d="M7 15l3.5-4 3 2.5L20 7"/></svg>
+          <span data-page-node-id="3zATTuEz4jcqUXh5iOAxOl" class="lbl"><!--pnid:t3ZuZfQ9OIITEiGxLRGip7-->数据统计</span>
+        </div>
+      </nav>
+
+      <div data-page-node-id="V4qsA5zRmESKe57pKaXNqI" class="side-head">
+        <span data-page-node-id="2DVKy2TOqPhHOzRatFGMmL"><!--pnid:Yr204TY0JVYQX1oy8CeVi5-->清单</span>
+        <button data-page-node-id="c6rECaKwoX2iNqOpXetRvE" id="btnAddList" title="新建清单"><svg data-page-node-id="Fs00llIAyjLltdTYt8LnQJ" viewBox="0 0 24 24"><path data-page-node-id="VojahLvyr7aq6TpqnhJFsM" d="M12 5v14M5 12h14"/></svg></button>
+      </div>
+      <div data-page-node-id="lry8agdaQvhLdLJaujUTbx" id="listNav"></div>
+      <div data-page-node-id="WTgCWq3kUryns97yT0o2XA" id="archivedNav"></div>
+
+      <div data-page-node-id="QVr2FQdWlrE1exmD4B4hrJ" class="side-head">
+        <span data-page-node-id="OwgsBFoUikQGgMxSWTYgXg"><!--pnid:9ezTyDCUSc7CH2Jp3cw3CI-->标签</span>
+        <button data-page-node-id="pyeBs18DE41RTmgn5p7nLf" id="btnAddTag" title="新建标签"><svg data-page-node-id="va9sQFk0kzh0waCiLNGGpe" viewBox="0 0 24 24"><path data-page-node-id="1DxsuJBt65pahHDvL1qJeE" d="M12 5v14M5 12h14"/></svg></button>
+      </div>
+      <div data-page-node-id="4yazFwVJAjwm7iqL5jyRPO" id="tagNav"></div>
+    </div>
+
+    <div data-page-node-id="uHJ6y5swzjUAx8h4BSQOWt" class="side-foot">
+      <button data-page-node-id="vGaSoGCJAQErVM9zalt18f" class="foot-btn" id="btnBackup">
+        <svg data-page-node-id="ggcSa5J721fjQCgkLV7lxi" viewBox="0 0 24 24"><path data-page-node-id="cmj459rCsLJxRuRfVa3Lzh" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path data-page-node-id="YkfBpirRIfQqhTTw43etTq" d="M7 10l5 5 5-5M12 15V3"/></svg><!--pnid:GP33G8ORcH6esnvZcJdbT1-->
+        备份
+      </button>
+      <button data-page-node-id="WnZ1eOHm1HVbmgWwuYQK5O" class="foot-btn" id="btnSettings">
+        <svg data-page-node-id="kYRF88cEi7DzIyRsCBBYlB" viewBox="0 0 24 24"><circle data-page-node-id="HYxjnj9vsEKXvTrtvuhnyT" cx="12" cy="12" r="3"/><path data-page-node-id="Im3WkiHNxOUapcyJWDHQWq" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><!--pnid:il3OoiYsOKGXEcPy1hYrn9-->
+        设置
+      </button>
+    </div>
+  </aside>
+
+  <main data-page-node-id="l9s4KwwU3lXi7udaPFxp1e" class="main">
+    <header data-page-node-id="FmMUUTQWcCWB4l5RRxQiOH" class="topbar">
+      <button data-page-node-id="DlYNdxKErVMJzhwsuaumAf" aria-label="菜单" class="icon-btn" id="btnMenu" style="display:none">
+        <svg data-page-node-id="yJqh2ya7Qmvd3c0cHEqMk3" viewBox="0 0 24 24"><path data-page-node-id="jyOZ2by99596Ae58cgX29A" d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+      <div data-page-node-id="71be1bshZnyKhEMWaJM3Xu" class="title-wrap">
+        <h1 data-page-node-id="nqYxijAUOA00267PUuPNE4" id="viewTitle"><!--pnid:Ym2DxhZQrzM7mLgGjL7aKH-->今天</h1>
+        <div data-page-node-id="3oDJFnnzwTUYBtY09rOArp" class="sub" id="viewSub"></div>
+      </div>
+      <div data-page-node-id="IlKzW5PCpzl90oeUABm66O" class="view-switch" id="viewSwitch">
+        <button data-page-node-id="519fw3xiHx1v7qFAL8UQyZ" class="on" data-vmode="list" title="列表视图"><svg data-page-node-id="B8KlO5OX0GMgNkeBHmTLWw" viewBox="0 0 24 24"><path data-page-node-id="JnWmhyOdv1aOlCnWOH5AkT" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
+        <button data-page-node-id="9Ci6fmxjT4r8DDxA0fpRWL" data-vmode="card" title="卡片视图"><svg data-page-node-id="sGa9Id6y0FgVVbEVfA4ejS" viewBox="0 0 24 24"><rect data-page-node-id="xcanZNqDKUUuGYjz5Me5Jr" height="7" rx="1.5" width="7" x="3" y="3"/><rect data-page-node-id="7PMg4HA09E43tzcZrnsaQ7" height="7" rx="1.5" width="7" x="14" y="3"/><rect data-page-node-id="RhiiSvyLtvdeswS77lOyiW" height="7" rx="1.5" width="7" x="3" y="14"/><rect data-page-node-id="82JB5qPiQ7BXtJ3nbyGnaY" height="7" rx="1.5" width="7" x="14" y="14"/></svg></button>
+        <button data-page-node-id="96tdV9FWG1pb6zRSdYZesL" data-vmode="kanban" title="看板视图"><svg data-page-node-id="VK4PPRvKpanYL6nlzX3k1l" viewBox="0 0 24 24"><rect data-page-node-id="82xaZTXeiYTxOZSVJ9gr1Q" height="18" rx="1.5" width="5" x="3" y="3"/><rect data-page-node-id="NIbFjcEK81cpHf8tj7oP2p" height="12" rx="1.5" width="5" x="10" y="3"/><rect data-page-node-id="odS8yfVYdTtocxn5jigHYB" height="15" rx="1.5" width="4" x="17" y="3"/></svg></button>
+        <button data-page-node-id="zKPuWqlvNVrMGi00JkpZNK" data-vmode="timeline" title="时间线视图"><svg data-page-node-id="erZ0caupP4mpJPFp8w9Ium" viewBox="0 0 24 24"><path data-page-node-id="T4kWKCT9bqDi5fFVlw8qZr" d="M3 12h18"/><rect data-page-node-id="8JtaPyWKHTXsdUX4bCZFgl" height="4" rx="1" width="6" x="6" y="6"/><rect data-page-node-id="0bqqP3YzrPcqFWxBwDLhdO" height="4" rx="1" width="6" x="13" y="15"/></svg></button>
+      </div>
+      <button data-page-node-id="LbBr7yCJV9GRkOs965iLf6" class="tb-btn" id="btnSort">
+        <svg data-page-node-id="sCOjeRITwrY9OK05iiRp8h" viewBox="0 0 24 24"><path data-page-node-id="zptFnzMXP9Md55lXxRRKwW" d="M3 6h12M3 12h9M3 18h6"/><path data-page-node-id="4Q6SrJrJqFkslL8YjoyaMJ" d="M18 7v12M15 16l3 3 3-3"/></svg>
+        <span data-page-node-id="TEvMFVRepMqhsWn4MZXQrB" class="txt"><!--pnid:Ad74hS38ZWFwO9tmW5kTyC-->按时间</span>
+      </button>
+      <button data-page-node-id="iRzi4oQJNME2OVkQcNJoed" class="tb-btn" id="btnFilter">
+        <svg data-page-node-id="4dzT6Yal1nWahDrFYm9DPb" viewBox="0 0 24 24"><path data-page-node-id="ZyEoYY5hy0mlUoAUVytPJu" d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+        <span data-page-node-id="nFTE6ZMbx3t4XERNSlbOCV" class="txt"><!--pnid:VjIrnyMKyZvGRtmK2BuXpm-->筛选</span>
+      </button>
+      <button data-page-node-id="0hvRDIu9iiQ90e5Z28eTCT" aria-label="换肤" class="icon-btn" id="btnTheme" title="换肤">
+        <svg data-page-node-id="K0DSSojIx0HhFoCwFTlMhb" viewBox="0 0 24 24"><circle data-page-node-id="9jEC6jrZN24l29UZbKeHSd" cx="12" cy="12" r="9"/><circle data-page-node-id="rBcya3Q9ojMBaXgdE5q008" cx="9" cy="9" fill="currentColor" r="1.2" stroke="none"/><circle data-page-node-id="4sCl7qXa8VeId7fcFyYxy7" cx="15" cy="9" fill="currentColor" r="1.2" stroke="none"/><circle data-page-node-id="I66veI2s1BHYXzswV13JZw" cx="9.5" cy="15" fill="currentColor" r="1.2" stroke="none"/><circle data-page-node-id="b1txvDpceeQvBI4mVjAw57" cx="15" cy="15" fill="currentColor" r="1.2" stroke="none"/></svg>
+      </button>
+      <button data-page-node-id="quPvPz0l2PYAi6HfCUHIbX" aria-label="搜索" class="icon-btn" id="btnSearch">
+        <svg data-page-node-id="Fw7ZBnY3WlODNnGxiOrrFN" viewBox="0 0 24 24"><circle data-page-node-id="S4WH1hoVTwHpwOnb4H6nIW" cx="11" cy="11" r="8"/><path data-page-node-id="B8jxRsfMTMeNhNtYKm5hqA" d="M21 21l-4.35-4.35"/></svg>
+      </button>
+      <button data-page-node-id="tCUEbQbGnrs6PcZmwryCC3" aria-label="提醒" class="icon-btn" id="btnBell">
+        <svg data-page-node-id="4KPPjddfHSDr1oKk8VSCbE" viewBox="0 0 24 24"><path data-page-node-id="l6bgw91o2vx93qezQnud2s" d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path data-page-node-id="wWv9iWbNv8UKTCPP7YIuof" d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span data-page-node-id="nPaVni8mVEq7Om6ELK3eum" class="dot-badge hidden" id="bellBadge"><!--pnid:SoCAbWQ6mO82Of6nhfGIvr-->0</span>
+      </button>
+      <div data-page-node-id="oFRZ8KjBTyzJUtbEDvIvIy" class="sync-pill" id="syncPill">
+        <svg data-page-node-id="QvDIx39SwRcQ6BDgOJAMBg" viewBox="0 0 24 24"><path data-page-node-id="dOcqgkiCFPOXZmD3pjgx5u" d="M20 6L9 17l-5-5"/></svg>
+        <span data-page-node-id="8BqD7AnXBCjfQkv2BsGYXC" id="syncText"><!--pnid:TlCBECZYOiPVPzS5W3rymU-->已同步</span>
+      </div>
+    </header>
+
+    <div data-page-node-id="4LIGrowAfWEGhxRX3oV5SV" class="content" id="content">
+      <div data-page-node-id="8rywDR6MY8xC7heAQoyRgU" class="empty">
+        <div data-page-node-id="SkTqhSX8TPQmxHylZICzcN" class="empty-ico"><svg data-page-node-id="H0qPS7YoDnfcP5VvL9bniB" viewBox="0 0 24 24"><path data-page-node-id="J6Zd0PeNADeZ1lNEDLxJdu" d="M12 6v6l4 2"/><circle data-page-node-id="JzoyfPsSI7faWL8dCH9dvM" cx="12" cy="12" r="9"/></svg></div>
+        <h4 data-page-node-id="txNKo8YsPRKKDj5IA4OdmX"><!--pnid:7w9A2tFZ68hGExgC2JDUSJ-->正在加载你的日程…</h4>
+        <p data-page-node-id="sr4JjyhMspJGH1VnYGiRtI"><!--pnid:JJWv6XYxExC06sHI9SgMnf-->数据来自资料库在线表格，首次打开需要几秒</p>
+      </div>
+    </div>
+  </main>
+
+  <nav data-page-node-id="jE8IvnvOgZeXtg6DxZky0l" class="tabbar" id="tabbar">
+    <a data-page-node-id="hUf5qHjAZMmMZcusmu5cNi" class="on" data-view="today">
+      <svg data-page-node-id="1AJrpljRLUBRDV5j8JLHZB" viewBox="0 0 24 24"><rect data-page-node-id="m4xqhBlKADpyzdtyFe9n9C" height="18" rx="2" width="18" x="3" y="4"/><path data-page-node-id="GCi6OnYgdkQ6gejY9vrqts" d="M16 2v4M8 2v4M3 10h18"/></svg>
+      <span data-page-node-id="MDSBhNF5pWz5g04c9DGdjZ"><!--pnid:tyzEE2npy1uE7DeuaakNhH-->今天</span>
+    </a>
+    <a data-page-node-id="ScOu2fsqhIIqV3diw9ZIGI" data-view="calendar">
+      <svg data-page-node-id="jJyi4FUcLvLW4gTkJ5COsc" viewBox="0 0 24 24"><rect data-page-node-id="2HsKVL0dY1BKJzvDlMTGlb" height="18" rx="2" width="18" x="3" y="4"/><path data-page-node-id="9cFeXTwQEZMpSP4jD0q7Gs" d="M16 2v4M8 2v4M3 10h18"/><path data-page-node-id="EKVLqtfAx2Jv5J2jlwuv8I" d="M8 15h3"/></svg>
+      <span data-page-node-id="5HZD7aYavijgkHtxrVBIet"><!--pnid:tC7ILwBgfsC7BFpuQJ8Rbl-->日历</span>
+    </a>
+    <button data-page-node-id="kBnkXRsG63QtoJvO3aySzZ" aria-label="添加任务" class="tab-fab" id="btnFabAdd">
+      <svg data-page-node-id="jvbWiOgnKKq7FYM6iMOMjo" viewBox="0 0 24 24"><path data-page-node-id="HNr5h9gw1k5xe3lUj2DwYD" d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <a data-page-node-id="GWnnLn217yyia7Z8sjlfCK" data-view="quadrant">
+      <svg data-page-node-id="HJCgyioyaoculpoRtJQghh" viewBox="0 0 24 24"><rect data-page-node-id="LvWxFEEb4rwL2iIPoFXBkx" height="7" rx="1" width="7" x="3" y="3"/><rect data-page-node-id="bMsvrW2dkIYlby5pxINQov" height="7" rx="1" width="7" x="14" y="3"/><rect data-page-node-id="mTnhxe0cpgVNlYDKuffA90" height="7" rx="1" width="7" x="3" y="14"/><rect data-page-node-id="869a6uc5aLX5CKs55qfsi4" height="7" rx="1" width="7" x="14" y="14"/></svg>
+      <span data-page-node-id="m4ylxpSaaZ5BPtU0LBBNgm"><!--pnid:ZMzd5eBSlVhec6G4BCnH4P-->四象限</span>
+    </a>
+    <a data-page-node-id="P1VZZsjEGHlwp7VDum7AZp" data-view="stats">
+      <svg data-page-node-id="p7sfTxxhywk294IshSzHYl" viewBox="0 0 24 24"><path data-page-node-id="btrLtCGug9blr67K5Ngyxk" d="M3 3v18h18"/><path data-page-node-id="RO3F7wEB5xkOutz0j0UwkC" d="M7 15l3.5-4 3 2.5L20 7"/></svg>
+      <span data-page-node-id="ud9PrjDfpIe5bx3QvBcCd4"><!--pnid:4uN66DAXQi7AcgKClwN8GY-->统计</span>
+    </a>
+  </nav>
+</div>
+
+<div data-page-node-id="dLeuOoHfpSIYnfZH17Edw5" class="modal-root" id="modalRoot"></div>
+<div data-page-node-id="aPbdl7n505gfvtLthC22MI" class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
