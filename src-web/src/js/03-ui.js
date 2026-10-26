@@ -233,7 +233,7 @@ function openModal(html, opts) {
     return prev;
   }
   // 面板已开时，小弹窗（确认 / 输入）叠在面板之上，不要把面板整个换掉
-  if (prev && prev.classList.contains('panel') && !isWide) {
+  if (prev && (opts.stack || (prev.classList.contains('panel') && !isWide))) {
     wrap.classList.add('stacked');
     root.appendChild(wrap);
   } else {
@@ -244,8 +244,10 @@ function openModal(html, opts) {
   wrap.addEventListener('mousedown', function (e) {
     if (e.target === wrap && opts.maskClose !== false) closeModal();
   });
-  var c = wrap.querySelector('.m-close');
-  if (c) c.addEventListener('click', closeModal);
+  // 右上角的 X 和底部的「知道了」都带 m-close，全部要绑上
+  Array.prototype.forEach.call(wrap.querySelectorAll('.m-close'), function (btn) {
+    btn.addEventListener('click', closeModal);
+  });
   if (opts.onMount) opts.onMount(wrap);
   applyModalMode(wrap);
   enableModalDrag(wrap);

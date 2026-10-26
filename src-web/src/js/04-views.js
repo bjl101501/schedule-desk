@@ -260,7 +260,8 @@ function taskRowHtml(t) {
     due = '<span class="m ' + dcls + '">' + svgIcon('calendar') + shortDate(d) + (t.time ? ' ' + timeRangeText(t) : '') + '</span>';
   }
   var r = nextReminder(t);
-  var rm = r ? '<span class="m due-remind">' + svgIcon('bell') + (r.overdue ? '待复习' : relTime(r.at)) + '</span>' : '';
+  // 任务本身已逾期时优先显示「已逾期」，别让提醒状态盖过更重要的信息
+  var rm = r ? '<span class="m due-remind">' + svgIcon('bell') + (overdue ? '已逾期' : (r.overdue ? '待复习' : relTime(r.at))) + '</span>' : '';
   var tags = t.tags.map(function (g) {
     return '<span class="tag-chip ' + tagColor(g) + '">#' + esc(g) + '</span>';
   }).join('');

@@ -407,7 +407,7 @@ DESKTOP = DESK_BEGIN + r"""
   function showHelp() {
     if (typeof window.openModal !== 'function') return;
     var icon = window.svgIcon ? window.svgIcon('close') : '×';
-    var html = '<div class="modal"><div class="m-head"><h3>使用说明</h3>' +
+    var html = '<div class="modal sm"><div class="m-head"><h3>使用说明</h3>' +
       '<button class="m-close">' + icon + '</button></div>' +
       '<div class="m-body" style="font-size:13.5px;line-height:1.95;color:var(--text-2)">' +
       '<p><b>数据在哪</b><br>全部保存在本机文件，路径见设置里的「数据目录」。不上传任何服务器，除非你主动配置 WebDAV。</p>' +
@@ -415,8 +415,8 @@ DESKTOP = DESK_BEGIN + r"""
       '<p><b>多设备同步</b><br>设置里填 WebDAV 地址与账号，各设备指向同一个远端文件。同步按「每条记录的修改时间」合并，较新的改动覆盖较旧的，删除也会同步。</p>' +
       '<p><b>提醒</b><br>到点由 Windows 原生通知弹出；关闭窗口会留在托盘继续计时与提醒，右键托盘图标可退出。</p>' +
       '<p><b>更新</b><br>设置里点「检查更新」，发现新版本可一键下载替换并自动重启。</p>' +
-      '</div><div class="m-foot"><button class="btn m-close">知道了</button></div></div>';
-    window.openModal(html);
+      '</div><div class="m-foot"><button class="btn m-close" style="white-space:nowrap;padding:0 22px">知道了</button></div></div>';
+    window.openModal(html, { stack: true });
   }
   window.__SD_SHOW_HELP__ = showHelp;
 
