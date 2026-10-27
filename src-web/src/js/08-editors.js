@@ -45,12 +45,12 @@ function openTaskEditor(id, preset) {
 
     '<section class="ed-sec">' +
     '<div class="ed-sec-t">时间安排</div>' +
-    '<div class="row2">' +
-    '<div class="field"><label>开始日期' + tipMark('日程从哪一天开始。需要连续几天完成，用下面的「持续」。') + '</label>' +
+    // 日期 / 时间 / 持续 三列：时间略窄，把宽度让给「持续」，两位天数才放得下
+    '<div class="row3">' +
+    '<div class="field"><label>开始日期' + tipMark('日程从哪一天开始。需要连续几天完成，用右边的「持续」。') + '</label>' +
     '<button type="button" class="inp pick-field" id="edDate"></button></div>' +
     '<div class="field"><label>时间' + tipMark('留空就是全天日程：当天一直显示「进行中」，过了这一天才会逾期。') + '</label>' +
     '<button type="button" class="inp pick-field" id="edTime"></button></div>' +
-    '</div>' +
     '<div class="field"><label>持续<span class="hint">可选</span>' + tipMark('连续多天完成的任务，逾期按最后一天算。') + '</label>' +
     '<div class="span-toggle' + (t.span > 1 ? ' on' : '') + '" id="edSpanWrap">' +
     '<input type="checkbox" id="edSpanOn"' + (t.span > 1 ? ' checked' : '') + '>' +
@@ -59,6 +59,7 @@ function openTaskEditor(id, preset) {
     (t.span > 1 ? t.span : '') + '" placeholder="2">' +
     '<span class="span-u">天</span>' +
     '</div></div>' +
+    '</div>' +
     '<div class="span-hint" id="edSpanHint"></div>' +
     '<div class="field"><label>重复<span class="hint">完成后自动排下一次</span>' + tipMark('勾选后，完成当前这条会自动生成下一次，适合固定习惯。') + '</label><div class="chip-pick" id="edRepeat">' +
     REPEAT_OPTS.map(function (r) {

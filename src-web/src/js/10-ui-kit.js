@@ -284,7 +284,7 @@ function mountTimeField(el, opts) {
   el.addEventListener('click', function () {
     if (__openPanel && __openPanel.el && __openPanel.el.getAttribute('data-for') === el.id) { closeOpenPanel(); return; }
     var p = openPanel(el, '<div class="tm-pop"></div>', {
-      cls: 'tm-panel', minWidth: 252,
+      cls: 'tm-panel', minWidth: 206,
       scroller: document.querySelector('.m-body'),
       onClose: function () {
         // 点了小时没点分钟就关掉：按当前选择提交，别让用户的点击白费
