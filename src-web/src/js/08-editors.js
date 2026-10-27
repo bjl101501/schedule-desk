@@ -1168,7 +1168,7 @@ function openReminderCenter() {
   openModal('<div class="modal mid">' +
     '<div class="m-head"><h3>提醒中心</h3><button class="m-close">' + svgIcon('close') + '</button></div>' +
     '<div class="m-body">' + bodyHtml + '</div>' +
-    '<div class="m-foot"><div style="font-size:11px;color:var(--text-3)">艾宾浩斯提醒会按 5 分钟 → 30 分钟 → 12 小时 → 1/2/4/7/15 天递增推送</div></div></div>', {
+    '<div class="m-foot"><div style="font-size:11px;color:var(--text-3)">艾宾浩斯共 9 个节点：准时 → 5 分钟 → 30 分钟 → 12 小时 → 1/2/4/7/15 天，节点显示为「第 n/9 次」</div></div></div>', {
     onMount: function (root) {
       root.addEventListener('click', function (e) {
         var ack = e.target.closest('[data-rack]');

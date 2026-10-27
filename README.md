@@ -108,13 +108,19 @@ src-tauri/src/store.rs        数据模型、原子写、快照、记录级合�
 src-tauri/src/sync.rs         WebDAV 客户端
 src-tauri/src/remind.rs       提醒调度
 src-tauri/src/update.rs       GitHub 更新
-docs/                         截图与使用说明
+docs/                         截图、使用说明、日程台-功能表.md（完整功能手册）
 dist/                         本地构建输出，不入库
 CHANGELOG.md                  版本记录
 ```
 
 **这些源文件是唯一维护对象**，改动直接写进对应模块。`inject.py` 不再做文本替换，
 只把 `src/` 复制到 `build/` 并拼上桌面桥接脚本。
+
+## 文档
+
+- [功能与操作手册](docs/日程台-功能表.md)：界面每一处能点、能拖的地方，以及状态判定规则
+- [使用说明](docs/使用说明.txt)：随包附带，讲数据位置、同步、提醒与托盘
+- [更新日志](CHANGELOG.md)：每个版本改了什么
 
 ## 数据兼容
 

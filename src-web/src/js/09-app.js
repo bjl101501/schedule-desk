@@ -267,8 +267,8 @@ function openSettings() {
     '<div class="field"><label>本地快照<span class="hint">每天首次打开自动存一份，保留 7 天</span></label>' +
     '<div id="stSnaps" style="display:flex;flex-direction:column;gap:7px">' + dailySnapHtml() + '</div></div>' +
     '<div class="field"><label>艾宾浩斯提醒</label><div style="font-size:13.5px;color:var(--text-2);line-height:1.85">' +
-    '在任务里开启「艾宾浩斯」后，会按 5 分钟 → 30 分钟 → 12 小时 → 1 / 2 / 4 / 7 / 15 天递增安排复习提醒。' +
-    '提醒出现在顶部铃铛和「今天要处理」区域，不依赖浏览器通知权限。' +
+    '在任务里开启「艾宾浩斯」后，按 准时 → 5 分钟 → 30 分钟 → 12 小时 → 1 / 2 / 4 / 7 / 15 天 共 9 个节点安排复习提醒，' +
+    '节点会显示成「第 6/9 次」。到点由 Windows 原生通知弹出（常驻到手动关闭），也出现在顶部铃铛和「今天要处理」区域。' +
     '</div></div>' +
     '<div class="field"><label>外观<span class="hint">选一套配色，立即生效，重新打开也记得</span></label>' +
     '<div class="theme-chips" id="stTheme">' + THEMES.map(function (t) {

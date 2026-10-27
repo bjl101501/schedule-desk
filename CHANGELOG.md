@@ -96,6 +96,11 @@
 
 ### 变更
 
+- **仓库迁入工作区**：`General/schedule-desktop` → `scheduledesk/schedule-desktop`，与检查点、功能表放在一起。
+  仓库内全部用相对路径，迁移后无需改配置。
+- **功能表随代码入库**：重写 `docs/日程台-功能表.md`，覆盖桌面版全部界面与状态规则；README 增加文档入口。
+- **同步结果更具体**：以前只报「合并远端 N 条」，现在写「远端并入 N 条 · 本机较新 M 条」，两端一致时直接说「两端一致」。
+- **说明文案纠偏**：设置页与提醒中心的艾宾浩斯说明补上「准时」节点，并把「不依赖浏览器通知权限」改为桌面通知的实际行为。
 - 移除 `tauri-plugin-notification`（前端从未使用），通知统一走 notify-rust，
   相应删除 `notification:default` 权限。
 - 新增 `build/make-test-data.py`、`build/ui-check.mjs`、`build/win-probe.py`、

@@ -5,9 +5,10 @@ use crate::net;
 use crate::store::Store;
 
 pub struct SyncOutcome {
-    pub pulled: usize,
-    pub pushed: usize,
-    pub merged_remote: usize,
+    /// 本机较新、会覆盖远端的条数
+    pub local_wins: usize,
+    /// 远端较新或新增、已并入本机的条数
+    pub remote_wins: usize,
 }
 
 fn agent() -> ureq::Agent {
@@ -85,21 +86,18 @@ pub fn sync(store: &mut Store, cfg: &WebDav) -> Result<SyncOutcome, String> {
         return Err("未配置 WebDAV".into());
     }
     let remote = download(cfg)?;
-    let mut merged_remote = 0usize;
+    let mut outcome = SyncOutcome { local_wins: 0, remote_wins: 0 };
     if let Some(remote_store) = remote {
-        let (_, remote_wins) = store.merge_from(&remote_store);
-        merged_remote = remote_wins;
+        outcome = {
+            let (local_wins, remote_wins) = store.merge_from(&remote_store);
+            SyncOutcome { local_wins, remote_wins }
+        };
     }
     if store.device_id.is_empty() {
         store.device_id = cfg.username.clone();
     }
     upload(cfg, store)?;
-    let pushed = store.tables.values().map(|v| v.len()).sum();
-    Ok(SyncOutcome {
-        pulled: store.tables.values().map(|v| v.len()).sum(),
-        pushed,
-        merged_remote,
-    })
+    Ok(outcome)
 }
 
 fn base64(input: &[u8]) -> String {

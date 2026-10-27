@@ -296,7 +296,11 @@ fn run_sync(app: &AppHandle) -> serde_json::Value {
 
     match outcome {
         Ok(o) => {
-            let text = format!("已同步 · 合并远端 {} 条", o.merged_remote);
+            let text = if o.local_wins == 0 && o.remote_wins == 0 {
+                "已同步 · 两端一致".to_string()
+            } else {
+                format!("已同步 · 远端并入 {} 条 · 本机较新 {} 条", o.remote_wins, o.local_wins)
+            };
             if let Ok(mut st) = state.sync.lock() {
                 *st = SyncStatus {
                     mode: "synced".into(),
