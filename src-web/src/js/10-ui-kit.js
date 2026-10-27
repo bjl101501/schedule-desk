@@ -174,7 +174,7 @@ function mountDateField(el, opts) {
     view = new Date(cur.getFullYear(), cur.getMonth(), 1);
     var p = openPanel(el, '<div class="cal-pop"></div>', {
       cls: 'cal-panel',
-      minWidth: 248,
+      minWidth: 252,
       scroller: document.querySelector('.m-body'),
       onClose: function () { el.classList.remove('open'); }
     });
@@ -201,8 +201,9 @@ function mountDateField(el, opts) {
       '</div><div class="cal-grid cal-dow">' +
       ['一', '二', '三', '四', '五', '六', '日'].map(function (x) { return '<span>' + x + '</span>'; }).join('') +
       '</div><div class="cal-grid cal-days">' +
+      // 空位也用 button：span 与 button 的 min-content 不同，会把 1fr 挤成忽宽忽窄
       cells.map(function (c) {
-        if (!c) return '<span class="cal-cell empty"></span>';
+        if (!c) return '<button type="button" class="cal-cell cal-blank" disabled aria-hidden="true"></button>';
         var s = ymd(c);
         var cls = 'cal-cell' + (s === selStr ? ' on' : '') + (s === todayStr ? ' today' : '') + (c.getDay() === 0 || c.getDay() === 6 ? ' weekend' : '');
         return '<button type="button" class="' + cls + '" data-day="' + s + '">' + c.getDate() + '</button>';
@@ -266,7 +267,8 @@ function mountTimeField(el, opts) {
   el.innerHTML = '<span class="pf-txt"></span><i class="pf-c">' + svgIcon('chevD') + '</i>';
   var txt = el.querySelector('.pf-txt');
   function paint() {
-    txt.textContent = value || (opts.emptyText || '全天');
+    // 空值不写「全天」，直接说明规则；字号交给 .is-empty 压小
+    txt.textContent = value || (opts.emptyText || '留空默认为全天');
     if (value) el.classList.remove('is-empty'); else el.classList.add('is-empty');
   }
   function setValue(v) {
@@ -277,74 +279,87 @@ function mountTimeField(el, opts) {
     if (opts.onChange) opts.onChange(value);
   }
   paint();
+
   var QUICK = ['08:00', '09:00', '12:00', '14:00', '18:00', '20:00'];
   el.addEventListener('click', function () {
     if (__openPanel && __openPanel.el && __openPanel.el.getAttribute('data-for') === el.id) { closeOpenPanel(); return; }
-    var p = openPanel(el, '<div class="time-pop"></div>', {
-      cls: 'time-panel', minWidth: 236,
+    var p = openPanel(el, '<div class="tm-pop"></div>', {
+      cls: 'tm-panel', minWidth: 252,
       scroller: document.querySelector('.m-body'),
-      onClose: function () { el.classList.remove('open'); }
+      onClose: function () {
+        // 点了小时没点分钟就关掉：按当前选择提交，别让用户的点击白费
+        if (dirty) setValue(pad2(selH) + ':' + pad2(selM));
+        el.classList.remove('open');
+      }
     });
     p.el.setAttribute('data-for', el.id);
+    var cur = value;
+    var selH = cur ? parseInt(cur.slice(0, 2), 10) : 9;
+    var selM = cur ? parseInt(cur.slice(3, 5), 10) : 0;
+    var dirty = false;
     renderTime(p.el);
     p.place();
+
+    function paintSel(box) {
+      var head = box.querySelector('.tm-head b');
+      if (head) head.textContent = pad2(selH) + ':' + pad2(selM);
+      box.querySelectorAll('[data-h]').forEach(function (x) {
+        x.classList.toggle('on', parseInt(x.getAttribute('data-h'), 10) === selH);
+      });
+      box.querySelectorAll('[data-m]').forEach(function (x) {
+        x.classList.toggle('on', parseInt(x.getAttribute('data-m'), 10) === selM);
+      });
+    }
+    function renderTime(box) {
+      var hours = '', mins = '';
+      for (var h = 0; h < 24; h++) {
+        hours += '<button type="button" class="tm-cell" data-h="' + h + '">' + pad2(h) + '</button>';
+      }
+      for (var m = 0; m < 60; m++) {
+        mins += '<button type="button" class="tm-cell" data-m="' + m + '">' + pad2(m) + '</button>';
+      }
+      box.innerHTML = '<div class="tm-head"><b>' + pad2(selH) + ':' + pad2(selM) + '</b><span>选小时 / 分钟</span></div>' +
+        '<div class="tm-body"><div class="tm-col" data-col="h">' + hours + '</div>' +
+        '<div class="tm-col" data-col="m">' + mins + '</div></div>' +
+        '<div class="tm-quick">' + QUICK.map(function (q) {
+          return '<button type="button" class="chip-p' + (q === cur ? ' on' : '') + '" data-q="' + q + '">' + q + '</button>';
+        }).join('') + '</div>' +
+        '<div class="cal-foot"><span class="sp"></span>' +
+        '<button type="button" class="cal-quick muted" data-clear="1">留空（全天）</button></div>';
+      paintSel(box);
+
+      box.querySelectorAll('[data-h]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          selH = parseInt(b.getAttribute('data-h'), 10);
+          dirty = true;
+          paintSel(box);
+        });
+      });
+      box.querySelectorAll('[data-m]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          selM = parseInt(b.getAttribute('data-m'), 10);
+          dirty = true;
+          setValue(pad2(selH) + ':' + pad2(selM));
+          closeOpenPanel();
+        });
+      });
+      box.querySelectorAll('[data-q]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          setValue(b.getAttribute('data-q'));
+          closeOpenPanel();
+        });
+      });
+      var clr = box.querySelector('[data-clear]');
+      if (clr) clr.addEventListener('click', function () { setValue(''); dirty = false; closeOpenPanel(); });
+
+      // 打开时把选中项滚到中间，但不要出现滚动条
+      ['h', 'm'].forEach(function (k) {
+        var col = box.querySelector('[data-col="' + k + '"]');
+        var on = col && col.querySelector('.on');
+        if (col && on) col.scrollTop = Math.max(0, on.offsetTop - col.clientHeight / 2 + 14);
+      });
+    }
   });
-  function renderTime(box) {
-    var cur = value || '';
-    var ch = cur ? parseInt(cur.split(':')[0], 10) : 9;
-    var cm = cur ? parseInt(cur.split(':')[1], 10) : 0;
-    var hours = '', mins = '';
-    for (var h = 0; h < 24; h++) {
-      hours += '<button type="button" class="hm-cell' + (h === ch ? ' on' : '') + '" data-h="' + h + '">' + pad2(h) + '</button>';
-    }
-    for (var m = 0; m < 60; m++) {
-      mins += '<button type="button" class="hm-cell' + (m === cm ? ' on' : '') + '" data-m="' + m + '">' + pad2(m) + '</button>';
-    }
-    box.innerHTML = '<div class="hm-head"><b>' + (cur || '全天') + '</b><span>选小时与分钟</span></div>' +
-      '<div class="hm-cols"><div class="hm-col" data-col="h">' + hours + '</div><div class="hm-col" data-col="m">' + mins + '</div></div>' +
-      '<div class="hm-quick">' + QUICK.map(function (q) {
-        return '<button type="button" class="chip-p' + (q === cur ? ' on' : '') + '" data-q="' + q + '">' + q + '</button>';
-      }).join('') + '</div>' +
-      '<div class="cal-foot"><span class="sp"></span><button type="button" class="cal-quick muted" data-clear="1">全天（清空）</button></div>';
-    var selH = ch, selM = cm;
-    function commit() {
-      setValue(pad2(selH) + ':' + pad2(selM));
-      closeOpenPanel();
-    }
-    box.querySelectorAll('[data-h]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        selH = parseInt(b.getAttribute('data-h'), 10);
-        box.querySelectorAll('[data-h]').forEach(function (x) { x.classList.toggle('on', x === b); });
-        var head = box.querySelector('.hm-head b');
-        if (head) head.textContent = pad2(selH) + ':' + pad2(selM);
-      });
-    });
-    box.querySelectorAll('[data-m]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        selM = parseInt(b.getAttribute('data-m'), 10);
-        box.querySelectorAll('[data-m]').forEach(function (x) { x.classList.toggle('on', x === b); });
-        var head = box.querySelector('.hm-head b');
-        if (head) head.textContent = pad2(selH) + ':' + pad2(selM);
-      });
-    });
-    box.querySelectorAll('[data-q]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var q = b.getAttribute('data-q');
-        setValue(q);
-        closeOpenPanel();
-      });
-    });
-    var clr = box.querySelector('[data-clear]');
-    if (clr) clr.addEventListener('click', function () { setValue(''); closeOpenPanel(); });
-    var onH = box.querySelector('.hm-cell.on');
-    if (onH) {
-      var col = onH.parentNode;
-      col.scrollTop = Math.max(0, onH.offsetTop - col.clientHeight / 2 + 14);
-    }
-    var colM = box.querySelector('[data-col="m"]');
-    var onM = colM && colM.querySelector('.on');
-    if (colM && onM) colM.scrollTop = Math.max(0, onM.offsetTop - colM.clientHeight / 2 + 14);
-  }
   Object.defineProperty(el, 'value', {
     configurable: true,
     get: function () { return value; },
@@ -352,6 +367,7 @@ function mountTimeField(el, opts) {
   });
   return { get: function () { return value; }, set: setValue };
 }
+
 
 /* ---------- 标签输入：空格 / 回车 / 逗号都能提交，且不打断中文输入法 ---------- */
 function mountTagInput(input, opts) {

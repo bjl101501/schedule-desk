@@ -95,7 +95,7 @@ fn stage_text(offset: i64) -> String {
     }
 }
 
-fn body_for(offset: i64, node: usize, all_day: bool, time: &str, estimate: i64, lead: i64) -> String {
+fn body_for(offset: i64, node: usize, total: usize, all_day: bool, time: &str, estimate: i64, lead: i64) -> String {
     if offset < 0 {
         if all_day {
             return "今天要做（全天）".into();
@@ -116,9 +116,9 @@ fn body_for(offset: i64, node: usize, all_day: bool, time: &str, estimate: i64, 
         return "到点了，未完成将记为逾期".into();
     }
     if all_day {
-        format!("复习提醒 · 全天日程 · {}", stage_text(offset))
+        format!("复习提醒 · 第 {node}/{total} 次 · 全天日程")
     } else {
-        format!("复习提醒 · {}（第 {node} 个节点）", stage_text(offset))
+        format!("复习提醒 · 第 {node}/{total} 次（{}）", stage_text(offset))
     }
 }
 
@@ -174,6 +174,8 @@ pub fn due_notifications(store: &Store, dir: &Path) -> Vec<Due> {
             .unwrap_or_default();
 
         let lead = ((anchor_ms - now) as f64 / 60_000.0).round() as i64;
+        let total = offsets.len();
+        let snooze = cfg.get("snooze").and_then(|v| v.as_i64()).unwrap_or(0);
         for (idx, off) in offsets.iter().enumerate() {
             if read.contains(&(idx as i64)) {
                 continue;
@@ -188,10 +190,37 @@ pub fn due_notifications(store: &Store, dir: &Path) -> Vec<Due> {
             }
             out.push(Due {
                 title: title.clone(),
-                body: body_for(*off, idx + 1, all_day, &time, estimate, lead),
+                body: body_for(*off, idx + 1, total, all_day, &time, estimate, lead),
             });
             noted.sent.insert(key, now);
             changed = true;
+        }
+
+        // 稍后提醒：主提醒已经发过，且配置了 snooze，再过 N 分钟补一条
+        if snooze > 0 {
+            for idx in 0..offsets.len() {
+                let key = format!("{}:{}", rec.id, idx);
+                let snz = format!("{}:{}:snz", rec.id, idx);
+                if noted.sent.contains_key(&snz) {
+                    continue;
+                }
+                // 以「主提醒实际发出的时间」为基准，补发才不会被一次迟到的扫描同时触发
+                let sent_at = match noted.sent.get(&key) {
+                    Some(v) => *v,
+                    None => continue,
+                };
+                if now - sent_at < snooze * 60_000 || now - sent_at > CATCHUP_MS {
+                    continue;
+                }
+                let body = if all_day {
+                    "稍后提醒 · 今天还没完成".to_string()
+                } else {
+                    format!("稍后提醒 · 原定 {} 开始，还没完成吗？", time)
+                };
+                out.push(Due { title: title.clone(), body });
+                noted.sent.insert(snz, now);
+                changed = true;
+            }
         }
 
         // 有预计时长的定时日程：即使只设了提前提醒，开始时刻也补一条「现在开始」。

@@ -187,6 +187,11 @@ function subInlineHtml(t) {
     '<i style="width:' + st.pct + '%"></i></span>' +
     '<span class="sub-txt">' + st.done + '/' + st.n + '</span></div>';
 }
+/* 子项是否逾期：过了排期最后一天还没勾才算（当天不算逾期） */
+function subLate(seg, done) {
+  if (done || !seg || !seg.end) return false;
+  return dayDiff(today0(), seg.end) < 0;
+}
 function subRowsHtml(t, limit) {
   var subs = (t && t.subs) || [];
   if (!subs.length) return '';
@@ -211,6 +216,7 @@ function subRowsHtml(t, limit) {
       '<span class="sub-t">' + esc(x.title) + '</span>' +
       (seg.start ? '<span class="sub-day">' + segDateText(seg) + '</span>' : '') +
       (x.min ? '<span class="sub-min">' + durText(x.min) + '</span>' : '') +
+      (subLate(seg, x.done) ? '<span class="sub-late">子项逾期</span>' : '') +
       '</div>';
   }
   if (!shown) html = '<div class="sub-row-more">全部子项都完成了</div>';
@@ -244,6 +250,7 @@ function subSectionHtml(t) {
       '<span class="sub-t">' + esc(x.title) + '</span>' +
       (seg.start ? '<span class="sub-day">' + segDateText(seg) + '</span>' : '') +
       (x.min ? '<span class="sub-min">' + durText(x.min) + '</span>' : '') +
+      (subLate(seg, x.done) ? '<span class="sub-late">子项逾期</span>' : '') +
       '</button>';
   }).join('');
   return '<div class="dt-sec" id="dtSubsSec"><label>' + svgIcon('split') + ' 拆分' +
@@ -525,13 +532,67 @@ function markSeeded() {
 }
 function seedDemo() {
   var t = today0();
+  // 时间按当前时刻生成，避免晚上打开时示例全变成逾期
+  var now = new Date();
+  var nowMin = now.getHours() * 60 + now.getMinutes();
+  function hmAgo(mins) {
+    var v = Math.max(0, Math.min(23 * 60 + 59, nowMin - mins));
+    return hmStr(v);
+  }
+  var overDate = nowMin >= 180 ? ymd(t) : ymd(addDays(t, -1));
+  var overTime = nowMin >= 180 ? hmAgo(180) : '18:00';
   var demo = [
-    { title: '整理本周项目周报', list: '工作', tags: ['工作'], prio: 'P1', important: true, urgent: true, date: ymd(addDays(t, -2)), time: '18:00', estimate: 45, remindMode: '艾宾浩斯', remindCfg: { anchor: ymd(addDays(t, -2)) + ' 18:00', offsets: EB_OFFSETS, read: [] }, note: '逾期示例：上周五该交的周报' },
-    { title: '产品评审会：日程台二期', list: '工作', tags: ['会议', '工作'], prio: 'P0', important: true, urgent: true, date: ymd(t), time: '10:00', estimate: 90, remindMode: '艾宾浩斯', remindCfg: { anchor: ymd(t) + ' 10:00', offsets: EB_OFFSETS, read: [] }, note: '带上原型和上一版数据', subs: [{ title: '准备原型与数据', min: 30, done: true }, { title: '评审会讨论', min: 45, done: false }, { title: '整理结论与待办', min: 15, done: false }] },
-    { title: '给妈妈打个电话', list: '生活', tags: ['生活'], prio: 'P2', important: true, urgent: false, date: ymd(t), time: '20:30', estimate: 30, remindMode: '单次提醒', remindCfg: { anchor: ymd(t) + ' 20:30', offsets: [-10], read: [] } },
-    { title: '读完《深度工作》第 3 章', list: '学习', tags: ['学习', '阅读'], prio: 'P2', important: false, urgent: false, date: ymd(addDays(t, 1)), time: '21:00', estimate: 60, remindMode: '不提醒', subs: [{ title: '精读正文', min: 40, done: false }, { title: '做读书笔记', min: 20, done: false }] },
-    { title: '预约体检', list: '生活', tags: ['生活'], prio: 'P3', important: false, urgent: true, date: ymd(addDays(t, 3)), time: '', estimate: 15, remindMode: '不提醒' },
-    { title: '季度目标复盘', list: '工作', tags: ['工作'], prio: 'P1', important: true, urgent: false, date: ymd(addDays(t, 5)), time: '14:00', estimate: 120, remindMode: '不提醒' }
+    // 1 进行中：有预计时长，刚开始不久
+    { title: '整理今天的会议记录', list: '工作', tags: ['工作'], prio: 'P2', important: true, urgent: false,
+      date: ymd(t), time: hmAgo(25), estimate: 60, remindMode: '不提醒', note: '超过预计时长才算逾期' },
+    // 2 已逾期：超过预计时长
+    { title: '提交本周项目周报', list: '工作', tags: ['工作'], prio: 'P1', important: true, urgent: true,
+      date: overDate, time: overTime, estimate: 45, remindMode: '单次提醒',
+      remindCfg: { anchor: overDate + ' ' + overTime, offsets: [-30], read: [], snooze: 5 },
+      note: '超过预计时长才算逾期' },
+    // 3 全天进行中
+    { title: '把书桌和资料收一遍', list: '生活', tags: ['生活'], prio: 'P3', important: false, urgent: false,
+      date: ymd(t), time: '', estimate: 0, remindMode: '不提醒', note: '没填时间＝全天' },
+    // 4 跨天推进
+    { title: '日程台二期开发', list: '工作', tags: ['工作', '项目'], prio: 'P0', important: true, urgent: true,
+      date: ymd(addDays(t, -1)), time: '09:00', estimate: 0, span: 3, remindMode: '不提醒',
+      subs: [{ title: '接口与数据结构', min: 0, days: 1, done: true },
+             { title: '前端交互与状态', min: 0, days: 1, done: false },
+             { title: '打包与回归', min: 0, days: 1, done: false }],
+      note: '到结束日之后才算逾期' },
+    // 5 子项逾期
+    { title: '准备季度复盘材料', list: '工作', tags: ['工作'], prio: 'P1', important: true, urgent: false,
+      date: ymd(addDays(t, -2)), time: '10:00', estimate: 0, span: 4, remindMode: '不提醒',
+      subs: [{ title: '收集各组数据', min: 0, days: 1, done: false },
+             { title: '写复盘初稿', min: 0, days: 2, done: false }],
+      note: '第一步已过排期' },
+    // 6 明天 + 单次提前提醒 + 稍后提醒
+    { title: '产品面试 · 候选人 A', list: '工作', tags: ['会议', '工作'], prio: 'P0', important: true, urgent: true,
+      date: ymd(addDays(t, 1)), time: '15:00', estimate: 60, remindMode: '单次提醒',
+      remindCfg: { anchor: ymd(addDays(t, 1)) + ' 15:00', offsets: [-30], read: [], snooze: 5 },
+      note: '提前 30 分钟 + 稍后提醒' },
+    // 7 全天 + 准时提醒
+    { title: '交房租', list: '生活', tags: ['生活'], prio: 'P2', important: false, urgent: true,
+      date: ymd(addDays(t, 3)), time: '', estimate: 0, remindMode: '单次提醒',
+      remindCfg: { anchor: ymd(addDays(t, 3)) + ' 09:00', offsets: [0], read: [] },
+      note: '全天提醒基准 09:00' },
+    // 8 唯一的艾宾浩斯示例
+    { title: '背完《长难句》第 5 单元', list: '学习', tags: ['学习', '英语'], prio: 'P2', important: false, urgent: false,
+      date: ymd(addDays(t, 1)), time: '21:00', estimate: 0, remindMode: '艾宾浩斯',
+      remindCfg: { anchor: ymd(addDays(t, 1)) + ' 21:00', offsets: EB_OFFSETS, read: [] },
+      note: '唯一一条艾宾浩斯' },
+    // 9 未安排
+    { title: '想去看看新开的美术馆', list: '收集箱', tags: ['生活'], prio: '', important: false, urgent: false,
+      date: '', time: '', estimate: 0, remindMode: '不提醒', note: '' },
+    // 10 已完成
+    { title: '晨间拉伸 10 分钟', list: '生活', tags: ['运动'], prio: 'P3', important: false, urgent: false,
+      date: ymd(t), time: '08:00', estimate: 10, remindMode: '不提醒', done: true, doneAt: ymd(t),
+      note: '' },
+    // 11 周末家务（子项拆分）
+    { title: '周末大扫除', list: '生活', tags: ['生活'], prio: 'P3', important: false, urgent: false,
+      date: ymd(addDays(t, 2)), time: '10:00', estimate: 0, remindMode: '不提醒',
+      subs: [{ title: '厨房', min: 20, done: false }, { title: '卫生间', min: 20, done: false }, { title: '客厅', min: 30, done: false }],
+      note: '按时长拆分' }
   ];
   var history = [
     { title: '写周报并同步给团队', list: '工作', tags: ['工作'], prio: 'P1', day: -1 },
@@ -542,12 +603,8 @@ function seedDemo() {
     { title: '读完《深度工作》第 2 章', list: '学习', tags: ['学习', '阅读'], prio: 'P2', day: -4 },
     { title: '整理本月账单', list: '生活', tags: ['生活'], prio: 'P3', day: -5 },
     { title: '准备产品需求文档', list: '工作', tags: ['工作'], prio: 'P0', day: -5 },
-    { title: '和朋友吃饭', list: '生活', tags: ['生活'], prio: 'P3', day: -6 },
     { title: '复盘上周目标完成情况', list: '工作', tags: ['工作'], prio: 'P1', day: -7 },
-    { title: '做一次冥想', list: '生活', tags: ['生活'], prio: 'P3', day: -8 },
-    { title: '看完技术分享视频', list: '学习', tags: ['学习'], prio: 'P3', day: -9 },
-    { title: '整理素材库', list: '工作', tags: ['工作'], prio: 'P2', day: -11 },
-    { title: '给家里买日用品', list: '生活', tags: ['生活'], prio: 'P3', day: -12 }
+    { title: '做一次冥想', list: '生活', tags: ['生活'], prio: 'P3', day: -8 }
   ];
   var h = today0(), dstr = ymd(h);
   function mkLog(rate, span) {
@@ -577,9 +634,9 @@ function seedDemo() {
   demo.forEach(function (x) {
     var task = {
       id: '', title: x.title, note: x.note || '', list: x.list, tags: x.tags, prio: x.prio,
-      important: x.important, urgent: x.urgent, done: false, remindMode: x.remindMode, subs: x.subs || [],
+      important: x.important, urgent: x.urgent, done: !!x.done, remindMode: x.remindMode, subs: x.subs || [],
       remindCfg: x.remindCfg || null, date: x.date, time: x.time, estimate: x.estimate,
-      doneAt: '', sort: 0, createdAt: ymd(today0())
+      span: x.span || 1, repeat: x.repeat || '', doneAt: x.doneAt || '', sort: 0, createdAt: ymd(today0())
     };
     jobs.push(function () { return apiAddTask(task).then(function () { S.tasks.push(task); }); });
   });

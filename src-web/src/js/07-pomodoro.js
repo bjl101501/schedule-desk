@@ -303,7 +303,7 @@ function openTaskDetail(id) {
         ? (isRead ? '已确认' : (isPast ? '待复习' : '待触发'))
         : (isRead ? '已确认' : (isPast ? '已提醒' : '待提醒'));
       return '<div class="eb-node ' + cls + '"><span class="eb-dot"></span>' +
-        '<span class="eb-l">' + ebStageName(off) + '</span>' +
+        '<span class="eb-l">' + ebStageName(off) + (isEb ? '<i class="eb-n">' + (i + 1) + '/' + offs.length + '</i>' : '') + '</span>' +
         '<span class="eb-t">' + txt + '</span>' +
         '<span class="eb-s">' + st + '</span></div>';
     }).join('');

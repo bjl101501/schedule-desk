@@ -10,22 +10,11 @@ function toast(msg) {
 }
 /* 表单输入本地缓存：输到一半刷新 / 误关窗口不丢 */
 var DRAFT_KEY = 'wb_schedule_quick_draft';
-var draftTimer = null;
-function saveDraft(v) {
-  clearTimeout(draftTimer);
-  draftTimer = setTimeout(function () {
-    try {
-      if (v && v.trim()) localStorage.setItem(DRAFT_KEY, v);
-      else localStorage.removeItem(DRAFT_KEY);
-    } catch (e) { }
-  }, 300);
-}
-function readDraft() {
-  try { return localStorage.getItem(DRAFT_KEY) || ''; } catch (e) { return ''; }
-}
 function clearDraft() {
   try { localStorage.removeItem(DRAFT_KEY); } catch (e) { }
 }
+// 草稿回填已取消：清一次旧 key，避免升级后还用上次的内容
+try { localStorage.removeItem(DRAFT_KEY); } catch (e) { }
 /* ---------- 桌面端右侧面板 ---------- */
 var PANEL_W = 440;
 var PANEL_MIN = 360;

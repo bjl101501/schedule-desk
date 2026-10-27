@@ -48,7 +48,7 @@ function openTaskEditor(id, preset) {
     '<div class="row3">' +
     '<div class="field"><label>开始日期' + tipMark('日程从哪一天开始。需要连续几天完成，用右边的「持续」。') + '</label>' +
     '<button type="button" class="inp pick-field" id="edDate"></button></div>' +
-    '<div class="field"><label>时间<span class="hint">留空＝全天</span>' + tipMark('留空就是全天日程：当天一直显示「进行中」，过了这一天才会逾期。') + '</label>' +
+    '<div class="field"><label>时间' + tipMark('留空就是全天日程：当天一直显示「进行中」，过了这一天才会逾期。') + '</label>' +
     '<button type="button" class="inp pick-field" id="edTime"></button></div>' +
     '<div class="field"><label>持续<span class="hint">可选</span>' + tipMark('连续多天完成的任务，逾期按最后一天算。') + '</label>' +
     '<div class="span-toggle' + (t.span > 1 ? ' on' : '') + '" id="edSpanWrap">' +
@@ -75,9 +75,9 @@ function openTaskEditor(id, preset) {
     '<span>选已有</span><i class="pm-c">' + svgIcon('chevD') + '</i></button>' +
     '<button class="chip-p" data-picklist="__new" style="border-style:dashed">＋ 新建清单</button>' +
     '</div></div>' +
-    '<div class="field"><label>预计时长<span class="hint">留空＝全天</span>' + tipMark('填了时长：超过「开始时间 + 时长」还没完成才算逾期；留空按全天日程处理。') + '</label>' +
+    '<div class="field"><label>预计时长' + tipMark('填了时长：超过「开始时间 + 时长」还没完成才算逾期；留空按全天日程处理。') + '</label>' +
     '<div class="est-row">' +
-    '<input class="inp" type="number" id="edEst" min="0" step="5" value="' + (t.estimate || '') + '" placeholder="留空＝全天">' +
+    '<input class="inp" type="number" id="edEst" min="0" step="5" value="' + (t.estimate || '') + '" placeholder="留空默认为全天">' +
     '<div class="seg est-unit" id="edEstUnit">' +
     '<button data-estunit="min" class="on">分钟</button><button data-estunit="hour">小时</button>' +
     '</div></div>' +
@@ -170,7 +170,7 @@ function openTaskEditor(id, preset) {
         if (!estInp) return;
         estInp.value = estMin ? (estUnit === 'hour' ? estNum(estMin / 60) : String(estMin)) : '';
         estInp.step = estUnit === 'hour' ? '0.5' : '5';
-        estInp.placeholder = '留空＝全天';
+        estInp.placeholder = '留空默认为全天';
         Array.prototype.forEach.call(root.querySelectorAll('[data-estunit]'), function (b) {
           b.className = b.getAttribute('data-estunit') === estUnit ? 'on' : '';
         });
@@ -357,7 +357,8 @@ function openTaskEditor(id, preset) {
         repeat: t.repeat || '不重复',
         prio: t.prio, important: t.important, urgent: t.urgent,
         remindMode: t.remindMode || '不提醒', offsets: ebOffsets,
-        onceOffset: (t.remindCfg && t.remindCfg.offsets && t.remindCfg.offsets.length) ? t.remindCfg.offsets[0] : -10
+        onceOffset: (t.remindCfg && t.remindCfg.offsets && t.remindCfg.offsets.length) ? t.remindCfg.offsets[0] : -10,
+        snooze: !!(t.remindCfg && t.remindCfg.snooze)
       };
       function renderRemindBox() {
         var box = root.querySelector('#edRemindBox');
@@ -369,10 +370,14 @@ function openTaskEditor(id, preset) {
           box.innerHTML = '<div class="field"><label>提醒时机</label><div class="chip-pick">' +
             opts.map(function (o) {
               return '<button class="chip-p' + (state.onceOffset === o.v ? ' on' : '') + '" data-once="' + o.v + '">' + o.t + '</button>';
-            }).join('') + '</div></div>';
+            }).join('') + '</div>' +
+            '<label class="check-line"><input type="checkbox" id="edSnooze"' + (state.snooze ? ' checked' : '') + '>' +
+            '<span>稍后提醒<span class="hint">5 分钟后再提醒一次</span></span></label></div>';
           Array.prototype.forEach.call(box.querySelectorAll('[data-once]'), function (b) {
             b.addEventListener('click', function () { state.onceOffset = parseInt(b.getAttribute('data-once'), 10); renderRemindBox(); });
           });
+          var snz = box.querySelector('#edSnooze');
+          if (snz) snz.addEventListener('change', function () { state.snooze = !!snz.checked; });
           return;
         }
         box.innerHTML = '<div class="field"><label>复习时间点<span class="hint">按艾宾浩斯遗忘曲线，点选要提醒的节点</span></label>' +
@@ -535,7 +540,7 @@ function openTaskEditor(id, preset) {
       function closePickMenu() {
         if (pickEl && pickEl.parentNode) pickEl.parentNode.removeChild(pickEl);
         pickEl = null;
-        if (pickBtn) pickBtn.className = 'inp pick-multi';
+        if (pickBtn) pickBtn.classList.remove('open');
         pickBtn = null;
         document.removeEventListener('mousedown', onPickDocDown, true);
         if (pickBody) pickBody.removeEventListener('scroll', closePickMenu, true);
@@ -565,7 +570,7 @@ function openTaskEditor(id, preset) {
           : Math.max(r.width || 0, 190);
         pickEl.style.width = mw + 'px';
         floatPanel(pickEl, r, { minWidth: mw, gap: 5 });
-        btn.className = 'inp pick-multi open';
+        btn.classList.add('open');
         setTimeout(function () { document.addEventListener('mousedown', onPickDocDown, true); }, 0);
         if (pickBody) pickBody.addEventListener('scroll', closePickMenu, true);
         window.addEventListener('resize', closePickMenu);
@@ -627,6 +632,7 @@ function openTaskEditor(id, preset) {
           if (src.remindCfg && src.remindCfg.offsets && src.remindCfg.offsets.length) {
             state.offsets = src.remindCfg.offsets.slice();
             state.onceOffset = src.remindCfg.offsets[0];
+            state.snooze = !!src.remindCfg.snooze;
             renderRemindBox();
           }
           toast('已套用「' + src.title + '」，日期时间保持不变');
@@ -647,7 +653,11 @@ function openTaskEditor(id, preset) {
           if (!state.offsets.length) { toast('至少选一个复习节点'); return; }
           cfg = { anchor: fromDtLocal(anchor || (dateV + 'T' + (timeV || '09:00'))), offsets: state.offsets.slice(), read: [] };
         } else if (state.remindMode === '单次提醒') {
-          cfg = { anchor: fromDtLocal(dateV + 'T' + (timeV || '09:00')), offsets: [state.onceOffset], read: [] };
+          cfg = {
+            anchor: fromDtLocal(dateV + 'T' + (timeV || '09:00')),
+            offsets: [state.onceOffset], read: [],
+            snooze: state.snooze ? 5 : 0
+          };
         }
         t.title = title;
         t.note = (root.querySelector('#edNote').value || '').trim();
@@ -915,7 +925,7 @@ function openQuickAdd(initial) {
   var html = '<div class="modal">' +
     '<div class="m-head"><h3>添加日程</h3><button class="m-close">' + svgIcon('close') + '</button></div>' +
     '<div class="m-body">' +
-    '<div class="field"><input class="inp" id="qaInput" autofocus placeholder="例：明天下午 3 点开会 #工作 !p1" value="' + esc(initial || readDraft()) + '" style="height:46px;font-size:16px"></div>' +
+    '<div class="field"><input class="inp" id="qaInput" autofocus placeholder="例：明天下午 3 点开会 #工作 !p1" value="' + esc(initial || '') + '" style="height:46px;font-size:16px"></div>' +
     '<div id="qaPreview" style="min-height:52px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px"></div>' +
     '<div style="font-size:11.5px;color:var(--text-3);line-height:1.8">' +
     '支持识别：今天 / 明天 / 后天 / 周五 / 下周一 / 10月26日 / 10/26 / 3天后 · 下午 3 点 / 15:30 / 晚上 8 点<br>' +
@@ -929,7 +939,6 @@ function openQuickAdd(initial) {
       var input = root.querySelector('#qaInput');
       var prev = root.querySelector('#qaPreview');
       function updatePreview() {
-        saveDraft(input.value);
         var r = parseQuick(input.value);
         if (!input.value.trim()) { prev.innerHTML = '<span style="font-size:12px;color:var(--text-3)">输入任务内容，这里会实时显示识别结果</span>'; return; }
         prev.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--text)">' + esc(r.title) + '</div>' +
@@ -1126,7 +1135,7 @@ function openReminderCenter() {
     if (pend.length) {
       bodyHtml += '<div class="sec-head" style="margin-top:0"><h3 style="color:var(--red)">已到点提醒</h3><span class="meta">' + pend.length + ' 条</span><span class="line"></span></div>';
       bodyHtml += pend.map(function (it) {
-        var stage = remindStageText(it.task, it.r.offset);
+        var stage = remindStageText(it.task, it.r.offset, it.r.idx);
         return '<div style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;background:var(--red-soft);margin-bottom:5px">' +
           '<span style="font-size:10.5px;font-weight:700;color:var(--red);white-space:nowrap">' + esc(stage) + '</span>' +
           '<span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(it.task.title) + '</span>' +
@@ -1139,7 +1148,7 @@ function openReminderCenter() {
       bodyHtml += upcoming.slice(0, 12).map(function (it) {
         var d = new Date(it.r.at);
         return '<div style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;background:var(--purple-soft);margin-bottom:5px">' +
-          '<span style="font-size:10.5px;font-weight:700;color:var(--purple);white-space:nowrap">' + esc(remindStageText(it.task, it.r.offset)) + '</span>' +
+          '<span style="font-size:10.5px;font-weight:700;color:var(--purple);white-space:nowrap">' + esc(remindStageText(it.task, it.r.offset, it.r.idx)) + '</span>' +
           '<span style="flex:1;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(it.task.title) + '</span>' +
           '<span style="font-size:11px;color:var(--text-3);white-space:nowrap">' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + '</span></div>';
       }).join('');
@@ -1176,8 +1185,12 @@ function ebStageName(off) {
   return Math.round(off / 1440) + ' 天';
 }
 /* 提醒中心里的节点名：艾宾浩斯按复习阶段，单次提醒按提前量 */
-function remindStageText(t, off) {
-  if (t && t.remindMode === '艾宾浩斯') return ebStageName(off);
+function remindStageText(t, off, idx) {
+  if (t && t.remindMode === '艾宾浩斯') {
+    var n = (t.remindCfg && t.remindCfg.offsets) ? t.remindCfg.offsets.length : 0;
+    var pos = (idx === undefined || idx === null) ? '' : (idx + 1) + '/' + n + ' · ';
+    return pos + ebStageName(off);
+  }
   if (off === 0) return '准时';
   if (off < 0) return '提前 ' + ebStageName(-off);
   return ebStageName(off);

@@ -149,6 +149,19 @@ async function main() {
   await sleep(350);
   report.calCells = await evaluate(cdp, "document.querySelectorAll('.float-panel [data-day]').length");
   report.calOpen = report.calCells > 0;
+  report.calLayout = await evaluate(
+    cdp,
+    `(function(){
+      var grid = document.querySelector('.float-panel .cal-days');
+      if (!grid) return null;
+      var cs = getComputedStyle(grid);
+      var cells = Array.prototype.slice.call(grid.children);
+      var rows = {};
+      cells.forEach(function(c){ var r=c.getBoundingClientRect(); var k=Math.round(r.top); rows[k]=(rows[k]||0)+1; });
+      return { template: cs.gridTemplateColumns, rowGap: cs.rowGap, autoRows: cs.gridAutoRows,
+               rows: rows, h: Math.round(grid.getBoundingClientRect().height),
+               first: cells.slice(0,3).map(function(c){var r=c.getBoundingClientRect();return [Math.round(r.width),Math.round(r.height)];}) };
+    })()`);
   await shot(cdp, "date-picker.png");
   await evaluate(cdp, "document.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}))");
   await sleep(200);
@@ -198,7 +211,68 @@ async function main() {
     })()`
   );
 
-  // 快速添加 → 更多选项：日期/时间要能带进自绘控件
+  // R2：标签按钮打开后宽度不应变化
+  report.tagPick = await evaluate(
+    cdp,
+    `(function(){
+      var b = document.querySelector('#edTagPick');
+      var before = Math.round(b.getBoundingClientRect().width);
+      b.click();
+      var after = Math.round(b.getBoundingClientRect().width);
+      document.body.dispatchEvent(new MouseEvent('mousedown', {bubbles:true}));
+      return { before: before, after: after };
+    })()`
+  );
+
+  // R2：单次提醒下的「稍后提醒」
+  await evaluate(cdp, "document.querySelector('[data-rmode=\"单次提醒\"]').click()");
+  await sleep(250);
+  report.snooze = await evaluate(
+    cdp,
+    "(function(){var c=document.querySelector('#edSnooze');return c?{exists:true,checked:c.checked,label:(c.parentNode.textContent||'').trim()}:{exists:false};})()"
+  );
+
+  await evaluate(cdp, "(function(){var b=document.querySelector('.m-body'); if(b) b.scrollTop=b.scrollHeight; return true;})()");
+  await sleep(300);
+  await shot(cdp, "editor-bottom.png");
+
+  // R2：选时间后应写入并关闭
+  await evaluate(cdp, "document.querySelector('[data-rmode=\"不提醒\"]').click()");
+  await sleep(150);
+  await evaluate(cdp, "document.querySelector('#edTime').click()");
+  await sleep(300);
+  await evaluate(cdp, "document.querySelector('.tm-col [data-h=\"15\"]').click()");
+  await sleep(150);
+  report.timeAfterHour = await evaluate(
+    cdp,
+    "(function(){return {value:document.querySelector('#edTime').value, open:!!document.querySelector('.tm-panel')};})()"
+  );
+  await evaluate(cdp, "document.querySelector('.tm-col [data-m=\"30\"]').click()");
+  await sleep(250);
+  report.timeAfterMinute = await evaluate(
+    cdp,
+    "(function(){return {value:document.querySelector('#edTime').value, open:!!document.querySelector('.tm-panel')};})()"
+  );
+
+  // R2：只点小时、点面板外，也要把小时写进去
+  await evaluate(cdp, "document.querySelector('#edTime').click()");
+  await sleep(250);
+  await evaluate(cdp, "document.querySelector('.tm-col [data-h=\"10\"]').click()");
+  await sleep(120);
+  await evaluate(cdp, "document.body.dispatchEvent(new MouseEvent('mousedown', {bubbles:true}))");
+  await sleep(250);
+  report.timeOnBlur = await evaluate(
+    cdp,
+    "(function(){return {value:document.querySelector('#edTime').value, open:!!document.querySelector('.tm-panel')};})()"
+  );
+
+  // R2：快速添加不再回填草稿
+  report.quickDraft = await evaluate(
+    cdp,
+    "(function(){closeModal();openQuickAdd('');var v=document.querySelector('#qaInput').value;closeModal();return v;})()"
+  );
+
+  // 快速添加 → 更多选项
   report.quickAdd = await evaluate(
     cdp,
     `(function(){
@@ -262,7 +336,7 @@ async function main() {
   await sleep(200);
   report.detailEb = await evaluate(
     cdp,
-    "(function(){openTaskDetail('t13');return Array.from(document.querySelectorAll('.eb-s')).map(n=>n.textContent);})()"
+    "(function(){openTaskDetail('t13');return {status:Array.from(document.querySelectorAll('.eb-s')).map(n=>n.textContent), labels:Array.from(document.querySelectorAll('.eb-l')).map(n=>n.textContent.trim())};})()"
   );
   await evaluate(cdp, "closeModal()");
   await sleep(200);

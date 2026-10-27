@@ -878,7 +878,7 @@ a{color:inherit;text-decoration:none}
 textarea.inp{height:auto;min-height:66px;padding:9px 11px;resize:vertical;line-height:1.55}
 select.inp{appearance:none;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236c7686' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:30px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-.row3{display:grid;grid-template-columns:1.1fr 1fr .8fr;gap:11px}
+.row3{display:grid;grid-template-columns:1fr 1.18fr .72fr;gap:11px}
 /* 栅格里的输入框允许被压窄，不然窄面板下会顶出去 */
 .row2>.field,.row3>.field{min-width:0}
 /* 跨度提示：只在真的跨天或有冲突时才显眼 */
@@ -1209,7 +1209,8 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;charset=utf-
 .eb-node.now .eb-dot{background:var(--red);box-shadow:0 0 0 3px rgba(229,72,77,.16)}
 .eb-node.future .eb-dot{background:var(--line-2)}
 
-.eb-node .eb-l{width:62px;flex:0 0 auto;color:var(--text-2);font-weight:600}
+.eb-node .eb-l{width:78px;flex:0 0 auto;color:var(--text-2);font-weight:600;display:flex;align-items:center;gap:4px}
+.eb-node .eb-n{font-style:normal;font-size:9.5px;font-weight:700;color:var(--text-3);letter-spacing:.2px}
 .eb-node .eb-t{color:var(--text-3);font-variant-numeric:tabular-nums;flex:1}
 .eb-node.past .eb-t{color:var(--green)}
 .eb-node.now .eb-t{color:var(--red);font-weight:700}
@@ -1632,7 +1633,7 @@ html[data-theme="dusk"] .tip-layer,html[data-theme="ink"] .tip-layer{
   position:fixed;z-index:1000;background:var(--panel);border:1px solid var(--line);
   border-radius:12px;box-shadow:var(--shadow-lg);
 }
-.cal-panel{width:248px;padding:8px}
+.cal-panel{width:252px;padding:8px}
 .cal-head{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 8px}
 .cal-head b{font-size:12.5px;font-weight:700;color:var(--text)}
 .cal-nav{
@@ -1641,17 +1642,17 @@ html[data-theme="dusk"] .tip-layer,html[data-theme="ink"] .tip-layer{
 }
 .cal-nav:hover{background:var(--line-2);color:var(--brand)}
 .cal-nav svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px 2px}
 .cal-dow span{font-size:10px;color:var(--text-3);text-align:center;padding:3px 0;font-weight:600}
 .cal-cell{
-  height:29px;border-radius:7px;font-size:12px;color:var(--text-2);
+  width:100%;height:30px;min-width:0;border-radius:7px;font-size:12px;color:var(--text-2);
   display:flex;align-items:center;justify-content:center;transition:.1s;font-variant-numeric:tabular-nums;
 }
 .cal-cell:hover{background:var(--line-2);color:var(--text)}
 .cal-cell.weekend{color:var(--text-3)}
 .cal-cell.today{box-shadow:inset 0 0 0 1px var(--brand-2);color:var(--brand);font-weight:700}
 .cal-cell.on{background:var(--brand);color:#fff;font-weight:700;box-shadow:none}
-.cal-cell.empty{pointer-events:none}
+.cal-cell.cal-blank{visibility:hidden;pointer-events:none}
 .cal-foot{display:flex;align-items:center;gap:4px;padding-top:7px;margin-top:5px;border-top:1px solid var(--line-2)}
 .cal-foot .sp{flex:1}
 .cal-quick{
@@ -1662,21 +1663,26 @@ html[data-theme="dusk"] .tip-layer,html[data-theme="ink"] .tip-layer{
 .cal-quick.muted{color:var(--text-3);background:transparent}
 .cal-quick.muted:hover{background:var(--line-2);color:var(--text-2)}
 
-/* 时间面板：两列滚动 + 常用时间 */
-.time-panel{width:236px;padding:9px}
-.hm-head{display:flex;align-items:baseline;gap:7px;padding:0 2px 7px}
-.hm-head b{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
-.hm-head span{font-size:10.5px;color:var(--text-3)}
-.hm-cols{display:grid;grid-template-columns:1fr 1fr;gap:6px;border:1px solid var(--line-2);border-radius:9px;overflow:hidden;background:var(--panel-2)}
-.hm-col{height:172px;overflow-y:auto;padding:3px;scrollbar-width:thin}
-.hm-cell{
-  width:100%;height:26px;border-radius:6px;font-size:12px;color:var(--text-2);
+/* 时间面板：与日历同一套外壳，两列连成一块，不画分隔线、不出滚动条 */
+.tm-panel{width:252px;padding:8px}
+.tm-head{display:flex;align-items:baseline;gap:7px;padding:2px 2px 8px}
+.tm-head b{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+.tm-head span{font-size:10.5px;color:var(--text-3)}
+.tm-body{
+  display:flex;height:182px;border:1px solid var(--line-2);border-radius:9px;
+  overflow:hidden;background:var(--panel-2);
+}
+.tm-col{flex:1 1 50%;overflow-y:auto;padding:4px;scrollbar-width:none;-ms-overflow-style:none}
+.tm-col::-webkit-scrollbar{display:none}
+.tm-cell{
+  width:100%;height:26px;border-radius:6px;font-size:12.5px;color:var(--text-2);
   font-variant-numeric:tabular-nums;transition:.1s;
 }
-.hm-cell:hover{background:var(--panel);color:var(--text)}
-.hm-cell.on{background:var(--brand);color:#fff;font-weight:700}
-.hm-quick{display:flex;flex-wrap:wrap;gap:5px;padding:8px 1px 2px}
-.hm-quick .chip-p{height:25px;padding:0 8px;font-size:11.5px}
+.tm-cell:hover{background:var(--panel);color:var(--text)}
+.tm-cell.on{background:var(--brand);color:#fff;font-weight:700}
+.tm-quick{display:flex;flex-wrap:wrap;gap:5px;padding:8px 1px 2px}
+.tm-quick .chip-p{height:25px;padding:0 8px;font-size:11.5px}
+.pick-field.is-empty .pf-txt{font-size:12px;color:var(--text-3)}
 
 /* 标签行：输入框占满，选已有只占内容宽度 */
 .pick-row .tag-inp{flex:1 1 auto;min-width:0}
@@ -1716,3 +1722,20 @@ html[data-theme="dusk"] .tip-layer,html[data-theme="ink"] .tip-layer{
 .tpl-m{font-size:11px;color:var(--text-3);white-space:nowrap;flex:0 0 auto}
 .tpl-n{font-size:10.5px;color:var(--brand);background:var(--brand-soft);padding:1px 6px;border-radius:5px;flex:0 0 auto}
 .tpl-empty{font-size:12px;color:var(--text-3);line-height:1.8;text-align:center;padding:26px 10px}
+
+/* 勾选行：稍后提醒等开关 */
+.check-line{
+  display:flex;align-items:center;gap:7px;margin-top:9px;
+  font-size:12.5px;color:var(--text-2);cursor:pointer;user-select:none;
+}
+.check-line input{
+  width:15px;height:15px;margin:0;flex:0 0 auto;cursor:pointer;
+  accent-color:var(--brand);
+}
+.check-line .hint{font-size:11px;color:var(--text-3);margin-left:6px;font-weight:500}
+
+/* 子项逾期标记：只标子项，不把父任务一起判逾期 */
+.sub-late{
+  font-size:9.5px;font-weight:700;color:var(--red);background:var(--red-soft);
+  padding:1px 5px;border-radius:4px;flex:0 0 auto;margin-left:6px;
+}
