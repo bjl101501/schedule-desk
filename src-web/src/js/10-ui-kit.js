@@ -322,7 +322,7 @@ function mountTimeField(el, opts) {
         '<div class="tm-body"><div class="tm-col" data-col="h">' + hours + '</div>' +
         '<div class="tm-col" data-col="m">' + mins + '</div></div>' +
         '<div class="tm-quick">' + QUICK.map(function (q) {
-          return '<button type="button" class="chip-p' + (q === cur ? ' on' : '') + '" data-q="' + q + '">' + q + '</button>';
+          return '<button type="button" class="cal-quick' + (q === cur ? ' on' : '') + '" data-q="' + q + '">' + q + '</button>';
         }).join('') + '</div>' +
         '<div class="cal-foot"><span class="sp"></span>' +
         '<button type="button" class="cal-quick muted" data-clear="1">留空（全天）</button></div>';

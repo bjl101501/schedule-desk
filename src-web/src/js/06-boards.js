@@ -184,14 +184,13 @@ function renderHabitView() {
     html += '<div class="hcard">' +
       '<div class="hcard-top">' +
       '<div class="hicon" style="background:' + hexSoft(h.color) + ';color:' + esc(h.color) + '">' + svgIcon(h.icon) + '</div>' +
-      '<div class="hinfo"><div class="hn">' + esc(h.name) + '</div>' +
+      '<div class="hinfo"><div class="hn">' + esc(h.name) +
+      '<button class="h-edit" data-hedit="' + esc(h.id) + '" title="编辑习惯">' + svgIcon('edit') + '</button></div>' +
       '<div class="hs">连续 ' + h.streak + ' 天 · 本周 ' + weekDone + '/' + h.target + ' · 累计 ' + h.total + ' 次</div></div>' +
       '<button class="hbtn' + (checked ? ' on' : '') + '" data-hcheck="' + esc(h.id) + '" title="今日打卡">' + svgIcon('check') + '</button>' +
       '</div>' +
       '<div class="hweek">' + weekHtml + '</div>' +
       '<div class="hheat">' + heat + '</div>' +
-      '<div style="display:flex;gap:6px"><button class="btn btn-sm btn-sec" data-hedit="' + esc(h.id) + '" style="flex:1">编辑</button>' +
-      '<button class="btn btn-sm btn-sec" data-hdel="' + esc(h.id) + '" style="flex:1">删除</button></div>' +
       '</div>';
   });
   html += '</div>';

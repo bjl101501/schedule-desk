@@ -352,6 +352,98 @@ async function main() {
   await evaluate(cdp, "closeModal(); setTheme('paper')");
   await sleep(300);
 
+  // ---------- R3 ----------
+  await evaluate(cdp, "closeModal(); goView('today')");
+  await sleep(300);
+  report.r3 = {};
+  report.r3.select = await evaluate(cdp, "getComputedStyle(document.body).userSelect");
+  report.r3.badge = await evaluate(
+    cdp,
+    `(function(){
+      var b = document.getElementById('bellBadge');
+      var i = document.querySelector('#btnBell svg');
+      if (!b || !i) return null;
+      var br = b.getBoundingClientRect(), ir = i.getBoundingClientRect();
+      var overlap = !(br.bottom <= ir.top || br.top >= ir.bottom || br.right <= ir.left || br.left >= ir.right);
+      return { overlap: overlap, badge: [Math.round(br.left), Math.round(br.top)] };
+    })()`
+  );
+  report.r3.ghost = await evaluate(
+    cdp,
+    `(function(){var d=document.createElement('div');d.className='drag-ghost';document.body.appendChild(d);var t=getComputedStyle(d).transform;d.remove();return t;})()`
+  );
+  report.r3.todayPanel = await evaluate(
+    cdp,
+    `(function(){var rows=document.querySelectorAll('.today-row');var stat=document.querySelector('.today-head .stat');return {rows:rows.length, stat:stat?stat.textContent:'', titles:Array.from(rows).map(function(r){return (r.querySelector('.tt')||{}).textContent;})};})()`
+  );
+
+  // 时间面板紧凑度
+  await evaluate(cdp, "openTaskEditor(null)");
+  await sleep(400);
+  await evaluate(cdp, "document.querySelector('#edTime').click()");
+  await sleep(300);
+  report.r3.tm = await evaluate(
+    cdp,
+    `(function(){
+      var body=document.querySelector('.tm-body'); var chip=document.querySelector('.tm-quick .cal-quick');
+      return { width: body?Math.round(body.getBoundingClientRect().width):0,
+               quickClass: chip?chip.className:'',
+               quickBg: chip?getComputedStyle(chip).backgroundColor:'' };
+    })()`
+  );
+  await shot(cdp, "time-picker.png");
+  await evaluate(cdp, "document.body.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}))");
+  await sleep(200);
+
+  // 艾宾浩斯基准时间跟随
+  report.r3.eb = await evaluate(
+    cdp,
+    `(function(){
+      document.querySelector('[data-rmode="艾宾浩斯"]').click();
+      var ro = document.querySelector('#edAnchorRo');
+      var inp = document.querySelector('#edAnchor');
+      return { hasRo: !!ro, roText: ro?ro.textContent:'', hasInput: !!inp };
+    })()`
+  );
+  await evaluate(cdp, "closeModal()");
+  await sleep(200);
+
+  // 习惯卡与习惯编辑面板
+  await evaluate(cdp, "goView('habit')");
+  await sleep(400);
+  report.r3.habit = await evaluate(
+    cdp,
+    `(function(){
+      var card=document.querySelector('.hcard');
+      if(!card) return null;
+      var hasEdit=!!card.querySelector('.h-edit');
+      var hasDel=!!card.querySelector('[data-hdel]');
+      if(card.querySelector('.h-edit')) card.querySelector('.h-edit').click();
+      return { hasEdit: hasEdit, hasDel: hasDel, panel: !!document.querySelector('.modal-mask.panel') };
+    })()`
+  );
+  await sleep(400);
+  report.r3.habitPanel = await evaluate(cdp, "!!document.querySelector('.modal-mask.panel')");
+  await shot(cdp, "habit-editor.png");
+  await evaluate(cdp, "closeModal()");
+  await sleep(200);
+
+  // 年视图当天色块
+  await evaluate(cdp, "goView('calendar'); S.cursor = today0(); S.calMode = 'year'; refreshAll()");
+  await sleep(500);
+  report.r3.yearToday = await evaluate(
+    cdp,
+    `(function(){
+      var n=document.querySelector('.yday.today .ynum');
+      if(!n) return null;
+      var cs=getComputedStyle(n);
+      return { bg: cs.backgroundColor, color: cs.color, shadow: cs.boxShadow.slice(0,60) };
+    })()`
+  );
+  await shot(cdp, "year-view.png");
+  await evaluate(cdp, "S.calMode='month'; goView('today')");
+  await sleep(300);
+
   // 更新通道：验证 https 真的能走通（TLS 修复的验收点）
   report.update = await evaluate(cdp, "window.__TAURI_INTERNALS__.invoke('update_check')");
 

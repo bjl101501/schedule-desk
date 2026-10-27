@@ -158,9 +158,11 @@ a{color:inherit;text-decoration:none}
 .icon-btn:hover{background:var(--line-2);color:var(--text)}
 .icon-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .dot-badge{
-  position:absolute;top:5px;right:5px;min-width:15px;height:15px;padding:0 4px;border-radius:8px;
-  background:var(--red);color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;
-  border:1.5px solid var(--panel);box-sizing:content-box;
+  position:absolute;top:-6px;right:-10px;
+  min-width:13px;height:15px;padding:0 3px;border-radius:8px;
+  background:var(--red);color:#fff;font-size:8.5px;font-weight:700;display:flex;align-items:center;justify-content:center;
+  border:1.5px solid var(--panel);box-sizing:content-box;line-height:1;
+  box-shadow:0 1px 3px rgba(21,24,29,.18);
 }
 .view-switch{display:flex;background:var(--line-2);border-radius:10px;padding:3px;gap:2px}
 .view-switch button{
@@ -193,7 +195,7 @@ a{color:inherit;text-decoration:none}
 .today-head h2{margin:0;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:7px}
 .today-head .pin{width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 0 3px rgba(229,72,77,.16)}
 .today-head .stat{font-size:11.5px;color:var(--text-3);font-weight:500}
-.today-body{margin-top:9px;display:flex;flex-direction:column;gap:2px}
+.today-body{margin-top:9px;display:flex;flex-direction:column;gap:2px;max-height:286px;overflow-y:auto;overscroll-behavior:contain}
 .today-row{
   display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:9px;
   font-size:13px;transition:.13s;cursor:pointer;
@@ -470,8 +472,8 @@ a{color:inherit;text-decoration:none}
   cursor:pointer;transition:background .12s,color .12s,box-shadow .12s;
 }
 .ynum:hover{background:var(--brand-soft);color:var(--brand-2);font-weight:700}
-.yday.today .ynum{background:var(--brand);color:#fff;font-weight:700;box-shadow:0 2px 6px rgba(23,124,176,.24)}
-.yday.has .ynum{font-weight:700;color:var(--text)}
+.yday.today .ynum{background:var(--brand-soft);color:var(--brand-2);font-weight:700;box-shadow:inset 0 0 0 1.5px var(--brand)}
+.yday.has:not(.today) .ynum{font-weight:700;color:var(--text)}
 .yday.has::after{
   content:"";position:absolute;bottom:0;width:3px;height:3px;border-radius:50%;background:var(--text-3);opacity:.85;
 }
@@ -546,7 +548,14 @@ a{color:inherit;text-decoration:none}
 .hicon{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
 .hicon svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .hinfo{flex:1;min-width:0}
-.hinfo .hn{font-size:16px;font-weight:700;line-height:1.3}
+.hinfo .hn{font-size:16px;font-weight:700;line-height:1.3;display:flex;align-items:center;gap:5px}
+.h-edit{
+  width:20px;height:20px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;
+  color:var(--text-3);opacity:.35;transition:.13s;flex:0 0 auto;
+}
+.h-edit svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.hcard:hover .h-edit{opacity:.85}
+.h-edit:hover{background:var(--line-2);color:var(--brand);opacity:1}
 .hinfo .hs{font-size:12.5px;color:var(--text-3);margin-top:2px}
 .hbtn{
   width:44px;height:44px;border-radius:50%;border:2px dashed var(--line-2);display:flex;align-items:center;justify-content:center;
@@ -1393,7 +1402,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;charset=utf-
 .drag-ghost{
   position:fixed;z-index:900;pointer-events:none;border-radius:11px;background:var(--panel);
   box-shadow:0 16px 42px rgba(21,24,29,.22);border:1px solid var(--line);opacity:.97;
-  transform:rotate(.7deg) scale(1.015);overflow:hidden;
+  transform:none;overflow:hidden;
 }
 .drag-line{height:2px;background:var(--brand);border-radius:2px;margin:2px 6px;box-shadow:0 0 0 3px rgba(47,107,255,.13)}
 .kcol-body.dragover{background:var(--brand-softer);box-shadow:inset 0 0 0 2px var(--brand)}
@@ -1660,6 +1669,7 @@ html[data-theme="dusk"] .tip-layer,html[data-theme="ink"] .tip-layer{
   background:var(--brand-softer);transition:.12s;
 }
 .cal-quick:hover{background:var(--brand-soft)}
+.cal-quick.on{background:var(--brand);color:#fff}
 .cal-quick.muted{color:var(--text-3);background:transparent}
 .cal-quick.muted:hover{background:var(--line-2);color:var(--text-2)}
 
@@ -1669,7 +1679,7 @@ html[data-theme="dusk"] .tip-layer,html[data-theme="ink"] .tip-layer{
 .tm-head b{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
 .tm-head span{font-size:10.5px;color:var(--text-3)}
 .tm-body{
-  display:flex;height:182px;border:1px solid var(--line-2);border-radius:9px;
+  display:flex;width:152px;margin:0 auto;height:182px;border:1px solid var(--line-2);border-radius:9px;
   overflow:hidden;background:var(--panel-2);
 }
 .tm-col{flex:1 1 50%;overflow-y:auto;padding:4px;scrollbar-width:none;-ms-overflow-style:none}
@@ -1680,8 +1690,7 @@ html[data-theme="dusk"] .tip-layer,html[data-theme="ink"] .tip-layer{
 }
 .tm-cell:hover{background:var(--panel);color:var(--text)}
 .tm-cell.on{background:var(--brand);color:#fff;font-weight:700}
-.tm-quick{display:flex;flex-wrap:wrap;gap:5px;padding:8px 1px 2px}
-.tm-quick .chip-p{height:25px;padding:0 8px;font-size:11.5px}
+.tm-quick{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;padding:8px 1px 2px}
 .pick-field.is-empty .pf-txt{font-size:12px;color:var(--text-3)}
 
 /* 标签行：输入框占满，选已有只占内容宽度 */
@@ -1738,4 +1747,20 @@ html[data-theme="dusk"] .tip-layer,html[data-theme="ink"] .tip-layer{
 .sub-late{
   font-size:9.5px;font-weight:700;color:var(--red);background:var(--red-soft);
   padding:1px 5px;border-radius:4px;flex:0 0 auto;margin-left:6px;
+}
+
+/* 默认禁止拖动选中：空白处按住左键滑动不再拉出一片蓝 */
+body{user-select:none;-webkit-user-select:none}
+input,textarea,select,[contenteditable="true"],
+.task-note,.tcard-note,.dt-note,.dt-title,.dt-v,.tpl-t,
+.hcard .hn,.cdcard .cdn,.cdcard .cdfoot,.today-row .tt,
+.modal .m-body p,.modal .m-body li,.help p,.help li{
+  user-select:text;-webkit-user-select:text;
+}
+
+/* 艾宾浩斯的基准时间：有日期时只读展示，跟随日程 */
+.anchor-ro{
+  height:40px;display:flex;align-items:center;padding:0 11px;border-radius:9px;
+  border:1px dashed var(--line);background:var(--panel-2);
+  font-size:13px;color:var(--text-2);font-variant-numeric:tabular-nums;
 }

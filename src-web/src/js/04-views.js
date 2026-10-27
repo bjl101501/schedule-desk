@@ -181,28 +181,19 @@ function renderTodayPanel() {
   overdue.concat(live.map(function (x) { return x.t; })).concat(todayItems).forEach(function (x) { seen[x.id] = 1; });
   remind.forEach(function (it) { seen[it.t.id] = 1; });
   var total = Object.keys(seen).length;
-  var rows = [];
-  overdue.slice(0, 3).forEach(function (t) {
-    rows.push({ t: t, kind: 'over', label: taskState(t).label.replace('已逾期 ', '逾期 ') });
-  });
-  live.slice(0, 3).forEach(function (it) {
-    if (rows.length >= 7) return;
-    rows.push({ t: it.t, kind: 'live', label: it.label });
-  });
-  if (remind.length) {
-    remind.slice(0, 3).forEach(function (it) {
-      if (rows.length >= 7) return;
-      // 今天到期、下面「今天」那行肯定列得出来的，不用再挂一条「该复习」
-      if (it.t.date === t0s && todayItems.indexOf(it.t) > -1 && todayItems.indexOf(it.t) < 6) return;
-      var dup = rows.some(function (r) { return r.t.id === it.t.id; });
-      if (!dup) rows.push({ t: it.t, kind: 'remind', label: '该复习' });
-    });
+  // 不再分段截断：逾期 → 进行中 → 今天 → 待复习，全部列出，面板可滚动
+  var rows = [], rowIds = {};
+  function pushRow(t, kind, label) {
+    if (!t || rowIds[t.id]) return;
+    rowIds[t.id] = 1;
+    rows.push({ t: t, kind: kind, label: label });
   }
-  todayItems.slice(0, 6).forEach(function (t) {
-    if (rows.length >= 8) return;
-    var dup = rows.some(function (r) { return r.t.id === t.id; });
-    if (!dup) rows.push({ t: t, kind: 'today', label: t.time ? t.time : '今天' });
+  overdue.forEach(function (t) {
+    pushRow(t, 'over', taskState(t).label.replace('已逾期 ', '逾期 '));
   });
+  live.forEach(function (it) { pushRow(it.t, 'live', it.label); });
+  todayItems.forEach(function (t) { pushRow(t, 'today', t.time ? t.time : '今天'); });
+  remind.forEach(function (it) { pushRow(it.t, 'remind', '该复习'); });
 
   var body;
   if (!rows.length) {

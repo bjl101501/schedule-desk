@@ -45,11 +45,12 @@ function openTaskEditor(id, preset) {
 
     '<section class="ed-sec">' +
     '<div class="ed-sec-t">时间安排</div>' +
-    '<div class="row3">' +
-    '<div class="field"><label>开始日期' + tipMark('日程从哪一天开始。需要连续几天完成，用右边的「持续」。') + '</label>' +
+    '<div class="row2">' +
+    '<div class="field"><label>开始日期' + tipMark('日程从哪一天开始。需要连续几天完成，用下面的「持续」。') + '</label>' +
     '<button type="button" class="inp pick-field" id="edDate"></button></div>' +
     '<div class="field"><label>时间' + tipMark('留空就是全天日程：当天一直显示「进行中」，过了这一天才会逾期。') + '</label>' +
     '<button type="button" class="inp pick-field" id="edTime"></button></div>' +
+    '</div>' +
     '<div class="field"><label>持续<span class="hint">可选</span>' + tipMark('连续多天完成的任务，逾期按最后一天算。') + '</label>' +
     '<div class="span-toggle' + (t.span > 1 ? ' on' : '') + '" id="edSpanWrap">' +
     '<input type="checkbox" id="edSpanOn"' + (t.span > 1 ? ' checked' : '') + '>' +
@@ -58,7 +59,6 @@ function openTaskEditor(id, preset) {
     (t.span > 1 ? t.span : '') + '" placeholder="2">' +
     '<span class="span-u">天</span>' +
     '</div></div>' +
-    '</div>' +
     '<div class="span-hint" id="edSpanHint"></div>' +
     '<div class="field"><label>重复<span class="hint">完成后自动排下一次</span>' + tipMark('勾选后，完成当前这条会自动生成下一次，适合固定习惯。') + '</label><div class="chip-pick" id="edRepeat">' +
     REPEAT_OPTS.map(function (r) {
@@ -154,11 +154,11 @@ function openTaskEditor(id, preset) {
       // 日期 / 时间换成自研控件：原生弹层跟主题完全不搭，清空也麻烦
       var dateField = mountDateField(root.querySelector('#edDate'), {
         value: t.date || ymd(today0()),
-        onChange: function () { syncPlan(); }
+        onChange: function () { syncPlan(); refreshAnchorBlock(); }
       });
       var timeField = mountTimeField(root.querySelector('#edTime'), {
         value: t.time || '',
-        onChange: function () { syncPlan(); }
+        onChange: function () { syncPlan(); refreshAnchorBlock(); }
       });
       // 「持续」是个开关：不勾就是当天的日程，勾了才管天数（子项的「天」列同理）
       var spanOn = !!(spanChk && spanChk.checked);
@@ -380,13 +380,18 @@ function openTaskEditor(id, preset) {
           if (snz) snz.addEventListener('change', function () { state.snooze = !!snz.checked; });
           return;
         }
+        var hasDate = !!dateField.get();
+        var anchorBlock = hasDate
+          ? '<div class="field"><label>基准时间<span class="hint">跟随上面的开始日期与时间</span></label>' +
+            '<div class="anchor-ro" id="edAnchorRo">' + esc(dateField.get()) + ' ' + esc(timeField.get() || '09:00') + '</div></div>'
+          : '<div class="field"><label>基准时间<span class="hint">上面没填日期，这里手动指定</span></label>' +
+            '<input class="inp" type="datetime-local" id="edAnchor" value="' + esc(anchorVal) + '"></div>';
         box.innerHTML = '<div class="field"><label>复习时间点<span class="hint">按艾宾浩斯遗忘曲线，点选要提醒的节点</span></label>' +
           '<div class="chip-pick">' +
           EB_OFFSETS.map(function (off, i) {
             return '<button class="chip-p' + (state.offsets.indexOf(off) > -1 ? ' on' : '') + '" data-eb="' + off + '">' + EB_LABEL[i] + '</button>';
           }).join('') + '</div></div>' +
-          '<div class="field"><label>基准时间<span class="hint">第一个提醒从这个时间开始计算</span></label>' +
-          '<input class="inp" type="datetime-local" id="edAnchor" value="' + esc(anchorVal) + '"></div>' +
+          anchorBlock +
           '<div style="font-size:11.5px;color:var(--text-3);line-height:1.6">已选 <b>' + state.offsets.length + '</b> 个提醒节点，' +
           '总共跨 ' + ebSpan(state.offsets) + '。到点会发系统通知（常驻到手动关闭），同时进入顶部铃铛与「今天要处理」。</div>';
         Array.prototype.forEach.call(box.querySelectorAll('[data-eb]'), function (b) {
@@ -398,6 +403,10 @@ function openTaskEditor(id, preset) {
             renderRemindBox();
           });
         });
+      }
+      // 基准时间跟随日期/时间：变了就重绘提醒区（只有艾宾浩斯用得到）
+      function refreshAnchorBlock() {
+        if (state && state.remindMode === '艾宾浩斯') renderRemindBox();
       }
       renderRemindBox();
 
@@ -651,7 +660,9 @@ function openTaskEditor(id, preset) {
         if (state.remindMode !== '不提醒' && !dateV) { toast('提醒需要先选开始日期'); return; }
         if (state.remindMode === '艾宾浩斯') {
           if (!state.offsets.length) { toast('至少选一个复习节点'); return; }
-          cfg = { anchor: fromDtLocal(anchor || (dateV + 'T' + (timeV || '09:00'))), offsets: state.offsets.slice(), read: [] };
+          var base = dateV ? (dateV + 'T' + (timeV || '09:00')) : anchor;
+          if (!base) { toast('选一个开始日期，或手动填基准时间'); return; }
+          cfg = { anchor: fromDtLocal(base), offsets: state.offsets.slice(), read: [] };
         } else if (state.remindMode === '单次提醒') {
           cfg = {
             anchor: fromDtLocal(dateV + 'T' + (timeV || '09:00')),
@@ -1207,7 +1218,7 @@ function openHabitEditor(id) {
       return '<button class="chip-p' + (sel.icon === k ? ' on' : '') + '" data-hi="' + k + '" style="width:42px;height:38px;padding:0;display:flex;align-items:center;justify-content:center">' + svgIcon(k) + '</button>';
     }).join('');
   }
-  openModal('<div class="modal">' +
+  openModal('<div class="modal wide">' +
     '<div class="m-head"><h3>' + (isNew ? '新建习惯' : '编辑习惯') + '</h3><button class="m-close">' + svgIcon('close') + '</button></div>' +
     '<div class="m-body">' +
     '<div class="field"><label>习惯名称</label><input class="inp" id="hbName" autofocus value="' + esc(h.name) + '" placeholder="例：早起 6:30 / 阅读 30 分钟"></div>' +
@@ -1304,7 +1315,7 @@ function openCountdownEditor(id) {
   var isNew = !c;
   if (isNew) c = { id: '', name: '', type: '倒数日', date: ymd(addDays(today0(), 30)), note: '', color: '#177CB0', createdAt: ymd(today0()) };
   var sel = { type: c.type, color: c.color };
-  openModal('<div class="modal">' +
+  openModal('<div class="modal wide">' +
     '<div class="m-head"><h3>' + (isNew ? '添加纪念日' : '编辑纪念日') + '</h3><button class="m-close">' + svgIcon('close') + '</button></div>' +
     '<div class="m-body">' +
     (c.sys ? '<div class="banner" style="background:var(--red-soft);border-color:#F0CFCB;color:#A61F23;margin:0">' +
