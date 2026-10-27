@@ -109,7 +109,7 @@ function renderTopbar() {
   if (srt) {
     srt.style.display = showSwitch ? '' : 'none';
     srt.className = 'tb-btn' + (S.sortMode === 'manual' ? ' on' : '');
-    srt.title = S.sortMode === 'manual' ? '当前：手动排序（拖动任务调整顺序）' : '当前：按时间排序';
+    srt.setAttribute('data-tip', S.sortMode === 'manual' ? '当前：手动排序，可拖动任务调整顺序。' : '当前：按时间排序，点一下切换。');
     var st2 = srt.querySelector('.txt');
     if (st2) st2.textContent = S.sortMode === 'manual' ? '手动排序' : '按时间';
   }
@@ -120,7 +120,7 @@ function renderTopbar() {
     fb.className = 'tb-btn' + (n ? ' on' : '');
     var txt = fb.querySelector('.txt');
     if (txt) txt.textContent = n ? '筛选 ' + n : '筛选';
-    fb.title = n ? '筛选 · 已启用 ' + n + ' 个条件' : '筛选';
+    fb.setAttribute('data-tip', n ? '已启用 ' + n + ' 个筛选条件，点开修改。' : '按优先级、标签、状态和日期筛选。');
   }
 }
 function renderBell() {
@@ -159,30 +159,40 @@ function renderTaskView() {
 }
 function renderTodayPanel() {
   var t0 = today0(), t0s = ymd(t0);
-  // 只收「今天该动手」的：逾期 + 今天到期 + 今天到点的复习。
-  // 未来几天的不放进来 —— 面板叫「今天要处理」，塞别的日期只会让人以为日期没改成功。
-  var overdue = [], todayItems = [], remind = [];
+  // 只收「今天该动手」的：逾期 + 正在进行/即将开始 + 今天到期 + 今天到点的复习。
+  var overdue = [], live = [], todayItems = [], remind = [];
+  var SHORT = { ongoing: '进行中', upcoming: '即将开始', remindSoon: '即将逾期' };
   S.tasks.filter(inScope).forEach(function (t) {
     if (t.done) return;
-    if (t.date && t.date < t0s) overdue.push(t);
+    var st = taskState(t);
+    if (st.key === 'overdue') overdue.push(t);
+    else if (SHORT[st.key]) live.push({ t: t, label: SHORT[st.key] });
     else if (t.date === t0s) todayItems.push(t);
-    var r = nextReminder(t);
+    var r = reminderState(t);
     if (r && r.overdue) remind.push({ t: t, r: r });
   });
   overdue = sortTasks(overdue); todayItems = sortTasks(todayItems);
+  live.sort(function (a, b) {
+    var wa = taskWindow(a.t), wb = taskWindow(b.t);
+    return (wa ? wa.start.getTime() : 0) - (wb ? wb.start.getTime() : 0);
+  });
   // 同一条日程可能既逾期又有待复习，计数要去重，否则会出现「4 项」只有 3 行
   var seen = {};
-  overdue.concat(todayItems).forEach(function (x) { seen[x.id] = 1; });
+  overdue.concat(live.map(function (x) { return x.t; })).concat(todayItems).forEach(function (x) { seen[x.id] = 1; });
   remind.forEach(function (it) { seen[it.t.id] = 1; });
   var total = Object.keys(seen).length;
   var rows = [];
-  overdue.slice(0, 4).forEach(function (t) {
-    rows.push({ t: t, kind: 'over', label: '逾期 ' + Math.abs(dayDiff(t0, parseYmd(t.date))) + ' 天' });
+  overdue.slice(0, 3).forEach(function (t) {
+    rows.push({ t: t, kind: 'over', label: taskState(t).label.replace('已逾期 ', '逾期 ') });
+  });
+  live.slice(0, 3).forEach(function (it) {
+    if (rows.length >= 7) return;
+    rows.push({ t: it.t, kind: 'live', label: it.label });
   });
   if (remind.length) {
     remind.slice(0, 3).forEach(function (it) {
       if (rows.length >= 7) return;
-      // 今天到期、而且下面「今天」那行肯定列得出来的，不用再挂一条「该复习」
+      // 今天到期、下面「今天」那行肯定列得出来的，不用再挂一条「该复习」
       if (it.t.date === t0s && todayItems.indexOf(it.t) > -1 && todayItems.indexOf(it.t) < 6) return;
       var dup = rows.some(function (r) { return r.t.id === it.t.id; });
       if (!dup) rows.push({ t: it.t, kind: 'remind', label: '该复习' });
@@ -190,7 +200,8 @@ function renderTodayPanel() {
   }
   todayItems.slice(0, 6).forEach(function (t) {
     if (rows.length >= 8) return;
-    rows.push({ t: t, kind: 'today', label: t.time ? t.time : '今天' });
+    var dup = rows.some(function (r) { return r.t.id === t.id; });
+    if (!dup) rows.push({ t: t, kind: 'today', label: t.time ? t.time : '今天' });
   });
 
   var body;
@@ -252,19 +263,16 @@ function renderListBody(rows) {
 }
 function taskRowHtml(t) {
   var t0 = today0(), cls = 'task' + (t.done ? ' done' : '');
-  var due = '', overdue = false;
+  var st = taskState(t);
+  var due = '';
   if (t.date) {
     var d = parseYmd(t.date), diff = dayDiff(t0, d);
-    var dcls = diff < 0 ? 'due-over' : (diff === 0 ? 'due-today' : '');
-    overdue = diff < 0;
+    // 日期本身只表达「哪天」，是不是逾期交给状态胶囊，避免两处打架
+    var dcls = st.key === 'overdue' ? 'due-over' : (diff === 0 ? 'due-today' : '');
     due = '<span class="m ' + dcls + '">' + svgIcon('calendar') + shortDate(d) + (t.time ? ' ' + timeRangeText(t) : '') + '</span>';
   }
-  var r = nextReminder(t);
-  // 待复习是艾宾浩斯专属说法；普通提醒或没有提醒的任务逾期时按日期算
-  var isEb = t.remindMode === '艾宾浩斯';
-  var rmLabel = isEb ? (r && r.overdue ? '待复习' : (r ? relTime(r.at) : ''))
-    : (overdue ? '已逾期' : (r && r.overdue ? '已提醒' : (r ? relTime(r.at) : '')));
-  var rm = (r || (overdue && !isEb)) ? '<span class="m due-remind">' + svgIcon('bell') + rmLabel + '</span>' : '';
+  var rm = remindChipHtml(t);
+  var stateChip = stateChipHtml(t);
   var tags = t.tags.map(function (g) {
     return '<span class="tag-chip ' + tagColor(g) + '">#' + esc(g) + '</span>';
   }).join('');
@@ -277,7 +285,7 @@ function taskRowHtml(t) {
     subCountHtml(t) + '</div>' +
     subRowsHtml(t, 8) +
     (t.note ? '<div class="task-note">' + esc(t.note) + '</div>' : '') +
-    '<div class="task-meta">' + due +
+    '<div class="task-meta">' + due + stateChip +
     (repeatLabel(t) ? '<span class="m due-repeat">' + svgIcon('repeat') + esc(repeatLabel(t)) + '</span>' : '') + rm + tags +
     (t.list && t.list !== '收集箱' ? '<span class="m">' + svgIcon('inbox') + esc(t.list) + '</span>' : '') +
     '</div></div>' +
@@ -290,15 +298,16 @@ function renderCardBody(rows) {
   var limit = S.listLimit || LIST_PAGE;
   var part = rows.slice(0, limit);
   return '<div class="card-grid">' + part.map(function (t) {
+    var st = taskState(t);
     var diff = t.date ? dayDiff(today0(), parseYmd(t.date)) : null;
-    var dcls = diff === null ? '' : (diff < 0 ? 'over' : diff === 0 ? 'today' : '');
+    var dcls = diff === null ? '' : (st.key === 'overdue' ? 'over' : diff === 0 ? 'today' : '');
     var tags = t.tags.map(function (g) { return '<span class="tag-chip ' + tagColor(g) + '">#' + esc(g) + '</span>'; }).join('');
     return '<div class="tcard ' + (t.prio ? t.prio.toLowerCase() : '') + (t.done ? ' done' : '') + (S.detailId === t.id ? ' active' : '') + '" data-tid="' + esc(t.id) + '">' +
       '<div class="tcard-top"><div class="chk" data-done="' + esc(t.id) + '">' + svgIcon('check') + '</div>' +
       flagHtml(t) + '<div class="tcard-title">' + esc(t.title) + '</div>' + subCountHtml(t) + '</div>' +
       subRowsHtml(t, 5) +
       (t.note ? '<div class="tcard-note">' + esc(t.note) + '</div>' : '') +
-      '<div class="tcard-foot">' + tags +
+      '<div class="tcard-foot">' + stateChipHtml(t) + tags +
       (t.estimate ? '<span class="est-badge">' + durText(t.estimate) + '</span>' : '') +
       (t.time ? '<span class="tcard-time">' + svgIcon('clock') + timeRangeText(t) + '</span>' : '') +
       (t.date ? '<span class="tcard-date ' + dcls + '">' + svgIcon('calendar') + shortDate(parseYmd(t.date)) + '</span>' : '') +
@@ -342,15 +351,15 @@ function kanbanGroups() {
       });
     });
   } else if (g === 'status') {
-    map.push({ key: 'todo', title: '待处理', color: 'var(--brand)', items: [] });
-    map.push({ key: 'doing', title: '今天到期', color: 'var(--orange)', items: [] });
+    map.push({ key: 'todo', title: '未开始', color: 'var(--brand)', items: [] });
+    map.push({ key: 'doing', title: '今天', color: 'var(--cyan)', items: [] });
     map.push({ key: 'over', title: '已逾期', color: 'var(--red)', items: [] });
     map.push({ key: 'done', title: '已完成', color: 'var(--green)', items: [] });
     rows.forEach(function (t) {
-      var t0 = ymd(today0());
-      if (t.done) map[3].items.push(t);
-      else if (t.date && t.date < t0) map[2].items.push(t);
-      else if (t.date === t0) map[1].items.push(t);
+      var st = taskState(t);
+      if (st.key === 'done') map[3].items.push(t);
+      else if (st.key === 'overdue') map[2].items.push(t);
+      else if (st.key === 'ongoing' || st.key === 'upcoming' || st.key === 'remindSoon') map[1].items.push(t);
       else map[0].items.push(t);
     });
   } else {
@@ -361,10 +370,11 @@ function kanbanGroups() {
     map.push({ key: 'none', title: '未安排', color: 'var(--text-3)', items: [] });
     rows.forEach(function (t) {
       if (!t.date) { map[4].items.push(t); return; }
+      var st = taskState(t);
+      if (st.key === 'overdue') { map[0].items.push(t); return; }
       var d = dayDiff(today0(), parseYmd(t.date));
-      if (d < 0) map[0].items.push(t);
-      else if (d === 0) map[1].items.push(t);
-      else if (d <= 7) map[2].items.push(t);
+      if (d === 0) map[1].items.push(t);
+      else if (d > 0 && d <= 7) map[2].items.push(t);
       else map[3].items.push(t);
     });
   }

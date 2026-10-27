@@ -1,7 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod config;
+mod net;
+mod notify;
 mod remind;
+mod single;
 mod store;
 mod sync;
 mod update;
@@ -15,7 +18,6 @@ use serde::Serialize;
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder, WindowEvent};
-use tauri_plugin_notification::NotificationExt;
 
 use config::Config;
 use store::{Op, Store};
@@ -375,8 +377,9 @@ fn update_install(app: AppHandle, state: State<'_, AppState>) -> serde_json::Val
 }
 
 #[tauri::command]
-fn notify_now(app: AppHandle, title: String, body: String) {
-    let _ = app.notification().builder().title(title).body(body).show();
+fn notify_now(app: AppHandle, title: String, body: String) -> Result<(), String> {
+    let id = app.config().identifier.clone();
+    notify::send(&id, &title, &body, true)
 }
 
 // ---------------------------------------------------------------- helpers
@@ -497,30 +500,6 @@ fn unique_path(dir: &std::path::Path, name: &str) -> PathBuf {
     dir.join(name)
 }
 
-#[cfg(windows)]
-fn acquire_single_instance() -> bool {
-    use std::ffi::c_void;
-    extern "system" {
-        fn CreateMutexW(attrs: *const c_void, initial: i32, name: *const u16) -> *mut c_void;
-        fn GetLastError() -> u32;
-    }
-    let name: Vec<u16> = "Local\\ScheduleDesk.SingleInstance\0"
-        .encode_utf16()
-        .collect();
-    unsafe {
-        let handle = CreateMutexW(std::ptr::null(), 0, name.as_ptr());
-        if handle.is_null() {
-            return true;
-        }
-        GetLastError() != 183
-    }
-}
-
-#[cfg(not(windows))]
-fn acquire_single_instance() -> bool {
-    true
-}
-
 /// 未打包的 exe 想发 Windows 通知，必须先注册 AppUserModelID，
 /// 否则 CreateToastNotifier 会直接失败（且不报错，通知静默消失）。
 #[cfg(windows)]
@@ -632,8 +611,12 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
             }
         });
 
-    if let Some(icon) = app.default_window_icon() {
-        builder = builder.icon(icon.clone());
+    // 托盘是 16/32px 的小图，直接用 32x32 源图，别拿 256px 让系统缩（会发虚）
+    let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png"))
+        .ok()
+        .or_else(|| app.default_window_icon().cloned());
+    if let Some(icon) = tray_icon {
+        builder = builder.icon(icon);
     }
     builder.build(app)?;
     Ok(())
@@ -648,6 +631,7 @@ fn show_main(app: &AppHandle) {
 }
 
 fn start_reminder_loop(app: AppHandle) {
+    let app_id = app.config().identifier.clone();
     std::thread::spawn(move || loop {
         std::thread::sleep(Duration::from_secs(60));
         let state = app.state::<AppState>();
@@ -659,20 +643,33 @@ fn start_reminder_loop(app: AppHandle) {
             };
             remind::due_notifications(&store, &dir)
         };
-        for (title, body) in due {
-            let _ = app.notification().builder().title(title).body(body).show();
+        for item in due {
+            if let Err(e) = notify::send(&app_id, &item.title, &item.body, true) {
+                eprintln!("[remind] 通知失败: {e}");
+            }
         }
     });
 }
 
+fn arg_value(args: &[String], key: &str) -> Option<String> {
+    args.iter()
+        .position(|a| a == key)
+        .and_then(|i| args.get(i + 1))
+        .cloned()
+}
+
 fn main() {
-    if !acquire_single_instance() {
+    let argv: Vec<String> = std::env::args().collect();
+    let data_dir_arg = arg_value(&argv, "--data-dir");
+    let (mutex_name, event_name) = single::names(data_dir_arg.as_deref());
+    if !single::acquire(&mutex_name) {
+        // 同名的实例已经在跑：唤起它的窗口，然后自己退出
+        single::wake(&event_name);
         return;
     }
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
             db_bootstrap,
             db_apply,
@@ -691,15 +688,12 @@ fn main() {
             update_install,
             notify_now
         ])
-        .setup(|app| {
+        .setup(move |app| {
             let mut cfg = Config::load();
 
             // --data-dir <path>：临时覆盖数据目录（隔离测试 / 便携模式），不写入配置
-            let argv: Vec<String> = std::env::args().collect();
-            if let Some(pos) = argv.iter().position(|a| a == "--data-dir") {
-                if let Some(v) = argv.get(pos + 1) {
-                    cfg.data_dir = v.clone();
-                }
+            if let Some(v) = arg_value(&argv, "--data-dir") {
+                cfg.data_dir = v;
             }
 
             let dir = cfg.resolved_data_dir();
@@ -755,17 +749,22 @@ fn main() {
 
             start_reminder_loop(app.handle().clone());
 
+            // 二次启动（双击 exe）时把已有窗口唤到前台
+            let activate_handle = app.handle().clone();
+            single::listen(&event_name, move || show_main(&activate_handle));
+
             // 诊断用：设置 SD_TEST_NOTIFY=1 启动时弹一条通知，验证系统通道。
             if std::env::var("SD_TEST_NOTIFY").ok().as_deref() == Some("1") {
                 let handle = app.handle().clone();
                 std::thread::spawn(move || {
                     std::thread::sleep(Duration::from_secs(4));
-                    let _ = handle
-                        .notification()
-                        .builder()
-                        .title("日程台")
-                        .body("通知通道测试：看到这条说明原生提醒可用。")
-                        .show();
+                    let id = handle.config().identifier.clone();
+                    let _ = notify::send(
+                        &id,
+                        "日程台",
+                        "通知通道测试：看到这条说明原生提醒可用。",
+                        true,
+                    );
                 });
             }
 

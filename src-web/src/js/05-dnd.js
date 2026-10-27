@@ -362,7 +362,7 @@ function enableCardDrag(root) {
 function kanbanKeyName(group, key) {
   var map = {
     priority: { 'P0': 'P0 最高', 'P1': 'P1 高', 'P2': 'P2 中', 'P3': 'P3 低', 'none': '未分级' },
-    status: { 'todo': '待处理', 'doing': '今天到期', 'over': '已逾期', 'done': '已完成' },
+    status: { 'todo': '未开始', 'doing': '今天', 'over': '已逾期', 'done': '已完成' },
     date: { 'over': '已逾期', 'today': '今天', 'week': '本周内', 'later': '更晚', 'none': '未安排' },
     tags: { '__none': '无标签' },
     list: {}

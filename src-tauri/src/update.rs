@@ -2,9 +2,10 @@
 
 use std::fs;
 use std::path::PathBuf;
-use std::time::Duration;
 
 use serde::Serialize;
+
+use crate::net;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,13 +16,6 @@ pub struct ReleaseInfo {
     pub notes: String,
     pub url: String,
     pub asset: String,
-}
-
-fn agent() -> ureq::Agent {
-    ureq::AgentBuilder::new()
-        .timeout_connect(Duration::from_secs(10))
-        .timeout(Duration::from_secs(120))
-        .build()
 }
 
 fn parse_version(v: &str) -> (u64, u64, u64) {
@@ -38,12 +32,12 @@ pub fn check(repo: &str, current: &str) -> Result<ReleaseInfo, String> {
         return Err("尚未配置更新仓库（设置 → 软件更新 → 仓库标识 owner/repo）".into());
     }
     let url = format!("https://api.github.com/repos/{}/releases/latest", repo.trim());
-    let resp = agent()
+    let resp = net::agent(120)
         .get(&url)
         .set("User-Agent", "ScheduleDesk-Updater")
         .set("Accept", "application/vnd.github+json")
         .call()
-        .map_err(|e| format!("查询失败：{e}"))?;
+        .map_err(|e| format!("查询失败：{}", net::describe(&e)))?;
     let json: serde_json::Value = resp.into_json().map_err(|e| format!("解析失败：{e}"))?;
 
     let tag = json
@@ -101,11 +95,11 @@ pub fn install(url: &str, asset: &str) -> Result<(), String> {
         asset
     });
 
-    let resp = agent()
+    let resp = net::agent(120)
         .get(url)
         .set("User-Agent", "ScheduleDesk-Updater")
         .call()
-        .map_err(|e| format!("下载失败：{e}"))?;
+        .map_err(|e| format!("下载失败：{}", net::describe(&e)))?;
     let mut file = fs::File::create(&new_exe).map_err(|e| format!("写入失败：{e}"))?;
     std::io::copy(&mut resp.into_reader(), &mut file).map_err(|e| format!("保存失败：{e}"))?;
     drop(file);

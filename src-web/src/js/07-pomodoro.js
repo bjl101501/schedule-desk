@@ -236,7 +236,9 @@ function openTaskDetail(id) {
   if (d) {
     var dTxt = (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日 ' + weekdayName(d);
     var dCls = 'dt-v';
-    if (!t.done && diff < 0) { dTxt += ' · 逾期 ' + Math.abs(diff) + ' 天'; dCls += ' warn'; }
+    var st = taskState(t);
+    if (st.key === 'overdue') { dTxt += ' · ' + st.label; dCls += ' warn'; }
+    else if (st.key === 'ongoing' || st.key === 'upcoming' || st.key === 'remindSoon') { dTxt += ' · ' + st.label; dCls += ' brand'; }
     else if (diff === 0) { dTxt += ' · 今天'; dCls += ' brand'; }
     else if (diff === 1) { dTxt += ' · 明天'; }
     else if (diff > 1) { dTxt += ' · 还有 ' + diff + ' 天'; }
@@ -249,6 +251,8 @@ function openTaskDetail(id) {
     var endMin = (parseHM(t.time) || 0) + (t.estimate || 0);
     var range = t.time + (t.estimate ? ' — ' + hmStr(endMin) : '');
     rows.push(rowHtml('clock', '时间', range, 'dt-v'));
+  } else {
+    rows.push(rowHtml('clock', '时间', t.estimate ? '全天日程 · 预计 ' + durText(t.estimate) : '全天日程', 'dt-v'));
   }
 
   // 跨天日程：把「第几天 / 结束日 / 阶段数」讲清楚，不然详情里只看到一个开始日
@@ -286,6 +290,7 @@ function openTaskDetail(id) {
     var offs = t.remindCfg.offsets;
     var read = t.remindCfg.read || [];
     var label = t.remindMode === '艾宾浩斯' ? '艾宾浩斯复习计划' : '单次提醒';
+    var isEb = t.remindMode === '艾宾浩斯';
     var nodes = offs.map(function (off, i) {
       var at = anchor.getTime() + off * 60000;
       var isPast = at < Date.now();
@@ -293,7 +298,10 @@ function openTaskDetail(id) {
       var cls = isRead ? 'past' : (isPast ? 'now' : 'future');
       var ad = new Date(at);
       var txt = (ad.getMonth() + 1) + '/' + ad.getDate() + ' ' + pad2(ad.getHours()) + ':' + pad2(ad.getMinutes());
-      var st = isRead ? '已确认' : (isPast ? '待复习' : '待触发');
+      // 待复习是艾宾浩斯专属：单次提醒过期就是「已提醒 / 已逾期」，不能混用
+      var st = isEb
+        ? (isRead ? '已确认' : (isPast ? '待复习' : '待触发'))
+        : (isRead ? '已确认' : (isPast ? '已提醒' : '待提醒'));
       return '<div class="eb-node ' + cls + '"><span class="eb-dot"></span>' +
         '<span class="eb-l">' + ebStageName(off) + '</span>' +
         '<span class="eb-t">' + txt + '</span>' +

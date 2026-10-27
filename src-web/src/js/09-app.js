@@ -611,6 +611,14 @@ function boot() {
   } catch (e) { setPanelWidth(440); }
   bindGlobalEvents();
   bindShortcuts();
+  // 统一调度器：每 15 秒检查一次。状态发生迁移才整页重排，否则只改状态文字。
+  Scheduler.on(function () {
+    if (statesChanged()) refreshAll();
+    else patchLiveState();
+    renderBell();
+  });
+  Scheduler.start();
+  bindTips();
   watchMainWidth();
   (function () {
     var th = THEMES.filter(function (x) { return x.k === currentTheme(); })[0] || THEMES[0];

@@ -545,7 +545,7 @@ function renderStatsView() {
     return d && dayDiff(ws, d) >= 0 && dayDiff(ws, d) < 7;
   }).length;
   var live = S.tasks.filter(function (t) { return !t.done; }).length;
-  var overdue = S.tasks.filter(function (t) { return !t.done && t.date && t.date < t0s; }).length;
+  var overdue = S.tasks.filter(function (t) { return taskState(t).key === 'overdue'; }).length;
   var monthAgo = addDays(t0, -29);
   var inMonth = S.tasks.filter(function (t) { return t.date && dayDiff(monthAgo, parseYmd(t.date)) >= 0 && dayDiff(monthAgo, parseYmd(t.date)) <= 29; });
   var doneMonth = inMonth.filter(function (t) { return t.done; }).length;

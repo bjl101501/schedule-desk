@@ -228,6 +228,7 @@ function openModal(html, opts) {
     var c2 = prev.querySelector('.m-close');
     if (c2) c2.addEventListener('click', closeModal);
     if (opts.onMount) opts.onMount(prev);
+    prepareForm(prev);
     applyModalMode(prev);
     enableModalDrag(prev);
     return prev;
@@ -249,6 +250,7 @@ function openModal(html, opts) {
     btn.addEventListener('click', closeModal);
   });
   if (opts.onMount) opts.onMount(wrap);
+  prepareForm(wrap);
   applyModalMode(wrap);
   enableModalDrag(wrap);
   var first = wrap.querySelector('[autofocus]');
@@ -676,25 +678,7 @@ function activeFilterCount() {
 }
 function countBy(fn) { return S.tasks.filter(fn).length; }
 function nextReminder(t) {
-  if (!t.remindCfg || !t.remindCfg.anchor || t.done) return null;
-  var anchor = parseAnchor(t.remindCfg.anchor);
-  if (!anchor) return null;
-  var offs = t.remindCfg.offsets || EB_OFFSETS;
-  var read = t.remindCfg.read || [];
-  var now = Date.now();
-  var best = null, bestIdx = -1;
-  for (var i = 0; i < offs.length; i++) {
-    if (read.indexOf(i) > -1) continue;
-    var at = anchor.getTime() + offs[i] * 60000;
-    if (at <= now) { if (best === null || at > best) { best = at; bestIdx = i; } }
-  }
-  if (best !== null) return { at: best, idx: bestIdx, overdue: true, offset: offs[bestIdx] };
-  for (var j = 0; j < offs.length; j++) {
-    if (read.indexOf(j) > -1) continue;
-    var at2 = anchor.getTime() + offs[j] * 60000;
-    if (at2 > now) return { at: at2, idx: j, overdue: false, offset: offs[j] };
-  }
-  return null;
+  return reminderState(t);
 }
 function parseAnchor(s) {
   if (!s) return null;

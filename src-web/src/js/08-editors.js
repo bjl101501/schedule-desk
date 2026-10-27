@@ -37,17 +37,21 @@ function openTaskEditor(id, preset) {
     '<div class="m-head">' +
     (fromDetail ? '<button class="m-back" id="edBack" title="返回详情">' + svgIcon('chevL') + '</button>' : '') +
     '<h3>' + (isNew ? '新建日程' : (fromDetail ? '修改日程' : '编辑日程')) + '</h3>' +
+    (isNew ? '<button type="button" class="m-tpl" id="edTpl">' + svgIcon('copy') + ' 用已有日程填充</button>' : '') +
     '<button class="m-close">' + svgIcon('close') + '</button></div>' +
     '<div class="m-body">' +
-    '<div class="field"><input class="inp" id="edTitle" placeholder="要做什么？" value="' + esc(t.title) + '" ' + (isNew ? 'autofocus' : '') + ' style="font-size:16px;font-weight:600;height:44px"></div>' +
+    '<div class="field"><input class="inp inp-title" id="edTitle" placeholder="要做什么？" value="' + esc(t.title) + '" ' + (isNew ? 'autofocus' : '') + '></div>' +
     '<div class="field"><textarea class="inp" id="edNote" placeholder="补充说明（可选）">' + esc(t.note) + '</textarea></div>' +
-    '<div class="ed-sep"></div>' +
+
+    '<section class="ed-sec">' +
+    '<div class="ed-sec-t">时间安排</div>' +
     '<div class="row3">' +
-    '<div class="field"><label>开始日期</label><input class="inp" type="date" id="edDate" value="' + esc(t.date) + '"></div>' +
-    '<div class="field"><label>时间<span class="hint">可留空</span></label><input class="inp" type="time" id="edTime" value="' + esc(t.time) + '"></div>' +
-    '<div class="field"><label>持续<span class="hint">可选</span></label>' +
-    // 默认不勾：普通日程只占当天；勾了「多天」才出现天数，子项那列「天」也跟着出现
-    '<div class="span-toggle' + (t.span > 1 ? ' on' : '') + '" id="edSpanWrap" title="勾选后可以连续占多天">' +
+    '<div class="field"><label>开始日期' + tipMark('日程从哪一天开始。需要连续几天完成，用右边的「持续」。') + '</label>' +
+    '<button type="button" class="inp pick-field" id="edDate"></button></div>' +
+    '<div class="field"><label>时间<span class="hint">留空＝全天</span>' + tipMark('留空就是全天日程：当天一直显示「进行中」，过了这一天才会逾期。') + '</label>' +
+    '<button type="button" class="inp pick-field" id="edTime"></button></div>' +
+    '<div class="field"><label>持续<span class="hint">可选</span>' + tipMark('连续多天完成的任务，逾期按最后一天算。') + '</label>' +
+    '<div class="span-toggle' + (t.span > 1 ? ' on' : '') + '" id="edSpanWrap">' +
     '<input type="checkbox" id="edSpanOn"' + (t.span > 1 ? ' checked' : '') + '>' +
     '<span class="span-txt">多天</span>' +
     '<input class="span-num" type="number" id="edSpan" min="2" max="365" step="1" value="' +
@@ -56,32 +60,34 @@ function openTaskEditor(id, preset) {
     '</div></div>' +
     '</div>' +
     '<div class="span-hint" id="edSpanHint"></div>' +
-    '<div class="ed-sep"></div>' +
-    '<div class="field"><label>重复<span class="hint">勾完这条会自动排下一次</span></label><div class="chip-pick" id="edRepeat">' +
+    '<div class="field"><label>重复<span class="hint">完成后自动排下一次</span>' + tipMark('勾选后，完成当前这条会自动生成下一次，适合固定习惯。') + '</label><div class="chip-pick" id="edRepeat">' +
     REPEAT_OPTS.map(function (r) {
       return '<button class="chip-p' + ((t.repeat || '不重复') === r ? ' on' : '') + '" data-repeat="' + r + '">' + r + '</button>';
     }).join('') + '</div></div>' +
-    '<div class="ed-sep"></div>' +
-    '<div class="row2">' +
-    '<div class="field"><label>清单</label>' +
+    '</section>' +
+
+    '<section class="ed-sec">' +
+    '<div class="ed-sec-t">归属与时长</div>' +
+    '<div class="field"><label>清单' + tipMark('给日程归类。左侧清单栏可以按清单查看。') + '</label>' +
     '<input class="inp" id="edList" value="' + esc(t.list) + '" placeholder="收集箱">' +
-    // 和下面「标签」一个格式：输入框 + 选已有下拉 + 一个新建入口
     '<div class="pick-row">' +
     '<button type="button" class="inp pick-multi" id="edListPick">' +
     '<span>选已有</span><i class="pm-c">' + svgIcon('chevD') + '</i></button>' +
     '<button class="chip-p" data-picklist="__new" style="border-style:dashed">＋ 新建清单</button>' +
     '</div></div>' +
-    '<div class="field"><label>预计时长</label>' +
+    '<div class="field"><label>预计时长<span class="hint">留空＝全天</span>' + tipMark('填了时长：超过「开始时间 + 时长」还没完成才算逾期；留空按全天日程处理。') + '</label>' +
     '<div class="est-row">' +
-    '<input class="inp" type="number" id="edEst" min="0" step="5" value="' + (t.estimate || '') + '" placeholder="45">' +
+    '<input class="inp" type="number" id="edEst" min="0" step="5" value="' + (t.estimate || '') + '" placeholder="留空＝全天">' +
     '<div class="seg est-unit" id="edEstUnit">' +
     '<button data-estunit="min" class="on">分钟</button><button data-estunit="hour">小时</button>' +
     '</div></div>' +
     '<div class="est-hint" id="edEstHint"></div>' +
     '</div>' +
-    '</div>' +
-    '<div class="ed-sep"></div>' +
-    '<div class="field"><label>' + svgIcon('split') + '拆分<span class="hint" id="edSubHint">拆成几段分别勾选</span></label>' +
+    '</section>' +
+
+    '<section class="ed-sec">' +
+    '<div class="ed-sec-t">拆分</div>' +
+    '<div class="field"><label>' + svgIcon('split') + '子项<span class="hint" id="edSubHint">拆成几段分别勾选</span>' + tipMark('把一件事拆成几个子项分别勾选；子项可以各自占用天数，逾期单独判定。') + '</label>' +
     '<div class="sub-edit" id="edSubs"></div>' +
     '<div class="sub-edit-foot">' +
     '<button class="chip-p" id="edSubAdd">＋ 添加子项</button>' +
@@ -93,29 +99,39 @@ function openTaskEditor(id, preset) {
       return '<button class="chip-p" data-subtpl="' + tp.k + '" style="border-style:dashed">' + tp.t + '</button>';
     }).join('') + '</div>' +
     '</div>' +
-    '<div class="ed-sep"></div>' +
-    '<div class="field"><label>优先级</label><div class="chip-pick" id="edPrio">' +
+    '</section>' +
+
+    '<section class="ed-sec">' +
+    '<div class="ed-sec-t">优先级</div>' +
+    '<div class="field"><label>优先级' + tipMark('P0 最高、P3 最低，只影响排序和左侧色条。') + '</label><div class="chip-pick" id="edPrio">' +
     ['P0', 'P1', 'P2', 'P3'].map(function (p) {
       return '<button class="chip-p' + (p === 'P0' ? ' red' : '') + (t.prio === p ? ' on' : '') + '" data-prio="' + p + '">' + p + ' · ' + PRIO_LABEL[p] + '</button>';
     }).join('') + '<button class="chip-p' + (!t.prio ? ' on' : '') + '" data-prio="">无</button></div></div>' +
-    '<div class="ed-sep"></div>' +
-    '<div class="field"><label>四象限属性</label><div class="chip-pick">' +
+    '<div class="field"><label>四象限' + tipMark('重要 × 紧急，只影响「四象限」视图的分组。') + '</label><div class="chip-pick">' +
     '<button class="chip-p' + (t.important ? ' on' : '') + '" data-imp="1">' + (t.important ? '✓ ' : '') + '重要</button>' +
     '<button class="chip-p' + (t.urgent ? ' on' : '') + '" data-urg="1">' + (t.urgent ? '✓ ' : '') + '紧急</button>' +
     '<span class="hint" style="align-self:center">' + quadName(t.important, t.urgent) + '</span></div></div>' +
-    '<div class="ed-sep"></div>' +
-    '<div class="field"><label>标签</label><div class="chip-pick" id="edTagsWrap">' + tagsHtml() + '</div>' +
-    '<div class="pick-row"><input class="inp" id="edTagInput" placeholder="输入标签名后回车添加" style="height:34px;font-size:13px">' +
-    // 标签可以一次选多个，所以不用 <select>，点开是一个带勾选的面板
-    '<button type="button" class="inp pick-multi" id="edTagPick">' +
+    '</section>' +
+
+    '<section class="ed-sec">' +
+    '<div class="ed-sec-t">标签</div>' +
+    '<div class="field"><label>标签<span class="hint">空格或回车分隔</span>' + tipMark('支持空格、回车、逗号分隔，可以一次粘贴多个标签。') + '</label>' +
+    '<div class="chip-pick" id="edTagsWrap">' + tagsHtml() + '</div>' +
+    '<div class="pick-row">' +
+    '<input class="inp tag-inp" id="edTagInput" placeholder="输入后按空格或回车，可一次加多个">' +
+    '<button type="button" class="inp pick-multi pick-compact" id="edTagPick">' +
     '<span>选已有</span><i class="pm-c"><b class="pm-n" id="edTagN"></b>' + svgIcon('chevD') + '</i></button>' +
     '</div></div>' +
-    '<div class="ed-sep"></div>' +
-    '<div class="field"><label>提醒方式</label><div class="seg" id="edRemindMode">' +
+    '</section>' +
+
+    '<section class="ed-sec">' +
+    '<div class="ed-sec-t">提醒</div>' +
+    '<div class="field"><label>提醒方式' + tipMark('普通日程用「单次提醒」；需要复习记忆的内容用「艾宾浩斯」。') + '</label><div class="seg" id="edRemindMode">' +
     ['不提醒', '单次提醒', '艾宾浩斯'].map(function (m) {
       return '<button data-rmode="' + m + '" class="' + (t.remindMode === m ? 'on' : '') + '">' + m + '</button>';
     }).join('') + '</div></div>' +
     '<div id="edRemindBox"></div>' +
+    '</section>' +
     '</div>' +
     '<div class="m-foot">' +
     (isNew ? '' : '<button class="btn btn-danger btn-sm" id="edDel">' + svgIcon('trash') + '删除</button>') +
@@ -135,6 +151,15 @@ function openTaskEditor(id, preset) {
       var spanWrap = root.querySelector('#edSpanWrap');
       var spanInp = root.querySelector('#edSpan');
       var spanChk = root.querySelector('#edSpanOn');
+      // 日期 / 时间换成自研控件：原生弹层跟主题完全不搭，清空也麻烦
+      var dateField = mountDateField(root.querySelector('#edDate'), {
+        value: t.date || ymd(today0()),
+        onChange: function () { syncPlan(); }
+      });
+      var timeField = mountTimeField(root.querySelector('#edTime'), {
+        value: t.time || '',
+        onChange: function () { syncPlan(); }
+      });
       // 「持续」是个开关：不勾就是当天的日程，勾了才管天数（子项的「天」列同理）
       var spanOn = !!(spanChk && spanChk.checked);
       // 预计时长内部一律按分钟存，输入框按当前单位显示（整小时才用小时）
@@ -145,7 +170,7 @@ function openTaskEditor(id, preset) {
         if (!estInp) return;
         estInp.value = estMin ? (estUnit === 'hour' ? estNum(estMin / 60) : String(estMin)) : '';
         estInp.step = estUnit === 'hour' ? '0.5' : '5';
-        estInp.placeholder = estUnit === 'hour' ? '1.5' : '45';
+        estInp.placeholder = '留空＝全天';
         Array.prototype.forEach.call(root.querySelectorAll('[data-estunit]'), function (b) {
           b.className = b.getAttribute('data-estunit') === estUnit ? 'on' : '';
         });
@@ -283,8 +308,6 @@ function openTaskEditor(id, preset) {
         spanChk.dispatchEvent(new Event('change', { bubbles: true }));
       });
       if (spanInp) spanInp.addEventListener('input', syncPlan);
-      var dateInp2 = root.querySelector('#edDate');
-      if (dateInp2) dateInp2.addEventListener('change', syncPlan);
       syncPlan();
       var addSubBtn = root.querySelector('#edSubAdd');
       if (addSubBtn) addSubBtn.addEventListener('click', function () {
@@ -360,7 +383,7 @@ function openTaskEditor(id, preset) {
           '<div class="field"><label>基准时间<span class="hint">第一个提醒从这个时间开始计算</span></label>' +
           '<input class="inp" type="datetime-local" id="edAnchor" value="' + esc(anchorVal) + '"></div>' +
           '<div style="font-size:11.5px;color:var(--text-3);line-height:1.6">已选 <b>' + state.offsets.length + '</b> 个提醒节点，' +
-          '总共跨 ' + ebSpan(state.offsets) + '。提醒会出现在顶部铃铛和「今天要处理」区域。</div>';
+          '总共跨 ' + ebSpan(state.offsets) + '。到点会发系统通知（常驻到手动关闭），同时进入顶部铃铛与「今天要处理」。</div>';
         Array.prototype.forEach.call(box.querySelectorAll('[data-eb]'), function (b) {
           b.addEventListener('click', function () {
             var off = parseInt(b.getAttribute('data-eb'), 10);
@@ -436,12 +459,18 @@ function openTaskEditor(id, preset) {
       });
       rebindTags();
       var tagInput = root.querySelector('#edTagInput');
-      if (tagInput) tagInput.addEventListener('keydown', function (e) {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-        var v = tagInput.value.trim().replace(/^#/, '');
-        if (v && tags.indexOf(v) === -1) { tags.push(v); rebindTags(); }
-        tagInput.value = '';
+      if (tagInput) mountTagInput(tagInput, {
+        onAdd: function (v) {
+          if (tags.indexOf(v) > -1) return false;
+          tags.push(v);
+          rebindTags();
+          return true;
+        },
+        onBackspace: function () {
+          if (!tags.length) return;
+          tags.pop();
+          rebindTags();
+        }
       });
       /* ---- 「选已有」浮层：清单单选、标签多选共用一套壳和样式 ---- */
       var listPickBtn = root.querySelector('#edListPick');
@@ -530,15 +559,12 @@ function openTaskEditor(id, preset) {
         pickEl.className = 'pick-menu ' + mode;
         document.body.appendChild(pickEl);
         paintPickMenu();
-        // 面板贴在按钮下面，底下放不下就翻到上面，左右别出屏
-        var mw = Math.max(r.width || 0, 190);
-        var mh = pickEl.offsetHeight || 0;
-        var left = Math.max(8, Math.min(r.left || 8, window.innerWidth - mw - 8));
-        var top = (r.bottom || 0) + 5;
-        if (top + mh > window.innerHeight - 8) top = Math.max(8, (r.top || 0) - mh - 5);
+        // 标签是多选，面板按内容收窄；清单是单选，跟输入框同宽
+        var mw = mode === 'multi'
+          ? Math.min(260, Math.max(r.width || 0, 180))
+          : Math.max(r.width || 0, 190);
         pickEl.style.width = mw + 'px';
-        pickEl.style.left = left + 'px';
-        pickEl.style.top = top + 'px';
+        floatPanel(pickEl, r, { minWidth: mw, gap: 5 });
         btn.className = 'inp pick-multi open';
         setTimeout(function () { document.addEventListener('mousedown', onPickDocDown, true); }, 0);
         if (pickBody) pickBody.addEventListener('scroll', closePickMenu, true);
@@ -563,6 +589,49 @@ function openTaskEditor(id, preset) {
           cacheLocal(); refreshAll(); apiDeleteTask(t.id); toast('已删除');
         }, true);
       });
+      // 用已有日程填充：只带结构（清单 / 标签 / 时长 / 子项 / 提醒），日期时间保持当前值
+      var tplBtn = root.querySelector('#edTpl');
+      if (tplBtn) tplBtn.addEventListener('click', function () {
+        openTaskTemplatePicker(function (src) {
+          root.querySelector('#edTitle').value = src.title || '';
+          root.querySelector('#edNote').value = src.note || '';
+          root.querySelector('#edList').value = src.list || '收集箱';
+          setEstMin(src.estimate || 0);
+          subsDraft = (src.subs || []).map(function (x) {
+            return { title: x.title, min: Number(x.min) || 0, days: Math.max(0, Number(x.days) || 0), done: false };
+          });
+          // 跨度也属于结构：模板占 5 天，新日程就从当前日期起占 5 天
+          if (Number(src.span) > 1) {
+            spanOn = true;
+            if (spanChk) spanChk.checked = true;
+            if (spanInp) spanInp.value = String(src.span);
+          } else {
+            spanOn = false;
+            if (spanChk) spanChk.checked = false;
+            if (spanInp) spanInp.value = '';
+          }
+          syncSpanUI();
+          renderSubs();
+          tags = (src.tags || []).slice();
+          rebindTags();
+          // 这些控件是「点一下改一个 state」的实现，直接点对应按钮复用同一套逻辑
+          function pick(sel, want) {
+            var el = root.querySelector(sel);
+            if (el) el.click();
+          }
+          if (src.prio) pick('[data-prio="' + src.prio + '"]');
+          if (src.important && !state.important) pick('[data-imp]');
+          if (src.urgent && !state.urgent) pick('[data-urg]');
+          if (src.repeat) pick('[data-repeat="' + src.repeat + '"]');
+          if (src.remindMode) pick('[data-rmode="' + src.remindMode + '"]');
+          if (src.remindCfg && src.remindCfg.offsets && src.remindCfg.offsets.length) {
+            state.offsets = src.remindCfg.offsets.slice();
+            state.onceOffset = src.remindCfg.offsets[0];
+            renderRemindBox();
+          }
+          toast('已套用「' + src.title + '」，日期时间保持不变');
+        });
+      });
       root.querySelector('#edSave').addEventListener('click', function (e) {
         var btn = e.currentTarget;
         var title = (root.querySelector('#edTitle').value || '').trim();
@@ -573,6 +642,7 @@ function openTaskEditor(id, preset) {
         var anchorEl = root.querySelector('#edAnchor');
         var anchor = anchorEl ? anchorEl.value : '';
         var cfg = null;
+        if (state.remindMode !== '不提醒' && !dateV) { toast('提醒需要先选开始日期'); return; }
         if (state.remindMode === '艾宾浩斯') {
           if (!state.offsets.length) { toast('至少选一个复习节点'); return; }
           cfg = { anchor: fromDtLocal(anchor || (dateV + 'T' + (timeV || '09:00'))), offsets: state.offsets.slice(), read: [] };
@@ -636,6 +706,69 @@ function openTaskEditor(id, preset) {
     }
   });
   return w;
+}
+/* ---------- 以已有日程为模板 ---------- */
+function openTaskTemplatePicker(onPick) {
+  var pool = S.tasks.filter(function (t) { return String(t.title || '').trim(); });
+  pool.sort(function (a, b) {
+    var ad = a.date || '', bd = b.date || '';
+    if (ad !== bd) return ad < bd ? 1 : -1;
+    return (Number(b.sort) || 0) - (Number(a.sort) || 0);
+  });
+
+  function metaOf(t) {
+    var m = [];
+    if (t.date) m.push(shortDate(parseYmd(t.date)) + (t.time ? ' ' + t.time : ' · 全天'));
+    if (t.estimate) m.push(durText(t.estimate));
+    if (t.list && t.list !== '收集箱') m.push(t.list);
+    (t.tags || []).slice(0, 2).forEach(function (g) { m.push('#' + g); });
+    return m.join(' · ');
+  }
+  function rowsHtml(kw) {
+    var list = pool.filter(function (t) {
+      if (!kw) return true;
+      var hay = (t.title + ' ' + (t.tags || []).join(' ') + ' ' + (t.list || '')).toLowerCase();
+      return hay.indexOf(kw) > -1;
+    }).slice(0, 40);
+    if (!list.length) {
+      return '<div class="tpl-empty">没有匹配的日程。<br>换个关键词，或先正常建一条再回来套用。</div>';
+    }
+    return list.map(function (t) {
+      return '<button type="button" class="tpl-row" data-tpl="' + esc(t.id) + '">' +
+        '<span class="tpl-t">' + esc(t.title) + '</span>' +
+        '<span class="tpl-m">' + esc(metaOf(t)) + '</span>' +
+        ((t.subs && t.subs.length) ? '<span class="tpl-n">' + t.subs.length + ' 个子项</span>' : '') +
+        '</button>';
+    }).join('');
+  }
+
+  openModal('<div class="modal">' +
+    '<div class="m-head"><h3>用已有日程填充</h3><button class="m-close">' + svgIcon('close') + '</button></div>' +
+    '<div class="m-body">' +
+    '<div class="hint" style="font-size:12px;color:var(--text-3);line-height:1.7">' +
+    '只带结构：清单、标签、优先级、预计时长、子项和提醒方式。日期与开始时间仍用当前填的。</div>' +
+    '<input class="inp" id="tplKw" placeholder="搜标题、标签或清单">' +
+    '<div class="tpl-list" id="tplList">' + rowsHtml('') + '</div>' +
+    '</div>' +
+    '<div class="m-foot"><div class="spacer"></div><button class="btn btn-sec" id="tplCancel">取消</button></div></div>', {
+    onMount: function (root) {
+      var listEl = root.querySelector('#tplList');
+      var kwEl = root.querySelector('#tplKw');
+      kwEl.addEventListener('input', function () {
+        listEl.innerHTML = rowsHtml(String(kwEl.value || '').trim().toLowerCase());
+      });
+      listEl.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-tpl]');
+        if (!b) return;
+        var src = findTask(b.getAttribute('data-tpl'));
+        if (!src) return;
+        closeModal();
+        if (onPick) onPick(src);
+      });
+      root.querySelector('#tplCancel').addEventListener('click', closeModal);
+      setTimeout(function () { try { kwEl.focus(); } catch (e) { } }, 120);
+    }
+  });
 }
 function quadName(imp, urg) {
   if (imp && urg) return '· 重要且紧急';
@@ -988,12 +1121,12 @@ function openReminderCenter() {
   upcoming.sort(function (a, b) { return a.r.at - b.r.at; });
   var bodyHtml = '';
   if (!pend.length && !upcoming.length) {
-    bodyHtml = '<div style="text-align:center;padding:22px 0;color:var(--text-3);font-size:12.5px">暂时没有待复习的提醒</div>';
+    bodyHtml = '<div style="text-align:center;padding:22px 0;color:var(--text-3);font-size:12.5px">暂时没有到点的提醒</div>';
   } else {
     if (pend.length) {
-      bodyHtml += '<div class="sec-head" style="margin-top:0"><h3 style="color:var(--red)">待复习 / 已到期</h3><span class="meta">' + pend.length + ' 条</span><span class="line"></span></div>';
+      bodyHtml += '<div class="sec-head" style="margin-top:0"><h3 style="color:var(--red)">已到点提醒</h3><span class="meta">' + pend.length + ' 条</span><span class="line"></span></div>';
       bodyHtml += pend.map(function (it) {
-        var stage = ebStageName(it.r.offset);
+        var stage = remindStageText(it.task, it.r.offset);
         return '<div style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;background:var(--red-soft);margin-bottom:5px">' +
           '<span style="font-size:10.5px;font-weight:700;color:var(--red);white-space:nowrap">' + esc(stage) + '</span>' +
           '<span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(it.task.title) + '</span>' +
@@ -1006,7 +1139,7 @@ function openReminderCenter() {
       bodyHtml += upcoming.slice(0, 12).map(function (it) {
         var d = new Date(it.r.at);
         return '<div style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;background:var(--purple-soft);margin-bottom:5px">' +
-          '<span style="font-size:10.5px;font-weight:700;color:var(--purple);white-space:nowrap">' + esc(ebStageName(it.r.offset)) + '</span>' +
+          '<span style="font-size:10.5px;font-weight:700;color:var(--purple);white-space:nowrap">' + esc(remindStageText(it.task, it.r.offset)) + '</span>' +
           '<span style="flex:1;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(it.task.title) + '</span>' +
           '<span style="font-size:11px;color:var(--text-3);white-space:nowrap">' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + '</span></div>';
       }).join('');
@@ -1041,6 +1174,13 @@ function ebStageName(off) {
   if (off < 60) return off + ' 分钟';
   if (off < 1440) return Math.round(off / 60) + ' 小时';
   return Math.round(off / 1440) + ' 天';
+}
+/* 提醒中心里的节点名：艾宾浩斯按复习阶段，单次提醒按提前量 */
+function remindStageText(t, off) {
+  if (t && t.remindMode === '艾宾浩斯') return ebStageName(off);
+  if (off === 0) return '准时';
+  if (off < 0) return '提前 ' + ebStageName(-off);
+  return ebStageName(off);
 }
 /* ---------- 习惯编辑器 ---------- */
 var HABIT_ICONS = ['sun', 'book', 'fire', 'heart', 'coffee', 'target', 'moon', 'star'];

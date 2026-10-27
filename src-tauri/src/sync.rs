@@ -1,8 +1,7 @@
 //! Minimal WebDAV client + record-level merge.
 
-use std::time::Duration;
-
 use crate::config::WebDav;
+use crate::net;
 use crate::store::Store;
 
 pub struct SyncOutcome {
@@ -12,10 +11,7 @@ pub struct SyncOutcome {
 }
 
 fn agent() -> ureq::Agent {
-    ureq::AgentBuilder::new()
-        .timeout_connect(Duration::from_secs(10))
-        .timeout(Duration::from_secs(40))
-        .build()
+    net::agent(40)
 }
 
 fn auth_header(user: &str, pass: &str) -> String {
@@ -42,7 +38,7 @@ pub fn test(cfg: &WebDav) -> Result<(), String> {
         Ok(_) => Ok(()),
         Err(ureq::Error::Status(404, _)) => Ok(()), // 文件不存在也算连通
         Err(ureq::Error::Status(code, _)) => Err(format!("服务器返回 {code}，请检查地址或账号")),
-        Err(e) => Err(format!("无法连接：{e}")),
+        Err(e) => Err(format!("无法连接：{}", net::describe(&e))),
     }
 }
 
@@ -64,7 +60,7 @@ fn download(cfg: &WebDav) -> Result<Option<Store>, String> {
         }
         Err(ureq::Error::Status(404, _)) => Ok(None),
         Err(ureq::Error::Status(code, _)) => Err(format!("下载失败，服务器返回 {code}")),
-        Err(e) => Err(format!("下载失败：{e}")),
+        Err(e) => Err(format!("下载失败：{}", net::describe(&e))),
     }
 }
 
@@ -79,7 +75,7 @@ fn upload(cfg: &WebDav, store: &Store) -> Result<(), String> {
     {
         Ok(_) => Ok(()),
         Err(ureq::Error::Status(code, _)) => Err(format!("上传失败，服务器返回 {code}")),
-        Err(e) => Err(format!("上传失败：{e}")),
+        Err(e) => Err(format!("上传失败：{}", net::describe(&e))),
     }
 }
 
