@@ -1836,7 +1836,7 @@ html[data-theme="ink"] .clock{
   --clk-sec-off:#262626;
   border-color:#2C2C2C;
 }
-/* 一位数字 = 一个格子；数字字形宽 .4727em，右边 .107em 是管与管的缝 */
+/* 一位数字 = 一个格子；数字字形宽 .4727em，右边 .075em 是管与管的缝 */
 .clock .tm,
 .clock .sec{
   display:inline-flex;align-items:center;
@@ -1847,14 +1847,14 @@ html[data-theme="ink"] .clock{
 .clock .sec{font-size:22px}
 /* 亮段与暗段叠在同一格。数字居中，唯独 1 靠右——
    这样 1 正好落在暗段 8 的右边竖段上，和真数码管一致 */
-.clock .dg{display:grid;width:.4727em;margin-right:.107em}
+.clock .dg{display:grid;width:.4727em;margin-right:.075em}
 .clock .dg:last-child{margin-right:0}
 .clock .dg > span{grid-area:1/1;text-align:center;white-space:nowrap}
 .clock .dg .on{position:relative;z-index:2;color:var(--clk-on)}
 .clock .dg .on.one{text-align:right}
 .clock .dg .off{position:relative;z-index:1;color:var(--clk-off)}
 /* 冒号：两个实心方块，槽宽就等于点宽 + 一个管缝，左右间距才和数字之间一致 */
-.clock .ck-c{position:relative;display:block;width:.073em;margin-right:.107em;height:1em;flex:0 0 auto;color:var(--clk-on)}
+.clock .ck-c{position:relative;display:block;width:.073em;margin-right:.075em;height:1em;flex:0 0 auto;color:var(--clk-on)}
 .clock .ck-c::before,
 .clock .ck-c::after{
   content:'';position:absolute;left:50%;width:.073em;height:.073em;
