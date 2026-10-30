@@ -1793,6 +1793,12 @@ html[data-theme="dusk"] .tip-layer,html[data-theme="ink"] .tip-layer{
   font-size:9.5px;font-weight:700;color:var(--red);background:var(--red-soft);
   padding:1px 5px;border-radius:4px;flex:0 0 auto;margin-left:6px;
 }
+/* 勾选子项是就地更新、不重绘列表，标签会留到下次重绘；
+   完成后一律压成灰色，别再用红底抢注意力 */
+.sub-row.done .sub-late,
+.sub-item.done .sub-late{
+  color:var(--text-3);background:var(--panel-2);font-weight:600;
+}
 
 /* 默认禁止拖动选中：空白处按住左键滑动不再拉出一片蓝 */
 body{user-select:none;-webkit-user-select:none}
