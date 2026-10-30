@@ -433,6 +433,7 @@ function openTaskEditor(id, preset) {
         repeat: t.repeat || '不重复',
         prio: t.prio, important: t.important, urgent: t.urgent,
         remindMode: t.remindMode || '不提醒', offsets: ebOffsets,
+        anchor: anchorVal,
         onceOffset: (t.remindCfg && t.remindCfg.offsets && t.remindCfg.offsets.length) ? t.remindCfg.offsets[0] : -10,
         snooze: !!(t.remindCfg && t.remindCfg.snooze),
         endRemind: !!(t.remindCfg && t.remindCfg.end)
@@ -478,7 +479,10 @@ function openTaskEditor(id, preset) {
           ? '<div class="field"><label>基准时间<span class="hint">跟随上面的开始日期与时间</span></label>' +
             '<div class="anchor-ro" id="edAnchorRo">' + esc(dateField.get()) + ' ' + esc(timeField.get() || '09:00') + '</div></div>'
           : '<div class="field"><label>基准时间<span class="hint">上面没填日期，这里手动指定</span></label>' +
-            '<input class="inp" type="datetime-local" id="edAnchor" value="' + esc(anchorVal) + '"></div>';
+            '<div class="row2">' +
+            '<button type="button" class="inp" id="edAnchorDate"></button>' +
+            '<button type="button" class="inp" id="edAnchorTime"></button>' +
+            '</div></div>';
         box.innerHTML = '<div class="field"><label>复习时间点<span class="hint">按艾宾浩斯遗忘曲线，点选要提醒的节点</span></label>' +
           '<div class="chip-pick">' +
           EB_OFFSETS.map(function (off, i) {
@@ -487,6 +491,24 @@ function openTaskEditor(id, preset) {
           anchorBlock +
           '<div style="font-size:11.5px;color:var(--text-3);line-height:1.6">已选 <b>' + state.offsets.length + '</b> 个提醒节点，' +
           '总共跨 ' + ebSpan(state.offsets) + '。到点会发系统通知（常驻到手动关闭），同时进入顶部铃铛与「今天要处理」。</div>';
+        // 手填基准时间：和上面「开始日期 / 开始时间」用同一套自绘面板
+        var adEl = box.querySelector('#edAnchorDate');
+        if (adEl) {
+          var aParts = (state.anchor || '').split('T');
+          var aDate = aParts[0] || '';
+          var aTime = (aParts[1] || '').slice(0, 5);
+          var syncAnchor = function () {
+            state.anchor = aDate ? (aDate + 'T' + (aTime || '09:00')) : '';
+          };
+          mountDateField(adEl, {
+            value: aDate, placeholder: '基准日期',
+            onChange: function (v) { aDate = v; syncAnchor(); }
+          });
+          mountTimeField(box.querySelector('#edAnchorTime'), {
+            value: aTime, emptyText: '09:00',
+            onChange: function (v) { aTime = v || ''; syncAnchor(); }
+          });
+        }
         Array.prototype.forEach.call(box.querySelectorAll('[data-eb]'), function (b) {
           b.addEventListener('click', function () {
             var off = parseInt(b.getAttribute('data-eb'), 10);
@@ -753,10 +775,12 @@ function openTaskEditor(id, preset) {
         var dateV = root.querySelector('#edDate').value;
         var timeV = root.querySelector('#edTime').value;
         var estV = readEst();
-        var anchorEl = root.querySelector('#edAnchor');
-        var anchor = anchorEl ? anchorEl.value : '';
+        var anchor = state.anchor || '';
         var cfg = null;
-        if (state.remindMode !== '不提醒' && !dateV) { toast('提醒需要先选开始日期'); return; }
+        // 艾宾浩斯可以只填基准时间，不必给日程本身排日期
+        if (state.remindMode !== '不提醒' && state.remindMode !== '艾宾浩斯' && !dateV) {
+          toast('提醒需要先选开始日期'); return;
+        }
         if (state.remindMode === '艾宾浩斯') {
           if (!state.offsets.length) { toast('至少选一个复习节点'); return; }
           var base = dateV ? (dateV + 'T' + (timeV || '09:00')) : anchor;

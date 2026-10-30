@@ -73,19 +73,25 @@ async function shot(cdp, name) {
   return file;
 }
 
+// v2.2.0 口径：结束时刻看「计划结束 / 开始+用时 / 全天 24:00」三者
 const EXPECT = {
-  t01: "ongoing",
-  t02: "overdue",
-  t03: "overdue",
-  t04: "remindSoon",
-  t05: "ongoing",
-  t06: "overdue",
-  t07: "ongoing",
-  t08: "ongoing",
-  t09: "upcoming",
-  t10: "planned",
+  t01: "ongoing",     // 开始+时长，已过 20 分
+  t02: "overdue",     // 开始+时长，已过 90 分
+  t03: "overdue",     // 定时无时长，到点即逾期
+  t04: "remindSoon",  // 未开始，提前提醒已到点，无时长
+  t05: "ongoing",     // 全天
+  t06: "overdue",     // 全天，昨天
+  t07: "ongoing",     // 计划到结束日 24:00
+  t08: "overdue",     // 计划 + 结束时间已过
+  t09: "upcoming",    // 未开始，有时长，提前提醒已到点
+  t10: "planned",     // 明天
   t11: "done",
-  t12: "ongoing",
+  t12: "ongoing",     // 全天 + 时长仍是全天
+  t13: "overdue",     // 艾宾浩斯，基准已过
+  t14: "ongoing",     // 定时 1 分钟前开始，用时 45 分钟
+  t15: "ongoing",     // 计划与用时取更晚（计划 2 小时后）
+  t17: "overdue",     // 计划结束日是昨天 24:00
+  t18: "planned",     // 计划跨天，还没开始
 };
 
 async function main() {
@@ -169,7 +175,7 @@ async function main() {
   // 时间面板
   await evaluate(cdp, "document.querySelector('#edTime').click()");
   await sleep(350);
-  report.timeOpen = await evaluate(cdp, "document.querySelectorAll('.float-panel .hm-cell').length");
+  report.timeOpen = await evaluate(cdp, "document.querySelectorAll('.float-panel .tm-cell').length");
   await shot(cdp, "time-picker.png");
   await evaluate(cdp, "document.body.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}))");
   await sleep(200);

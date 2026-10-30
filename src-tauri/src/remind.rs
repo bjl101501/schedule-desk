@@ -341,7 +341,7 @@ pub fn due_notifications(store: &Store, dir: &Path) -> Vec<Due> {
                 let body = if now >= win.end {
                     format!("已到结束时间（{}），还没完成吗", hm_of(win.end))
                 } else {
-                    format!("还有 {} 结束（{}）", coarse_text(win.end - now), hm_of(win.end))
+                    format!("还有 {}结束（{}）", coarse_text(win.end - now), hm_of(win.end))
                 };
                 if fresh {
                     out.push(Due { title: title.clone(), body });
