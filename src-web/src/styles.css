@@ -1843,8 +1843,8 @@ html[data-theme="ink"] .clock{
   font-family:'Digital-7',ui-monospace,monospace;
   font-weight:400;letter-spacing:0;line-height:1;font-variant-numeric:normal;
 }
-.clock .tm{font-size:44px}
-.clock .sec{font-size:22px}
+.clock .tm{font-size:40px}
+.clock .sec{font-size:20px}
 /* 亮段与暗段叠在同一格。数字居中，唯独 1 靠右——
    这样 1 正好落在暗段 8 的右边竖段上，和真数码管一致 */
 .clock .dg{display:grid;width:.4727em;margin-right:.075em}
