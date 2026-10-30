@@ -41,22 +41,25 @@ function openTaskEditor(id, preset) {
     '<button class="m-close">' + svgIcon('close') + '</button></div>' +
     '<div class="m-body">' +
     '<div class="field"><input class="inp inp-title" id="edTitle" placeholder="要做什么？" value="' + esc(t.title) + '" ' + (isNew ? 'autofocus' : '') + '></div>' +
-    '<div class="field"><textarea class="inp" id="edNote" placeholder="补充说明（可选）">' + esc(t.note) + '</textarea></div>' +
+    '<div class="field"><textarea class="inp" id="edNote" rows="1" placeholder="补充说明（可选）">' + esc(t.note) + '</textarea></div>' +
 
     // ---------- 1 时间安排：开始日期 / 开始时间 / 预计用时 一行，计划单独一行 ----------
     '<section class="ed-sec">' +
     '<div class="ed-sec-t">时间安排</div>' +
-    '<div class="row3">' +
+    '<div class="row2">' +
     '<div class="field"><label>开始日期' + tipMark('日程从哪一天开始。跨多天用下面的「计划」。') + '</label>' +
     '<button type="button" class="inp pick-field" id="edDate"></button></div>' +
     '<div class="field"><label>开始时间' + tipMark('留空就是全天日程：当天一直显示「进行中」，过了这一天才会逾期。') + '</label>' +
     '<button type="button" class="inp pick-field" id="edTime"></button></div>' +
-    '<div class="field"><label>预计用时' + tipMark('填了时长：超过「开始 + 时长」还没完成才算逾期；留空按全天处理。') + '</label>' +
-    '<div class="est-inline">' +
-    '<input class="inp" type="number" id="edEst" min="0" step="5" value="' + (t.estimate || '') + '" placeholder="留空">' +
-    '<button type="button" class="est-unit" id="edEstUnit">分钟</button>' +
-    '</div></div>' +
     '</div>' +
+    '<div class="field"><label>预计用时' + tipMark('填了时长：超过「开始 + 时长」还没完成才算逾期；留空按全天处理。') + '</label>' +
+    '<div class="est-line">' +
+    '<input class="inp" type="number" id="edEst" min="0" step="5" value="' + (t.estimate || '') + '" placeholder="留空">' +
+    '<div class="seg est-unit" id="edEstUnit">' +
+    '<button type="button" data-estunit="min">分钟</button>' +
+    '<button type="button" data-estunit="hour">小时</button>' +
+    '</div>' +
+    '</div></div>' +
 
     '<div class="plan-block">' +
     '<div class="plan-head">' +
@@ -109,11 +112,11 @@ function openTaskEditor(id, preset) {
     '<section class="ed-sec">' +
     '<div class="ed-sec-t">清单与标签</div>' +
     '<div class="field"><label>清单' + tipMark('给日程归类。左侧清单栏可以按清单查看。') + '</label>' +
+    '<div class="pick-row list-row">' +
     '<input class="inp" id="edList" value="' + esc(t.list) + '" placeholder="收集箱">' +
-    '<div class="pick-row">' +
-    '<button type="button" class="inp pick-multi" id="edListPick">' +
+    '<button type="button" class="inp pick-multi pick-compact" id="edListPick">' +
     '<span>选已有</span><i class="pm-c">' + svgIcon('chevD') + '</i></button>' +
-    '<button class="chip-p" data-picklist="__new" style="border-style:dashed">＋ 新建清单</button>' +
+    '<button class="chip-p" data-picklist="__new" style="border-style:dashed">＋ 新建</button>' +
     '</div></div>' +
     '<div class="field"><label>标签<span class="hint">空格或回车分隔</span>' + tipMark('支持空格、回车、逗号分隔，可以一次粘贴多个标签。') + '</label>' +
     '<div class="chip-pick" id="edTagsWrap">' + tagsHtml() + '</div>' +
@@ -152,7 +155,6 @@ function openTaskEditor(id, preset) {
       var subsBox = root.querySelector('#edSubs');
       var subsSum = root.querySelector('#edSubSum');
       var estInp = root.querySelector('#edEst');
-      var estUnitBtn = root.querySelector('#edEstUnit');
       var planChk = root.querySelector('#edPlanOn');
       var planWrap = root.querySelector('#edPlanWrap');
       // 日期 / 时间换成自研控件：原生弹层跟主题完全不搭，清空也麻烦
@@ -197,7 +199,9 @@ function openTaskEditor(id, preset) {
         estInp.value = estMin ? (estUnit === 'hour' ? estNum(estMin / 60) : String(estMin)) : '';
         estInp.step = estUnit === 'hour' ? '0.5' : '5';
         estInp.placeholder = '留空';
-        if (estUnitBtn) estUnitBtn.textContent = estUnit === 'hour' ? '小时' : '分钟';
+        Array.prototype.forEach.call(root.querySelectorAll('[data-estunit]'), function (b) {
+          b.className = b.getAttribute('data-estunit') === estUnit ? 'on' : '';
+        });
       }
       function readEst() {
         var v = parseFloat(estInp ? estInp.value : '');
@@ -378,6 +382,23 @@ function openTaskEditor(id, preset) {
         syncSubSum();
       });
       if (estInp) estInp.addEventListener('input', syncSubSum);
+      Array.prototype.forEach.call(root.querySelectorAll('[data-estunit]'), function (b) {
+        b.addEventListener('click', function () {
+          readEst();
+          estUnit = b.getAttribute('data-estunit');
+          paintEst();
+          syncSubSum();
+        });
+      });
+      // 补充说明随内容长高，避免固定 3 行留白
+      var noteInp = root.querySelector('#edNote');
+      function growNote() {
+        if (!noteInp) return;
+        noteInp.style.height = 'auto';
+        noteInp.style.height = Math.max(34, noteInp.scrollHeight) + 'px';
+      }
+      if (noteInp) noteInp.addEventListener('input', growNote);
+      growNote();
       // 分钟 / 小时单选：换单位时把已填的数换算过去，底层一直是分钟
       Array.prototype.forEach.call(root.querySelectorAll('[data-estunit]'), function (b) {
         b.addEventListener('click', function () {

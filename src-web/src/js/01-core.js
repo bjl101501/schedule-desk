@@ -117,6 +117,14 @@ function stampTime(v) {
   var m = String(v || '').match(/^\d{4}-\d{2}-\d{2}[ T](\d{2}:\d{2})/);
   return m ? m[1] : '';
 }
+/* 完成时间 → 10/30 15:30；只有日期的旧数据显示 10/30 */
+function doneText(v) {
+  var d = stampDay(v), hm = stampTime(v);
+  if (!d) return '';
+  var p = parseYmd(d);
+  return (p ? (p.getMonth() + 1) + '/' + p.getDate() : d) + (hm ? ' ' + hm : '');
+}
+
 /* 只取最大单位并向下取整：2 天 / 3 小时 / 45 分钟。用于逾期与剩余，避免「1 小时 20 分」这种长串 */
 function coarseSpan(ms) {
   var min = Math.max(1, Math.floor(Math.max(0, ms) / 60000));

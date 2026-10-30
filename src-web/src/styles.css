@@ -1079,14 +1079,10 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;charset=utf-
 .plan-block{display:flex;flex-direction:column;gap:9px}
 .plan-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .plan-dates.is-off{display:none}
-/* 预计用时：输入框 + 单位切换，塞进三列里也能点得着 */
-.est-inline{display:flex;align-items:center;gap:6px}
-.est-inline .inp{flex:1 1 auto;min-width:0}
-.est-unit{
-  flex:0 0 auto;height:40px;padding:0 8px;border-radius:9px;border:1px solid var(--line);
-  background:var(--panel-2);font-size:11.5px;color:var(--text-2);white-space:nowrap;transition:.13s;
-}
-.est-unit:hover{border-color:var(--brand-2);color:var(--brand)}
+/* 预计用时：输入框 + 分钟/小时两段，单独一行 */
+.est-line{display:flex;align-items:center;gap:8px}
+.est-line .inp{flex:1 1 auto;min-width:0}
+.est-unit{flex:0 0 auto}
 .check-line.is-off{opacity:.5}
 .check-line.is-off input{cursor:not-allowed}
 /* 清单 / 标签：输入框 + 「选已有」下拉 + 新建，两处 format 一致 */
@@ -1835,3 +1831,22 @@ input,textarea,select,[contenteditable="true"],
   .modal .m-head{padding:13px 14px}
   .qhead{padding:12px 14px 8px}
 }
+
+/* ---------- R5-2：编辑器控件统一 34px，密度对齐「选已有」 ---------- */
+.ed-sec .inp,.ed-sec .pick-field{height:34px;font-size:13px;border-radius:8px}
+.ed-sec .pick-row .pick-multi,.ed-sec .pick-row .chip-p{height:34px;font-size:12px}
+.ed-sec .est-unit button{height:34px;padding:0 11px;font-size:12px}
+/* 清单：输入 + 选已有 + 新建 挤在一行，输入框占剩余宽度 */
+.list-row{gap:6px;margin-top:0}
+.list-row #edList{flex:1 1 auto;min-width:0}
+.list-row .pick-compact{min-width:0;white-space:nowrap}
+.list-row .chip-p{flex:0 0 auto;padding:0 8px;white-space:nowrap}
+/* 补充说明：高度随内容长，默认一行 */
+#edNote{
+  min-height:34px;height:auto;padding:7px 9px;line-height:1.55;resize:none;overflow:hidden;
+}
+/* 今天面板：子项完成度紧跟标题，时间靠右 */
+.today-l1 .tt{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.today-l1 .tdue{margin-left:auto}
+/* 已完成：完成时间 */
+.due-done{color:var(--green)}

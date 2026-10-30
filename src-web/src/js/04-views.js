@@ -198,7 +198,7 @@ function renderTodayPanel() {
     if (kind === 'over') {
       var w = taskWindow(t);
       var ms = w ? Date.now() - w.end.getTime() : 0;
-      return { text: '逾期 ' + coarseSpan(ms), cls: 'over' };
+      return { text: '超时 ' + coarseSpan(ms), cls: 'over' };
     }
     if (kind === 'live') {
       var w2 = taskWindow(t);
@@ -217,15 +217,21 @@ function renderTodayPanel() {
   /* 计划任务：今天落在某个子项区间内且未完成，就把子项列出来 */
   function todaySubs(t) {
     if (!t.plan || !t.subs || !t.subs.length) return '';
-    var segs = subPlan(t).filter(function (g) {
+    var plan = subPlan(t);
+    var segs = plan.filter(function (g) {
       if (g.done || !g.start || !g.end) return false;
       return dayDiff(g.start, t0) >= 0 && dayDiff(t0, g.end) >= 0;
     });
+    // 子项都没填「天」时没有排期，就退回到「未完成的子项」，否则面板里看不到任何子项
+    var anyScheduled = plan.some(function (g) { return !!g.start; });
+    if (!segs.length && !anyScheduled) {
+      segs = plan.filter(function (g) { return !g.done; }).slice(0, 2);
+    }
     if (!segs.length) return '';
     return '<div class="today-subs">' + segs.slice(0, 3).map(function (g) {
       return '<button class="today-sub" data-subdone="' + esc(t.id) + '|' + g.i + '">' +
         '<i class="sub-dot"></i><span>' + esc(g.title) + '</span>' +
-        '<em>' + (g.days > 1 ? g.days + ' 天' : '今天') + '</em></button>';
+        '<em>' + (g.start ? (g.days > 1 ? g.days + ' 天' : '今天') : '未排期') + '</em></button>';
     }).join('') + '</div>';
   }
 
@@ -307,6 +313,7 @@ function taskRowHtml(t) {
     return '<span class="tag-chip ' + tagColor(g) + '">#' + esc(g) + '</span>';
   }).join('');
   var est = t.estimate ? '<span class="est-badge">' + durText(t.estimate) + '</span>' : '';
+  var doneM = (t.done && t.doneAt) ? '<span class="m due-done">' + svgIcon('check') + '完成于 ' + esc(doneText(t.doneAt)) + '</span>' : '';
   return '<div class="' + cls + (S.detailId === t.id ? ' active' : '') + '" data-tid="' + esc(t.id) + '">' +
     (t.prio ? '<span class="prio-bar ' + t.prio.toLowerCase() + '"></span>' : '') +
     '<div class="chk" data-done="' + esc(t.id) + '">' + svgIcon('check') + '</div>' +
@@ -315,7 +322,7 @@ function taskRowHtml(t) {
     subCountHtml(t) + '</div>' +
     subRowsHtml(t, 8) +
     (t.note ? '<div class="task-note">' + esc(t.note) + '</div>' : '') +
-    '<div class="task-meta">' + due + stateChip +
+    '<div class="task-meta">' + due + stateChip + doneM +
     (repeatLabel(t) ? '<span class="m due-repeat">' + svgIcon('repeat') + esc(repeatLabel(t)) + '</span>' : '') + rm + tags +
     (t.list && t.list !== '收集箱' ? '<span class="m">' + svgIcon('inbox') + esc(t.list) + '</span>' : '') +
     '</div></div>' +
@@ -341,6 +348,7 @@ function renderCardBody(rows) {
       (t.estimate ? '<span class="est-badge">' + durText(t.estimate) + '</span>' : '') +
       (t.time ? '<span class="tcard-time">' + svgIcon('clock') + timeRangeText(t) + '</span>' : '') +
       (t.date ? '<span class="tcard-date ' + dcls + '">' + svgIcon('calendar') + shortDate(parseYmd(t.date)) + '</span>' : '') +
+      ((t.done && t.doneAt) ? '<span class="tcard-date">' + svgIcon('check') + '完成于 ' + esc(doneText(t.doneAt)) + '</span>' : '') +
       '</div></div>';
   }).join('') + '</div>' +
     (rows.length > part.length
