@@ -217,8 +217,10 @@ a{color:inherit;text-decoration:none}
 .today-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px}
 .today-l1{display:flex;align-items:center;gap:6px;min-width:0}
 .today-l1 .tt{
-  flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
+/* 标题按内容宽度，完成度紧跟在它后面；行尾状态靠右 */
+.today-l1 .tdue{margin-left:auto}
 .today-subchip{
   flex:0 0 auto;font-size:10px;font-weight:700;color:var(--text-3);background:var(--line-2);
   padding:1px 5px;border-radius:5px;font-variant-numeric:tabular-nums;
