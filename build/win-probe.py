@@ -45,6 +45,21 @@ def main():
             print(f"pid={w['pid']} visible={w['visible']} iconic={w['iconic']} hwnd={w['hwnd']} {w['title']}")
         if not windows():
             print("NO_WINDOW")
+    elif cmd == "resize":
+        # 用法：resize <pid> <宽> <高> —— 用于验证窄窗口/移动端布局
+        pid = int(sys.argv[2]); w = int(sys.argv[3]); h = int(sys.argv[4])
+        hits = [x for x in windows() if x["pid"] == pid and x["visible"]]
+        if not hits:
+            print("NO_WINDOW")
+            return 1
+        for x in hits:
+            user32.MoveWindow(x["hwnd"], 30, 30, w, h, True)
+        print(f"resized {len(hits)} window(s) to {w}x{h}")
+    elif cmd == "size":
+        for x in windows():
+            r = wt.RECT()
+            user32.GetWindowRect(x["hwnd"], ctypes.byref(r))
+            print(f"{r.right - r.left}x{r.bottom - r.top} at ({r.left},{r.top}) pid={x['pid']}")
     elif cmd == "close":
         pid = int(sys.argv[2])
         hits = [w for w in windows() if w["pid"] == pid]

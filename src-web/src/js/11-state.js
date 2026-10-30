@@ -1,11 +1,12 @@
 /* ---------- 11-state.js · 统一状态机 + 唯一调度器 ---------- */
 /*
-   以前「逾期」判定散在列表、卡片、看板、统计、详情、提醒中心六处，口径只看日期，
-   于是「有预计时长的日程一创建就红」。现在所有展示都读 taskState()：
-     有日期 + 时间 + 预计时长 → 开始前=未开始/即将开始，进行中=正在进行，超时长=已逾期
-     有日期 + 时间，无预计   → 到点未完成即已逾期
-     有日期、无时间（全天）  → 当天=正在进行，过了结束日=已逾期；预计时长不参与
-     跨天任务               → 结束日之后才算逾期（子项各自判）
+   时间窗口只有一处定义，所有展示都读 taskState()：
+     开始 = 日期 + 时间（时间空 = 全天，从 00:00 起）
+     结束 = 计划？(结束日期 + 结束时间，时间空 = 结束日 24:00)
+                    ：定时 + 预计时长？开始 + 时长
+                    ：定时无时长？开始（到点即逾期）
+                    ：全天无计划？当天 24:00
+     计划与预计时长都有时，取更晚的那个作为结束点。
 */
 
 function nowMs(v) {
@@ -14,60 +15,57 @@ function nowMs(v) {
   return Date.now();
 }
 
+/* 计划的结束时刻；返回 null 表示没有计划。
+   hasEnd=false 表示只到「结束日 24:00」，没有明确时刻（结束提醒需要对它置灰）。 */
+function planEnd(t) {
+  if (!t || !t.plan || !t.endDate) return null;
+  var d = parseYmd(t.endDate);
+  if (!d) return null;
+  var hm = parseHM(t.endTime);
+  if (hm === null) return { ms: addDays(d, 1).getTime(), hasEnd: false };
+  return { ms: d.getTime() + hm * 60000, hasEnd: true };
+}
+
 function taskWindow(t) {
   if (!t || !t.date) return null;
   var d = parseYmd(t.date);
   if (!d) return null;
-  var span = Math.max(1, Number(t.span) || 1);
   var dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
   var est = Math.max(0, Number(t.estimate) || 0);
-  if (!t.time) {
-    // 全天日程：跨天到结束日 24:00
-    return {
-      start: dayStart,
-      end: addDays(dayStart, span),
-      allDay: true,
-      span: span,
-      hasEstimate: est > 0
-    };
+  var allDay = !t.time;
+  var span = taskSpan(t);
+  var pe = planEnd(t);
+  var start, end, hasEnd = false;
+
+  if (allDay) {
+    start = dayStart;
+    if (pe) { end = new Date(pe.ms); hasEnd = !!pe.hasEnd; }
+    else { end = addDays(dayStart, 1); }
+  } else {
+    var hm = parseHM(t.time);
+    if (hm === null) hm = 0;
+    start = new Date(dayStart.getTime() + hm * 60000);
+    var byEst = est > 0 ? start.getTime() + est * 60000 : start.getTime();
+    if (pe && pe.ms > byEst) { end = new Date(pe.ms); hasEnd = !!pe.hasEnd; }
+    else { end = new Date(byEst); hasEnd = est > 0; }
   }
-  var hm = parseHM(t.time);
-  if (hm === null) hm = 0;
-  var start = new Date(dayStart.getTime() + hm * 60000);
-  var end = new Date(start.getTime() + est * 60000);
-  if (span > 1) {
-    var spanEnd = addDays(dayStart, span);
-    if (spanEnd.getTime() > end.getTime()) end = spanEnd;
-  }
+
   return {
     start: start,
     end: end,
-    allDay: false,
+    allDay: allDay,
     span: span,
-    hasEstimate: est > 0
+    hasEstimate: est > 0,
+    hasEnd: hasEnd
   };
 }
 
 function spanText(ms) {
-  var min = Math.round(Math.max(0, ms) / 60000);
-  if (min < 60) return min + ' 分钟';
-  if (min < 1440) {
-    var h = Math.floor(min / 60), m = min % 60;
-    return m ? h + ' 小时 ' + m + ' 分' : h + ' 小时';
-  }
-  return Math.floor(min / 1440) + ' 天';
+  return coarseSpan(ms);
 }
-/* 剩余时间：超过一天的用「天 + 小时」，避免出现「剩余 51 小时 20 分」这种读起来费劲的文案 */
+/* 剩余时间：与逾期同一套口径，只取最大单位 */
 function leftText(min) {
-  if (min >= 1440) {
-    var d = Math.floor(min / 1440), h = Math.round((min % 1440) / 60);
-    return d + ' 天' + (h ? ' ' + h + ' 小时' : '');
-  }
-  if (min >= 60) {
-    var hh = Math.floor(min / 60), mm = min % 60;
-    return hh + ' 小时' + (mm ? ' ' + mm + ' 分' : '');
-  }
-  return min + ' 分钟';
+  return coarseSpan(min * 60000);
 }
 
 function taskState(t, at) {
@@ -92,9 +90,9 @@ function taskState(t, at) {
     if (w.allDay) return { key: 'ongoing', label: '全天 · 进行中', tone: 'brand' };
     if (w.end.getTime() > w.start.getTime()) {
       var left = Math.max(1, Math.round((w.end.getTime() - now) / 60000));
-      return { key: 'ongoing', label: '正在进行 · 剩余 ' + leftText(left), tone: 'brand' };
+      return { key: 'ongoing', label: '进行中 · 剩余 ' + leftText(left), tone: 'brand' };
     }
-    // 没有预计时长：到点即逾期，交给下面
+    // 没有预计时长也没有计划：到点即逾期，交给下面
   }
 
   // 全天任务按天算：昨天的事今天就是「已逾期 1 天」，不用小时去吓人

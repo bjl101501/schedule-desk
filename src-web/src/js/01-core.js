@@ -103,6 +103,38 @@ function hmStr(min) {
   min = Math.max(0, Math.min(24 * 60, Math.round(min)));
   return pad2(Math.floor(min / 60)) + ':' + pad2(min % 60);
 }
+/* 完成时刻：精确到分钟，存 "YYYY-MM-DD HH:mm" */
+function stampNow(d) {
+  d = d || new Date();
+  return ymd(d) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+}
+/* 完成记录 → 日期 / 时刻；旧数据只有日期时 stampTime 返回空 */
+function stampDay(v) {
+  var m = String(v || '').match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : '';
+}
+function stampTime(v) {
+  var m = String(v || '').match(/^\d{4}-\d{2}-\d{2}[ T](\d{2}:\d{2})/);
+  return m ? m[1] : '';
+}
+/* 只取最大单位并向下取整：2 天 / 3 小时 / 45 分钟。用于逾期与剩余，避免「1 小时 20 分」这种长串 */
+function coarseSpan(ms) {
+  var min = Math.max(1, Math.floor(Math.max(0, ms) / 60000));
+  if (min >= 1440) return Math.floor(min / 1440) + ' 天';
+  if (min >= 60) return Math.floor(min / 60) + ' 小时';
+  return min + ' 分钟';
+}
+/* 同年只写月/日；跨年才补年份 */
+function rangeShort(a, b) {
+  if (!a || !b) return '';
+  var s = (a.getMonth() + 1) + '/' + a.getDate();
+  var e = (b.getMonth() + 1) + '/' + b.getDate();
+  if (a.getFullYear() !== b.getFullYear()) {
+    return a.getFullYear() + '/' + s + ' – ' + b.getFullYear() + '/' + e;
+  }
+  return s + ' – ' + e;
+}
+
 function durText(min) {
   min = Math.round(min || 0);
   if (min < 60) return min + ' 分钟';

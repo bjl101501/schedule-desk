@@ -576,6 +576,20 @@ function openShortcuts() {
     '<div class="hint" style="margin-top:6px">在输入框里打字时不会触发这些快捷键。</div>' +
     '</div></div>');
 }
+/* 顶栏数字时钟：只显示到分钟，15 秒对一次表，开销可以忽略 */
+function startClock() {
+  var tEl = document.getElementById('clockTime');
+  var dEl = document.getElementById('clockDate');
+  if (!tEl) return;
+  function tick() {
+    var d = new Date();
+    tEl.textContent = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    if (dEl) dEl.textContent = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + weekdayName(d);
+  }
+  tick();
+  setInterval(tick, 15000);
+}
+
 function bindShortcuts() {
   document.addEventListener('keydown', function (e) {
     var t = e.target || {};
@@ -611,6 +625,7 @@ function boot() {
   } catch (e) { setPanelWidth(440); }
   bindGlobalEvents();
   bindShortcuts();
+  startClock();
   // 统一调度器：每 15 秒检查一次。状态发生迁移才整页重排，否则只改状态文字。
   Scheduler.on(function () {
     if (statesChanged()) refreshAll();

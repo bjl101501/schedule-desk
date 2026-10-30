@@ -314,7 +314,7 @@ async function main() {
                       est: (document.querySelector('#edEst')||{}).value,
                       tags: document.querySelectorAll('#edTagsWrap [data-tagrm]').length,
                       subs: document.querySelectorAll('#edSubs [data-subt]').length,
-                      spanOn: !!(document.querySelector('#edSpanOn')||{}).checked });
+                      planOn: !!(document.querySelector('#edPlanOn')||{}).checked, endDate: (document.querySelector('#edEndDate')||{}).value });
               }, 400);
             }, 250);
           }, 400);

@@ -635,7 +635,7 @@ function applyFilters(arr) {
   var today = ymd(today0());
   return arr.filter(function (t) {
     if (f.status === 'todo') {
-      if (t.done && t.doneAt !== today) return false;
+      if (t.done && stampDay(t.doneAt) !== today) return false;
     } else if (f.status === 'done') {
       if (!t.done) return false;
     }

@@ -27,6 +27,22 @@ impl WebDav {
     }
 }
 
+/// 上次关窗时的窗口几何。全部为 0 表示没有记录，用默认尺寸居中。
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowState {
+    #[serde(default)]
+    pub w: u32,
+    #[serde(default)]
+    pub h: u32,
+    #[serde(default)]
+    pub x: i32,
+    #[serde(default)]
+    pub y: i32,
+    #[serde(default)]
+    pub maximized: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
@@ -50,6 +66,8 @@ pub struct Config {
     pub close_to_tray: bool,
     #[serde(default)]
     pub theme: String,
+    #[serde(default)]
+    pub window: WindowState,
 }
 
 impl Default for Config {
@@ -64,6 +82,7 @@ impl Default for Config {
             first_run_done: false,
             close_to_tray: true,
             theme: String::new(),
+            window: WindowState::default(),
         }
     }
 }

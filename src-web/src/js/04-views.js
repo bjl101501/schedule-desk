@@ -161,12 +161,12 @@ function renderTodayPanel() {
   var t0 = today0(), t0s = ymd(t0);
   // 只收「今天该动手」的：逾期 + 正在进行/即将开始 + 今天到期 + 今天到点的复习。
   var overdue = [], live = [], todayItems = [], remind = [];
-  var SHORT = { ongoing: '进行中', upcoming: '即将开始', remindSoon: '即将逾期' };
+  var LIVE = { ongoing: '进行中', upcoming: '即将开始', remindSoon: '即将逾期' };
   S.tasks.filter(inScope).forEach(function (t) {
     if (t.done) return;
     var st = taskState(t);
     if (st.key === 'overdue') overdue.push(t);
-    else if (SHORT[st.key]) live.push({ t: t, label: SHORT[st.key] });
+    else if (LIVE[st.key]) live.push({ t: t, label: LIVE[st.key] });
     else if (t.date === t0s) todayItems.push(t);
     var r = reminderState(t);
     if (r && r.overdue) remind.push({ t: t, r: r });
@@ -181,29 +181,68 @@ function renderTodayPanel() {
   overdue.concat(live.map(function (x) { return x.t; })).concat(todayItems).forEach(function (x) { seen[x.id] = 1; });
   remind.forEach(function (it) { seen[it.t.id] = 1; });
   var total = Object.keys(seen).length;
-  // 不再分段截断：逾期 → 进行中 → 今天 → 待复习，全部列出，面板可滚动
+
   var rows = [], rowIds = {};
   function pushRow(t, kind, label) {
     if (!t || rowIds[t.id]) return;
     rowIds[t.id] = 1;
     rows.push({ t: t, kind: kind, label: label });
   }
-  overdue.forEach(function (t) {
-    pushRow(t, 'over', taskState(t).label.replace('已逾期 ', '逾期 '));
-  });
+  overdue.forEach(function (t) { pushRow(t, 'over', '逾期'); });
   live.forEach(function (it) { pushRow(it.t, 'live', it.label); });
-  todayItems.forEach(function (t) { pushRow(t, 'today', t.time ? t.time : '今天'); });
-  remind.forEach(function (it) { pushRow(it.t, 'remind', '该复习'); });
+  todayItems.forEach(function (t) { pushRow(t, 'today', '今天'); });
+  remind.forEach(function (it) { pushRow(it.t, 'remind', '提醒'); });
+
+  /* 行尾：逾期 / 剩余 / 全天 三态，颜色区分（红 / 绿 / 杏黄） */
+  function tailOf(t, kind) {
+    if (kind === 'over') {
+      var w = taskWindow(t);
+      var ms = w ? Date.now() - w.end.getTime() : 0;
+      return { text: '逾期 ' + coarseSpan(ms), cls: 'over' };
+    }
+    if (kind === 'live') {
+      var w2 = taskWindow(t);
+      if (!w2) return { text: '', cls: '' };
+      if (w2.allDay) return { text: '全天', cls: 'allday' };
+      var left = Math.max(0, w2.end.getTime() - Date.now());
+      return { text: '剩余 ' + coarseSpan(left), cls: 'left' };
+    }
+    if (kind === 'today') {
+      if (!t.time) return { text: '全天', cls: 'allday' };
+      return { text: t.time, cls: 'time' };
+    }
+    return { text: '', cls: '' };
+  }
+
+  /* 计划任务：今天落在某个子项区间内且未完成，就把子项列出来 */
+  function todaySubs(t) {
+    if (!t.plan || !t.subs || !t.subs.length) return '';
+    var segs = subPlan(t).filter(function (g) {
+      if (g.done || !g.start || !g.end) return false;
+      return dayDiff(g.start, t0) >= 0 && dayDiff(t0, g.end) >= 0;
+    });
+    if (!segs.length) return '';
+    return '<div class="today-subs">' + segs.slice(0, 3).map(function (g) {
+      return '<button class="today-sub" data-subdone="' + esc(t.id) + '|' + g.i + '">' +
+        '<i class="sub-dot"></i><span>' + esc(g.title) + '</span>' +
+        '<em>' + (g.days > 1 ? g.days + ' 天' : '今天') + '</em></button>';
+    }).join('') + '</div>';
+  }
 
   var body;
   if (!rows.length) {
     body = '<div class="today-empty">' + svgIcon('check') + '今天没有待办，享受这份清闲吧</div>';
   } else {
     body = rows.map(function (r) {
+      var tail = tailOf(r.t, r.kind);
+      var st = subStats(r.t);
+      var chip = st.n ? '<span class="today-subchip">' + st.done + '/' + st.n + '</span>' : '';
       return '<div class="today-row" data-tid="' + esc(r.t.id) + '">' +
         '<span class="tag-mini ' + r.kind + '">' + esc(r.label) + '</span>' +
-        '<span class="tt">' + esc(r.t.title) + '</span>' +
-        (r.t.time && r.kind !== 'today' ? '<span class="tm">' + esc(r.t.time) + '</span>' : '') +
+        '<div class="today-main">' +
+        '<div class="today-l1"><span class="tt">' + esc(r.t.title) + '</span>' + chip +
+        (tail.text ? '<span class="tdue ' + tail.cls + '">' + esc(tail.text) + '</span>' : '') +
+        '</div>' + todaySubs(r.t) + '</div>' +
         '<button class="go" data-done="' + esc(r.t.id) + '" title="完成">' + svgIcon('check') + '</button>' +
         '</div>';
     }).join('');
@@ -459,7 +498,7 @@ function renderTimelineBody() {
   dated.forEach(function (t) {
     var d = parseYmd(t.date);
     if (!d) return;
-    var e = addDays(d, Math.max(1, Number(t.span) || 1) - 1);
+    var e = addDays(d, taskSpan(t) - 1);
     if (!minD || d < minD) minD = d;
     if (!maxD || e > maxD) maxD = e;
   });
@@ -486,7 +525,7 @@ function renderTimelineBody() {
 
   var items = dated.map(function (t) {
     var off = dayDiff(start, parseYmd(t.date));
-    var span = Math.max(1, Number(t.span) || 1);
+    var span = taskSpan(t);
     return { t: t, off: off, span: span, end: off + span, lane: 0 };
   }).sort(function (a, b) { return a.off - b.off || b.span - a.span; });
   // 不重叠的任务共用一行（泳道），同一天有几件事也不会摊成好几行
@@ -588,6 +627,15 @@ function bindTaskViewEvents(root) {
     }
     var doneBtn = e.target.closest('[data-done]');
     if (doneBtn) { e.stopPropagation(); toggleDone(doneBtn.getAttribute('data-done')); return; }
+    // 今天面板里的子项：勾一下只关这一项，父任务进度自动同步
+    var subBtn = e.target.closest('[data-subdone]');
+    if (subBtn) {
+      e.stopPropagation();
+      var parts = subBtn.getAttribute('data-subdone').split('|');
+      var pt = findTask(parts[0]);
+      if (pt) toggleSub(pt, parseInt(parts[1], 10));
+      return;
+    }
     var delBtn = e.target.closest('[data-del]');
     if (delBtn) { e.stopPropagation(); askDeleteTask(delBtn.getAttribute('data-del')); return; }
     var editBtn = e.target.closest('[data-edit]');
@@ -639,11 +687,11 @@ function toggleDone(id) {
   var t = findTask(id);
   if (!t) return;
   t.done = !t.done;
-  t.doneAt = t.done ? ymd(today0()) : '';
+  t.doneAt = t.done ? stampNow() : '';
   var fields = ['已完成', '完成时间'];
   // 勾掉父任务时，把还没勾的子项一并勾上，保持「进度 100%」一致
   if (t.done && t.subs && t.subs.length && subStats(t).done < t.subs.length) {
-    t.subs.forEach(function (x) { x.done = true; });
+    t.subs.forEach(function (x) { if (!x.done) { x.done = true; x.doneAt = t.doneAt; } });
     fields.push('拆分');
   }
   cacheLocal();

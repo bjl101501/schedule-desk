@@ -82,7 +82,8 @@ function unpackSubs(raw) {
       min: Number(x.m || x.min) || 0,
       // 有 days 的子项会按顺序排进日期，0 表示只当时长拆分，不占日子
       days: Math.max(0, Number(x.dy || x.days) || 0),
-      done: !!(x.d || x.done)
+      done: !!(x.d || x.done),
+      doneAt: String(x.dt || '')
     };
   }).filter(function (x) { return !!x.title; });
 }
@@ -91,10 +92,31 @@ function packSubs(subs) {
   return JSON.stringify(subs.map(function (x) {
     return {
       t: String(x.title || '').trim(), m: Number(x.min) || 0,
-      dy: Math.max(0, Number(x.days) || 0), d: !!x.done
+      dy: Math.max(0, Number(x.days) || 0), d: !!x.done,
+      dt: x.doneAt || ''
     };
   }).filter(function (x) { return !!x.t; }));
 }
+
+/* 子项完成时间文案：
+   普通日程只写时刻；计划的子项在区间内也写时刻，早于/晚于自己那段排期才写「提前 / 逾期」 */
+function subDoneText(t, x, seg) {
+  if (!x || !x.done || !x.doneAt) return '';
+  var day = stampDay(x.doneAt), hm = stampTime(x.doneAt);
+  var doneD = parseYmd(day);
+  if (!doneD) return '';
+  var start = (seg && seg.start) ? seg.start : (t && t.date ? parseYmd(t.date) : null);
+  var end = (seg && seg.end) ? seg.end : start;
+  if (!start || !end) return hm || day;
+  var doneMs = doneD.getTime() + (parseHM(hm) || 0) * 60000;
+  var startMs = start.getTime();
+  var endMs = addDays(end, 1).getTime();
+  if (doneMs < startMs) return '提前 ' + coarseSpan(startMs - doneMs) + '完成';
+  if (doneMs > endMs) return '逾期 ' + coarseSpan(doneMs - endMs) + '后完成';
+  // 落在计划区间内：同一段就只写时刻，跨了日期才补上日期
+  return dayDiff(end, doneD) === 0 ? hm : (mdShort(doneD) + ' ' + hm);
+}
+
 function subStats(t) {
   var subs = (t && t.subs) || [];
   var n = subs.length, done = 0, min = 0;
@@ -105,7 +127,26 @@ function subStats(t) {
    一个任务从 date 开始，占 span 天。子项可以各自标注占几天，
    从开始日依次往后排。这样「7 天的项目拆成 2/3/1/1 天」就能直接表达。 */
 function taskSpan(t) {
-  return Math.max(1, Number(t && t.span) || 1);
+  if (t && t.plan && t.endDate) {
+    var a = parseYmd(t.date), b = parseYmd(t.endDate);
+    if (a && b) return Math.max(1, dayDiff(a, b) + 1);
+  }
+  return 1;
+}
+function isMultiDay(t) { return taskSpan(t) > 1; }
+/* 改开始日期时，计划区间整体平移，跨度不变；改成「未安排」则收起计划 */
+function shiftPlanTo(t, newDate) {
+  if (!t) return false;
+  var old = t.date || '';
+  if (old === newDate) return false;
+  if (!newDate) {
+    t.plan = false; t.endDate = ''; t.endTime = '';
+  } else if (t.plan && t.endDate && old) {
+    var delta = dayDiff(parseYmd(old), parseYmd(newDate));
+    if (delta) t.endDate = ymd(addDays(parseYmd(t.endDate), delta));
+  }
+  t.date = newDate;
+  return true;
 }
 function mdShort(d) {
   return d ? (d.getMonth() + 1) + '/' + d.getDate() : '';
@@ -145,12 +186,12 @@ function plannedEnd(t) {
   return addDays(start, taskSpan(t) - 1);
 }
 function quadKey(t) {
-  if (t.important && t.urgent) return 'q1';
-  if (t.important) return 'q2';
+  if (t.important && t.urgent) return 'q2';
+  if (t.important) return 'q1';
   if (t.urgent) return 'q3';
   return 'q4';
 }
-var QUAD_LABEL = { q1: '重要且紧急', q2: '重要不紧急', q3: '紧急不重要', q4: '不重要不紧急' };
+var QUAD_LABEL = { q1: '重要不紧急', q2: '重要紧急', q3: '不重要紧急', q4: '不重要不紧急' };
 function quadGlyph(q) {
   // 2x2 小格子，选中那格实心、其余淡淡铺底，13px 下也能一眼看出在哪一象限
   var cell = [['0.6', '0.6'], ['5.4', '0.6'], ['0.6', '5.4'], ['5.4', '5.4']];
@@ -251,6 +292,7 @@ function subSectionHtml(t) {
       (seg.start ? '<span class="sub-day">' + segDateText(seg) + '</span>' : '') +
       (x.min ? '<span class="sub-min">' + durText(x.min) + '</span>' : '') +
       (subLate(seg, x.done) ? '<span class="sub-late">子项逾期</span>' : '') +
+      (x.done && x.doneAt ? '<span class="sub-done">' + esc(subDoneText(t, x, seg)) + '</span>' : '') +
       '</button>';
   }).join('');
   return '<div class="dt-sec" id="dtSubsSec"><label>' + svgIcon('split') + ' 拆分' +
@@ -263,7 +305,7 @@ function subSectionHtml(t) {
 function syncDoneFromSubs(t) {
   var st = subStats(t);
   if (!st.n) return false;
-  if (st.all && !t.done) { t.done = true; t.doneAt = ymd(today0()); return true; }
+  if (st.all && !t.done) { t.done = true; t.doneAt = stampNow(); return true; }
   if (!st.all && t.done) { t.done = false; t.doneAt = ''; return true; }
   return false;
 }
@@ -302,8 +344,11 @@ function cloneNextRepeat(t) {
     prio: t.prio, important: t.important, urgent: t.urgent, done: false,
     remindMode: t.remindMode, remindCfg: null, date: nd, time: t.time,
     estimate: t.estimate, subs: (t.subs || []).map(function (x) {
-      return { id: '', title: x.title, min: x.min, done: false };
+      return { id: '', title: x.title, min: x.min, days: x.days || 0, done: false, doneAt: '' };
     }),
+    plan: !!t.plan,
+    endDate: (t.plan && t.endDate) ? ymd(addDays(parseYmd(nd), taskSpan(t) - 1)) : '',
+    endTime: t.endTime || '',
     repeat: t.repeat, doneAt: '', sort: t.sort, createdAt: ymd(today0())
   };
   if (t.remindCfg && t.remindCfg.offsets) {
@@ -332,6 +377,7 @@ function spawnNextRepeat(t) {
 function toggleSub(t, idx, quiet) {
   if (!t || !t.subs || !t.subs[idx]) return;
   t.subs[idx].done = !t.subs[idx].done;
+  t.subs[idx].doneAt = t.subs[idx].done ? stampNow() : '';
   var flipped = syncDoneFromSubs(t);
   cacheLocal();
   var fields = ['拆分'];
@@ -344,6 +390,18 @@ function toggleSub(t, idx, quiet) {
 
 function normTask(r) {
   var cfg = parseJson(r['提醒设置']) || {};
+  // 旧数据只有「持续 N 天」：读到时换算成计划区间，持续字段此后只读
+  var legacySpan = Math.max(1, Number(r['持续']) || 1);
+  var startDate = isoToYmd(r['日期']);
+  var endDate = isoToYmd(r['结束日期']);
+  var planRaw = r['计划'];
+  var plan = (planRaw === undefined || planRaw === null || planRaw === '')
+    ? legacySpan > 1
+    : !!planRaw;
+  if (plan && !endDate && startDate) {
+    var sd = parseYmd(startDate);
+    endDate = sd ? ymd(addDays(sd, legacySpan - 1)) : startDate;
+  }
   return {
     id: r._id || r.record_id || r.id,
     title: r['标题'] || '未命名任务',
@@ -359,11 +417,14 @@ function normTask(r) {
     date: isoToYmd(r['日期']),
     time: r['时间'] || '',
     estimate: Number(r['预计时长']) || 0,
-    doneAt: isoToYmd(r['完成时间']),
+    doneAt: String(r['完成时间'] || ''),
     sort: Number(r['排序']) || 0,
     subs: unpackSubs(r['拆分']),
     repeat: r['重复'] || '',
-    span: Math.max(1, Number(r['持续']) || 1),
+    plan: plan,
+    endDate: endDate,
+    endTime: String(r['结束时间'] || ''),
+    span: plan ? Math.max(1, legacySpan) : 1,
     createdAt: isoToYmd(r['创建时间']),
     _new: false
   };
@@ -412,7 +473,11 @@ function taskToProps(t, partial) {
   put('完成时间', { date: t.doneAt || '' });
   put('拆分', { text: packSubs(t.subs) });
   put('重复', { text: t.repeat || '' });
-  put('持续', { number: Math.max(1, Number(t.span) || 1) });
+  put('计划', { checkbox: !!t.plan });
+  put('结束日期', { date: t.endDate || '' });
+  put('结束时间', { text: t.endTime || '' });
+  // 兼容旧版本：仍然写一个换算后的天数
+  put('持续', { number: taskSpan(t) });
   put('排序', { number: Number(t.sort) || 0 });
   put('创建时间', { date: t.createdAt || ymd(today0()) });
   return p;
@@ -555,14 +620,14 @@ function seedDemo() {
       date: ymd(t), time: '', estimate: 0, remindMode: '不提醒', note: '没填时间＝全天' },
     // 4 跨天推进
     { title: '日程台二期开发', list: '工作', tags: ['工作', '项目'], prio: 'P0', important: true, urgent: true,
-      date: ymd(addDays(t, -1)), time: '09:00', estimate: 0, span: 3, remindMode: '不提醒',
+      date: ymd(addDays(t, -1)), time: '09:00', estimate: 0, plan: true, endDate: ymd(addDays(t, 1)), remindMode: '不提醒',
       subs: [{ title: '接口与数据结构', min: 0, days: 1, done: true },
              { title: '前端交互与状态', min: 0, days: 1, done: false },
              { title: '打包与回归', min: 0, days: 1, done: false }],
       note: '到结束日之后才算逾期' },
     // 5 子项逾期
     { title: '准备季度复盘材料', list: '工作', tags: ['工作'], prio: 'P1', important: true, urgent: false,
-      date: ymd(addDays(t, -2)), time: '10:00', estimate: 0, span: 4, remindMode: '不提醒',
+      date: ymd(addDays(t, -2)), time: '10:00', estimate: 0, plan: true, endDate: ymd(addDays(t, 1)), remindMode: '不提醒',
       subs: [{ title: '收集各组数据', min: 0, days: 1, done: false },
              { title: '写复盘初稿', min: 0, days: 2, done: false }],
       note: '第一步已过排期' },
@@ -636,6 +701,7 @@ function seedDemo() {
       id: '', title: x.title, note: x.note || '', list: x.list, tags: x.tags, prio: x.prio,
       important: x.important, urgent: x.urgent, done: !!x.done, remindMode: x.remindMode, subs: x.subs || [],
       remindCfg: x.remindCfg || null, date: x.date, time: x.time, estimate: x.estimate,
+      plan: !!x.plan, endDate: x.endDate || '', endTime: x.endTime || '',
       span: x.span || 1, repeat: x.repeat || '', doneAt: x.doneAt || '', sort: 0, createdAt: ymd(today0())
     };
     jobs.push(function () { return apiAddTask(task).then(function () { S.tasks.push(task); }); });

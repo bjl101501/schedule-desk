@@ -388,23 +388,23 @@ function applyGroupChange(t, group, key) {
     return ['标签'];
   }
   if (group === 'status') {
-    if (key === 'done') { t.done = true; t.doneAt = ymd(t0); return ['已完成', '完成时间']; }
+    if (key === 'done') { t.done = true; t.doneAt = stampNow(); return ['已完成', '完成时间']; }
     t.done = false;
     t.doneAt = '';
-    if (key === 'over') t.date = ymd(addDays(t0, -1));
-    else if (key === 'doing') t.date = ymd(t0);
-    else if (key === 'todo' && (!t.date || t.date < ymd(t0))) t.date = ymd(addDays(t0, 1));
-    var f1 = ['已完成', '完成时间', '日期'];
+    if (key === 'over') shiftPlanTo(t, ymd(addDays(t0, -1)));
+    else if (key === 'doing') shiftPlanTo(t, ymd(t0));
+    else if (key === 'todo' && (!t.date || t.date < ymd(t0))) shiftPlanTo(t, ymd(addDays(t0, 1)));
+    var f1 = ['已完成', '完成时间', '日期', '计划', '结束日期'];
     if (syncRemindAnchor(t, oldDate, oldTime)) f1.push('提醒设置');
     return f1;
   }
   if (group === 'date') {
-    if (key === 'over') t.date = ymd(addDays(t0, -1));
-    else if (key === 'today') t.date = ymd(t0);
-    else if (key === 'week') t.date = ymd(addDays(t0, 3));
-    else if (key === 'later') t.date = ymd(addDays(t0, 14));
-    else if (key === 'none') { t.date = ''; t.time = ''; }
-    var f2 = ['日期', '时间'];
+    if (key === 'over') shiftPlanTo(t, ymd(addDays(t0, -1)));
+    else if (key === 'today') shiftPlanTo(t, ymd(t0));
+    else if (key === 'week') shiftPlanTo(t, ymd(addDays(t0, 3)));
+    else if (key === 'later') shiftPlanTo(t, ymd(addDays(t0, 14)));
+    else if (key === 'none') { shiftPlanTo(t, ''); t.time = ''; }
+    var f2 = ['日期', '时间', '计划', '结束日期'];
     if (syncRemindAnchor(t, oldDate, oldTime)) f2.push('提醒设置');
     return f2;
   }
@@ -509,7 +509,7 @@ function enableCalendarDrag(root) {
     var oldDate = t.date, oldTime = t.time;
     if (cell) {
       var nd = cell.getAttribute('data-cdate');
-      if (nd && t.date !== nd) { t.date = nd; changed.push('日期'); }
+      if (nd && t.date !== nd) { shiftPlanTo(t, nd); changed.push('日期'); changed.push('计划'); changed.push('结束日期'); }
     }
     if (allday) {
       if (t.time) { t.time = ''; changed.push('时间'); }
@@ -600,17 +600,25 @@ function enableGanttDrag(root) {
     if (!moved) { toggleDetailFromClick(id); return; }
     suppressNextClick();
     if (resize) {
-      t.span = Math.max(1, span || 1);
+      var n = Math.max(1, span || 1);
+      if (n > 1) {
+        t.plan = true;
+        t.endDate = ymd(addDays(parseYmd(t.date), n - 1));
+      } else {
+        t.plan = false;
+        t.endDate = '';
+        t.endTime = '';
+      }
       cacheLocal();
       refreshAll();
-      apiUpdateTask(t, ['持续']);
-      toast('持续 ' + t.span + ' 天');
+      apiUpdateTask(t, ['计划', '结束日期', '结束时间', '持续']);
+      toast(n > 1 ? '计划 ' + n + ' 天' : '已取消计划');
     } else {
       var nd = ymd(addDays(startD, off || 0));
       if (t.date !== nd) {
         var od = t.date, ot = t.time;
-        t.date = nd;
-        var fields = ['日期'];
+        shiftPlanTo(t, nd);
+        var fields = ['日期', '计划', '结束日期'];
         if (syncRemindAnchor(t, od, ot)) fields.push('提醒设置');
         cacheLocal();
         refreshAll();
@@ -633,7 +641,7 @@ function enableGanttDrag(root) {
     var mEl = bar.querySelector('.g-bar-m');
     st = {
       id: id, bar: bar, t: t, resize: !!e.target.closest('[data-gresize]'),
-      x0: e.clientX, date0: t.date, span0: Math.max(1, Number(t.span) || 1),
+      x0: e.clientX, date0: t.date, span0: taskSpan(t),
       moved: false, span: null, off: null,
       meta0: mEl ? mEl.textContent : ''
     };

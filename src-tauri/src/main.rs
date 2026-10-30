@@ -17,7 +17,7 @@ use std::time::Duration;
 use serde::Serialize;
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
-use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use tauri::{AppHandle, Manager, RunEvent, State, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 use config::Config;
 use store::{Op, Store};
@@ -662,6 +662,71 @@ fn arg_value(args: &[String], key: &str) -> Option<String> {
         .cloned()
 }
 
+/// 窗口几何只在拖动/缩放停下来之后写一次，避免每一帧都落盘
+static LAST_WIN_SAVE: Mutex<Option<std::time::Instant>> = Mutex::new(None);
+
+fn save_window_state(win: &tauri::WebviewWindow) {
+    let app = win.app_handle();
+    let st = app.state::<AppState>();
+    let mut cfg = match st.config.lock() {
+        Ok(c) => c,
+        Err(_) => return,
+    };
+    let scale = win.scale_factor().unwrap_or(1.0);
+    if let Ok(max) = win.is_maximized() {
+        cfg.window.maximized = max;
+    }
+    // 最大化时不覆盖原来的还原尺寸
+    if !cfg.window.maximized {
+        if let Ok(sz) = win.inner_size() {
+            cfg.window.w = (sz.width as f64 / scale).round() as u32;
+            cfg.window.h = (sz.height as f64 / scale).round() as u32;
+        }
+        if let Ok(pos) = win.outer_position() {
+            cfg.window.x = (pos.x as f64 / scale).round() as i32;
+            cfg.window.y = (pos.y as f64 / scale).round() as i32;
+        }
+    }
+    let _ = cfg.save();
+}
+
+fn schedule_window_save(win: &tauri::WebviewWindow) {
+    let now = std::time::Instant::now();
+    {
+        let mut guard = LAST_WIN_SAVE.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(t) = *guard {
+            if now.duration_since(t) < Duration::from_millis(800) {
+                return;
+            }
+        }
+        *guard = Some(now);
+    }
+    save_window_state(win);
+}
+
+fn save_window_from_app(app: &AppHandle) {
+    if let Some(win) = app.get_webview_window(MAIN_WINDOW) {
+        save_window_state(&win);
+    }
+}
+
+/// 换过显示器或改过分辨率时，把窗口收回可视范围
+fn clamp_to_screen(win: &tauri::WebviewWindow, ww: f64, wh: f64) {
+    let mon = match win.current_monitor() {
+        Ok(Some(m)) => m,
+        _ => return,
+    };
+    let scale = mon.scale_factor();
+    let mw = mon.size().width as f64 / scale;
+    let mh = mon.size().height as f64 / scale;
+    let nw = ww.min((mw * 0.96).max(420.0));
+    let nh = wh.min((mh * 0.90).max(560.0));
+    if (nw - ww).abs() > 1.0 || (nh - wh).abs() > 1.0 {
+        let _ = win.set_size(tauri::LogicalSize::new(nw, nh));
+        let _ = win.center();
+    }
+}
+
 fn main() {
     let argv: Vec<String> = std::env::args().collect();
     let data_dir_arg = arg_value(&argv, "--data-dir");
@@ -721,34 +786,64 @@ fn main() {
 
             store.snapshot_daily(&dir);
 
+            // 记住上次的尺寸与位置；没有记录时用 1180×760（1366×768 的笔记本也放得下）
+            let saved_win = app
+                .state::<AppState>()
+                .config
+                .lock()
+                .map(|c| c.window.clone())
+                .unwrap_or_default();
+            let (mut ww, mut wh) = (1180.0_f64, 760.0_f64);
+            if saved_win.w >= 420 && saved_win.h >= 560 {
+                ww = saved_win.w as f64;
+                wh = saved_win.h as f64;
+            }
             let mut builder =
                 WebviewWindowBuilder::new(app, MAIN_WINDOW, WebviewUrl::App("index.html".into()))
                     .title(APP_TITLE)
-                    .inner_size(1500.0, 950.0)
-                    .min_inner_size(1000.0, 660.0)
-                    .center()
+                    .inner_size(ww, wh)
+                    .min_inner_size(420.0, 560.0)
                     .resizable(true);
+            if saved_win.x != 0 || saved_win.y != 0 {
+                builder = builder.position(saved_win.x as f64, saved_win.y as f64);
+            } else {
+                builder = builder.center();
+            }
 
             if let Some(icon) = app.default_window_icon() {
                 builder = builder.icon(icon.clone())?;
             }
 
             let window = builder.build()?;
+            // 夹到当前显示器范围内：换过屏幕或改过分辨率时，别让窗口跑到屏幕外
+            clamp_to_screen(&window, ww, wh);
+            if saved_win.maximized {
+                let _ = window.maximize();
+            }
+
             let win_handle = window.clone();
-            window.on_window_event(move |event| {
-                if let WindowEvent::CloseRequested { api, .. } = event {
+            window.on_window_event(move |event| match event {
+                WindowEvent::CloseRequested { api, .. } => {
                     api.prevent_close();
+                    save_window_state(&win_handle);
                     let _ = win_handle.hide();
                 }
+                WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
+                    schedule_window_save(&win_handle);
+                }
+                _ => {}
             });
 
             build_tray(app.handle())?;
 
-            // 注册通知身份，绿色版 exe 缺这一步 Toast 会静默失败
-            if let Ok(exe) = std::env::current_exe() {
-                let icon = exe.to_string_lossy().to_string();
+            // 注册通知身份：IconUri 必须是图片文件路径，写成 exe 路径的话通知里没有图标
+            {
                 let id = app.config().identifier.clone();
-                register_aumid(&id, APP_TITLE, &icon);
+                let icon_path = dir.join("icon.png");
+                if !icon_path.exists() {
+                    let _ = fs::write(&icon_path, include_bytes!("../icons/32x32.png"));
+                }
+                register_aumid(&id, APP_TITLE, &icon_path.to_string_lossy());
             }
 
             start_reminder_loop(app.handle().clone());
@@ -788,6 +883,11 @@ fn main() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("failed to launch schedule desk");
+        .build(tauri::generate_context!())
+        .expect("failed to build schedule desk")
+        .run(|app, event| {
+            if matches!(event, RunEvent::ExitRequested { .. } | RunEvent::Exit) {
+                save_window_from_app(app);
+            }
+        });
 }

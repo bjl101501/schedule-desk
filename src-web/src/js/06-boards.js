@@ -2,23 +2,25 @@
 /* ---------- 四象限 ---------- */
 function renderQuadrantView() {
   var live = S.tasks.filter(function (t) { return !t.done; });
+  // 坐标：横轴向右 = 更紧急，纵轴向上 = 更重要
+  // Ⅰ 左上（重要不紧急）｜Ⅱ 右上（重要紧急）｜Ⅲ 右下（不重要紧急）｜Ⅳ 左下（不重要不紧急）
   var q1 = [], q2 = [], q3 = [], q4 = [];
   live.forEach(function (t) {
-    if (t.important && t.urgent) q1.push(t);
-    else if (t.important && !t.urgent) q2.push(t);
-    else if (!t.important && t.urgent) q3.push(t);
+    if (t.important && t.urgent) q2.push(t);
+    else if (t.important) q1.push(t);
+    else if (t.urgent) q3.push(t);
     else q4.push(t);
   });
   var defs = [
-    { cls: 'q1', num: 'Ⅰ', name: '重要且紧急', sub: '马上做，别拖', items: q1 },
-    { cls: 'q2', num: 'Ⅱ', name: '重要不紧急', sub: '排进日程，决定长期', items: q2 },
-    { cls: 'q3', num: 'Ⅲ', name: '紧急不重要', sub: '尽快清掉或转交', items: q3 },
-    { cls: 'q4', num: 'Ⅳ', name: '不重要不紧急', sub: '有空再说，别沉迷', items: q4 }
+    { cls: 'q1', num: 'Ⅰ', name: '重要 · 不紧急', sub: '计划做，决定长期', items: q1 },
+    { cls: 'q2', num: 'Ⅱ', name: '重要 · 紧急', sub: '立即做，别拖', items: q2 },
+    { cls: 'q4', num: 'Ⅳ', name: '不重要 · 不紧急', sub: '不做，别沉迷', items: q4 },
+    { cls: 'q3', num: 'Ⅲ', name: '不重要 · 紧急', sub: '少做或转交', items: q3 }
   ];
   var total = live.length || 1;
   var html = '<div class="banner" style="background:var(--brand-softer);border:1px solid var(--line);color:var(--text-2)">' +
-    svgIcon('bulb') + '<span>拖动卡片可以换象限；越靠左上越该现在处理。共 ' + live.length + ' 项待办，' +
-    '其中「重要」' + (q1.length + q2.length) + ' 项、「紧急」' + (q1.length + q3.length) + ' 项。</span></div>' +
+    svgIcon('bulb') + '<span>横轴向右＝更紧急，纵轴向上＝更重要；右上角最该现在处理。共 ' + live.length + ' 项待办，' +
+    '其中「重要」' + (q1.length + q2.length) + ' 项、「紧急」' + (q2.length + q3.length) + ' 项。</span></div>' +
     '<div class="quad-grid">';
   defs.forEach(function (d) {
     var pct = Math.round(d.items.length / total * 100);
@@ -72,11 +74,11 @@ function bindQuadrantEvents(root) {
     if (!t) return;
     var q = box.getAttribute('data-qdrop');
     t.important = (q === 'q1' || q === 'q2');
-    t.urgent = (q === 'q1' || q === 'q3');
+    t.urgent = (q === 'q2' || q === 'q3');
     cacheLocal();
     refreshAll();
     apiUpdateTask(t, ['重要', '紧急']);
-    toast('已移到「' + ({ q1: '重要且紧急', q2: '重要不紧急', q3: '紧急不重要', q4: '不重要不紧急' })[q] + '」');
+    toast('已移到「' + ({ q1: '重要不紧急', q2: '重要紧急', q3: '不重要紧急', q4: '不重要不紧急' })[q] + '」');
     dragId = null;
   });
 }
@@ -537,7 +539,7 @@ function enableCdGroupDrag(root) {
 function renderStatsView() {
   var t0 = today0(), t0s = ymd(t0);
   var doneAll = S.tasks.filter(function (t) { return t.done; });
-  var doneToday = doneAll.filter(function (t) { return t.doneAt === t0s; }).length;
+  var doneToday = doneAll.filter(function (t) { return stampDay(t.doneAt) === t0s; }).length;
   var ws = startOfWeek(t0);
   var doneWeek = doneAll.filter(function (t) {
     var d = parseYmd(t.doneAt);
@@ -560,7 +562,7 @@ function renderStatsView() {
   var weekDays = [], maxDone = 1;
   for (var i = 6; i >= 0; i--) {
     var d = addDays(t0, -i), ds = ymd(d);
-    var dn = doneAll.filter(function (t) { return t.doneAt === ds; }).length;
+    var dn = doneAll.filter(function (t) { return stampDay(t.doneAt) === ds; }).length;
     var created = S.tasks.filter(function (t) { return t.date === ds; }).length;
     if (dn > maxDone) maxDone = dn;
     if (created > maxDone) maxDone = created;
@@ -599,7 +601,7 @@ function renderStatsView() {
     var col = '';
     for (var k2 = 0; k2 < 7; k2++) {
       var dd = addDays(heatStart, w2 * 7 + k2), dds = ymd(dd);
-      var n = doneAll.filter(function (t) { return t.doneAt === dds; }).length;
+      var n = doneAll.filter(function (t) { return stampDay(t.doneAt) === dds; }).length;
       var lv = n === 0 ? '' : n <= 1 ? 'l1' : n <= 2 ? 'l2' : n <= 4 ? 'l3' : 'l4';
       col += '<div class="heat-cell ' + lv + '" title="' + dds + ' 完成 ' + n + ' 项"></div>';
     }

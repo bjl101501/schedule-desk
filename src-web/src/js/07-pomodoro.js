@@ -235,6 +235,10 @@ function openTaskDetail(id) {
 
   if (d) {
     var dTxt = (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日 ' + weekdayName(d);
+    if (t.plan && t.endDate) {
+      var ed0 = parseYmd(t.endDate);
+      if (ed0) dTxt = mdShort(d) + ' – ' + mdShort(ed0) + ' · 共 ' + taskSpan(t) + ' 天';
+    }
     var dCls = 'dt-v';
     var st = taskState(t);
     if (st.key === 'overdue') { dTxt += ' · ' + st.label; dCls += ' warn'; }
@@ -255,13 +259,14 @@ function openTaskDetail(id) {
     rows.push(rowHtml('clock', '时间', t.estimate ? '全天日程 · 预计 ' + durText(t.estimate) : '全天日程', 'dt-v'));
   }
 
-  // 跨天日程：把「第几天 / 结束日 / 阶段数」讲清楚，不然详情里只看到一个开始日
+  // 计划：把区间、截止时间、阶段数讲清楚，不然详情里只看到一个开始日
   var sp = taskSpan(t);
-  if (sp > 1 && d) {
-    var endD = addDays(d, sp - 1);
+  if (t.plan && d) {
+    var endD = t.endDate ? parseYmd(t.endDate) : addDays(d, sp - 1);
     var segN = (t.subs || []).filter(function (x) { return Number(x.days) > 0; }).length;
-    rows.push(rowHtml('repeat', '跨度',
-      sp + ' 天 · ' + (d.getMonth() + 1) + '/' + d.getDate() + ' – ' + (endD.getMonth() + 1) + '/' + endD.getDate() +
+    rows.push(rowHtml('repeat', '计划',
+      sp + ' 天 · ' + mdShort(d) + ' – ' + mdShort(endD) +
+      (t.endTime ? ' · 截止 ' + t.endTime : ' · 截止当天 24:00') +
       (segN ? ' · ' + segN + ' 个阶段' : ''), 'dt-v brand'));
   }
   if (t.estimate) rows.push(rowHtml('target', '预计', durText(t.estimate), 'dt-v'));
@@ -281,7 +286,8 @@ function openTaskDetail(id) {
     '<span class="tag-chip ' + (t.important && t.urgent ? 'c3' : t.important ? 'c4' : t.urgent ? 'c0' : '') + '">' +
     quadText(t) + '</span></span></div>');
   if (t.done && t.doneAt) {
-    rows.push(rowHtml('check', '完成于', t.doneAt, 'dt-v brand'));
+    var dDay = stampDay(t.doneAt), dHm = stampTime(t.doneAt);
+    rows.push(rowHtml('check', '完成于', dDay + (dHm ? ' ' + dHm : ''), 'dt-v brand'));
   }
 
   var remindHtml = '';
