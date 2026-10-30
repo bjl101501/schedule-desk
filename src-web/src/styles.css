@@ -1805,22 +1805,36 @@ input,textarea,select,[contenteditable="true"],
 }
 /* 表盘时钟：中性灰底 + 数字管字体，无发光 */
 .clock{
-  display:inline-flex;align-items:flex-end;gap:4px;height:40px;padding:0 11px 7px;
+  display:inline-flex;align-items:flex-end;gap:5px;height:40px;padding:0 10px 7px;
   border-radius:9px;border:1px solid #D5D5D5;background:#E9E9E9;
   background-clip:padding-box;overflow:hidden;
   flex:0 0 auto;line-height:1;box-shadow:none;
 }
 html[data-theme="dusk"] .clock,
 html[data-theme="ink"] .clock{border-color:#2C2C2C;background:#181818}
-.clock b{
+.clock .tm{
+  display:inline-flex;align-items:flex-end;
   font-family:'Digital-7 Mono',ui-monospace,monospace;
-  font-size:27px;font-weight:400;letter-spacing:1px;
-  color:#141414;font-variant-numeric:tabular-nums;
+  font-size:27px;font-weight:400;letter-spacing:-.7px;
+  color:#141414;font-variant-numeric:tabular-nums;line-height:1;
 }
+.clock .tm span{display:block}
+/* 冒号自绘：两个字宽才 6px，等宽字体里的冒号会占满一格，太散 */
+.clock .ck-c{
+  position:relative;width:9px;height:27px;flex:0 0 auto;
+  margin:0 2px;
+}
+.clock .ck-c::before,
+.clock .ck-c::after{
+  content:'';position:absolute;left:50%;width:4.5px;height:4.5px;border-radius:50%;
+  background:currentColor;transform:translateX(-50%);
+}
+.clock .ck-c::before{top:8px}
+.clock .ck-c::after{bottom:7px}
 .clock em{
   font-family:'Digital-7 Mono',ui-monospace,monospace;
-  font-style:normal;font-size:12.5px;font-weight:400;letter-spacing:0;
-  color:#7A7A7A;min-width:16px;padding-bottom:3px;
+  font-style:normal;font-size:13px;font-weight:400;letter-spacing:-.2px;
+  color:#7A7A7A;min-width:17px;padding-bottom:3px;
 }
 html[data-theme="dusk"] .clock b,
 html[data-theme="ink"] .clock b{color:#EDEDED}

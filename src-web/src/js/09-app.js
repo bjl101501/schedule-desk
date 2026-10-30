@@ -578,12 +578,14 @@ function openShortcuts() {
 }
 /* 表盘时钟：等宽字体显示时:分，小号秒跟在后面 */
 function startClock() {
-  var tEl = document.getElementById('clockTime');
+  var hEl = document.getElementById('clockH');
+  var mEl = document.getElementById('clockM');
   var sEl = document.getElementById('clockSec');
-  if (!tEl) return;
+  if (!hEl) return;
   function tick() {
     var d = new Date();
-    tEl.textContent = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    hEl.textContent = pad2(d.getHours());
+    mEl.textContent = pad2(d.getMinutes());
     if (sEl) sEl.textContent = pad2(d.getSeconds());
   }
   tick();
