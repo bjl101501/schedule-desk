@@ -49,28 +49,39 @@ function renderQuadrantView() {
 }
 function bindQuadrantEvents(root) {
   root.addEventListener('click', function (e) {
+    if (justDragged) { justDragged = false; return; }
     var card = e.target.closest('[data-tid]');
     if (card) toggleDetailFromClick(card.getAttribute('data-tid'));
   });
-  var dragId = null;
-  root.addEventListener('dragstart', function (e) {
+  // 用指针事件实现拖拽：WebView2 会拦截 HTML5 draggable，导致四象限里拖不动
+  var dragId = null, sx = 0, sy = 0, moved = false, justDragged = false;
+  root.addEventListener('pointerdown', function (e) {
     var card = e.target.closest('[data-tid]');
-    if (!card) return;
+    if (!card || e.button !== 0) return;
     dragId = card.getAttribute('data-tid');
-    card.style.opacity = '.4';
+    sx = e.clientX; sy = e.clientY; moved = false;
+    card.classList.add('drag-ready');
   });
-  root.addEventListener('dragend', function (e) {
-    var card = e.target.closest('[data-tid]');
-    if (card) card.style.opacity = '';
+  root.addEventListener('pointermove', function (e) {
+    if (!dragId) return;
+    if (!moved && Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) > 8) {
+      moved = true;
+      Array.prototype.forEach.call(root.querySelectorAll('.kcard'), function (c) {
+        if (c.getAttribute('data-tid') === dragId) c.classList.add('dragging');
+      });
+    }
+    if (moved) e.preventDefault();
   });
-  root.addEventListener('dragover', function (e) {
-    if (e.target.closest('[data-qdrop]')) e.preventDefault();
-  });
-  root.addEventListener('drop', function (e) {
-    var box = e.target.closest('[data-qdrop]');
-    if (!box || !dragId) return;
-    e.preventDefault();
-    var t = findTask(dragId);
+  function endDrag(e) {
+    if (!dragId) return;
+    var id = dragId; dragId = null;
+    Array.prototype.forEach.call(root.querySelectorAll('.kcard'), function (c) { c.classList.remove('dragging', 'drag-ready'); });
+    if (!moved) return;
+    justDragged = true;
+    var el = document.elementFromPoint(e.clientX, e.clientY);
+    var box = el && el.closest ? el.closest('[data-qdrop]') : null;
+    if (!box) return;
+    var t = findTask(id);
     if (!t) return;
     var q = box.getAttribute('data-qdrop');
     t.important = (q === 'q1' || q === 'q2');
@@ -79,8 +90,9 @@ function bindQuadrantEvents(root) {
     refreshAll();
     apiUpdateTask(t, ['重要', '紧急']);
     toast('已移到「' + ({ q1: '重要不紧急', q2: '重要紧急', q3: '不重要紧急', q4: '不重要不紧急' })[q] + '」');
-    dragId = null;
-  });
+  }
+  root.addEventListener('pointerup', endDrag);
+  root.addEventListener('pointercancel', endDrag);
 }
 
 /* ---------- 习惯打卡 ---------- */
