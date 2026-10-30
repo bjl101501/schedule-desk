@@ -33,7 +33,7 @@ function renderQuadrantView() {
       '<div class="qbody" data-qdrop="' + d.cls + '">' +
       (d.items.length ? sortTasks(d.items).map(function (t) {
         var diff = t.date ? dayDiff(today0(), parseYmd(t.date)) : null;
-        return '<div class="kcard" data-tid="' + esc(t.id) + '" draggable="true">' +
+        return '<div class="kcard" data-tid="' + esc(t.id) + '">' +
           '<div class="kcard-title">' + flagHtml(t) + esc(t.title) + '</div>' +
           subInlineHtml(t) +
           '<div class="kcard-foot">' +
@@ -48,34 +48,43 @@ function renderQuadrantView() {
   bindQuadrantEvents(c);
 }
 function bindQuadrantEvents(root) {
-  root.addEventListener('click', function (e) {
-    if (justDragged) { justDragged = false; return; }
-    var card = e.target.closest('[data-tid]');
-    if (card) toggleDetailFromClick(card.getAttribute('data-tid'));
-  });
-  // 用指针事件实现拖拽：WebView2 会拦截 HTML5 draggable，导致四象限里拖不动
+  // 每次重绘都会再进来一次：先把上一轮挂的监听撤干净，避免重复触发
+  if (bindQuadrantEvents._off) { bindQuadrantEvents._off(); bindQuadrantEvents._off = null; }
+
   var dragId = null, sx = 0, sy = 0, moved = false, justDragged = false;
-  root.addEventListener('pointerdown', function (e) {
+
+  function cardOf(id) {
+    var hit = null;
+    Array.prototype.forEach.call(root.querySelectorAll('.kcard'), function (c) {
+      if (c.getAttribute('data-tid') === id) hit = c;
+    });
+    return hit;
+  }
+
+  function onDown(e) {
     var card = e.target.closest('[data-tid]');
     if (!card || e.button !== 0) return;
     dragId = card.getAttribute('data-tid');
     sx = e.clientX; sy = e.clientY; moved = false;
-    card.classList.add('drag-ready');
-  });
-  root.addEventListener('pointermove', function (e) {
+  }
+
+  function onMove(e) {
     if (!dragId) return;
-    if (!moved && Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) > 8) {
+    if (!moved && Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) > 6) {
       moved = true;
-      Array.prototype.forEach.call(root.querySelectorAll('.kcard'), function (c) {
-        if (c.getAttribute('data-tid') === dragId) c.classList.add('dragging');
-      });
+      var c = cardOf(dragId);
+      if (c) c.classList.add('dragging');
+      document.body.classList.add('is-dragging');
     }
-    if (moved) e.preventDefault();
-  });
-  function endDrag(e) {
+  }
+
+  function onUp(e) {
     if (!dragId) return;
     var id = dragId; dragId = null;
-    Array.prototype.forEach.call(root.querySelectorAll('.kcard'), function (c) { c.classList.remove('dragging', 'drag-ready'); });
+    Array.prototype.forEach.call(root.querySelectorAll('.kcard'), function (c) {
+      c.classList.remove('dragging');
+    });
+    document.body.classList.remove('is-dragging');
     if (!moved) return;
     justDragged = true;
     var el = document.elementFromPoint(e.clientX, e.clientY);
@@ -91,8 +100,28 @@ function bindQuadrantEvents(root) {
     apiUpdateTask(t, ['重要', '紧急']);
     toast('已移到「' + ({ q1: '重要不紧急', q2: '重要紧急', q3: '不重要紧急', q4: '不重要不紧急' })[q] + '」');
   }
-  root.addEventListener('pointerup', endDrag);
-  root.addEventListener('pointercancel', endDrag);
+
+  function onClick(e) {
+    // 刚拖完的那次 click 不要顺手打开详情
+    if (justDragged) { justDragged = false; return; }
+    var card = e.target.closest('[data-tid]');
+    if (card) toggleDetailFromClick(card.getAttribute('data-tid'));
+  }
+
+  root.addEventListener('pointerdown', onDown);
+  root.addEventListener('click', onClick);
+  // 挂在 document 上：拖到别的象限甚至窗口边缘再松手也能收到终点
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
+
+  bindQuadrantEvents._off = function () {
+    root.removeEventListener('pointerdown', onDown);
+    root.removeEventListener('click', onClick);
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
+  };
 }
 
 /* ---------- 习惯打卡 ---------- */

@@ -85,7 +85,7 @@ function renderTopbar() {
   var t = today0();
   if (S.selectedList) { title = S.selectedList; sub = '清单 · 共 ' + countBy(function (x) { return (x.list || '收集箱') === S.selectedList; }) + ' 项'; }
   else if (S.selectedTag) { title = '# ' + S.selectedTag; sub = '标签 · 共 ' + countBy(function (x) { return x.tags.indexOf(S.selectedTag) > -1; }) + ' 项'; }
-  else if (S.view === 'today') { title = '今天'; sub = t.getFullYear() + ' 年 ' + (t.getMonth() + 1) + ' 月 ' + t.getDate() + ' 日 · ' + weekdayName(t); }
+  else if (S.view === 'today') { title = '今天'; sub = ''; }  // 日期由标题旁的时钟显示，这里不再重复
   else if (S.view === 'next7') { title = '最近 7 天'; sub = shortDate(t) + ' — ' + shortDate(addDays(t, 6)); }
   else if (S.view === 'inbox') { title = '收集箱'; sub = '还没安排时间的任务'; }
   else if (S.view === 'calendar') { title = '日历'; sub = '年 / 月 / 周 / 多周 / 日 / 多日 六种视图'; }

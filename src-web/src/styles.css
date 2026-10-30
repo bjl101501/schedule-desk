@@ -130,6 +130,7 @@ a{color:inherit;text-decoration:none}
   border-bottom:1px solid var(--line);z-index:20;
 }
 .title-wrap{min-width:0;flex:1;overflow:hidden}
+.title-line{display:flex;align-items:baseline;gap:10px;min-width:0}
 .title-wrap h1{
   margin:0;font-size:19px;font-weight:700;letter-spacing:-.2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
@@ -1793,12 +1794,11 @@ input,textarea,select,[contenteditable="true"],
 
 /* ---------- 顶栏数字时钟：安静地待在最右边 ---------- */
 .clock{
-  display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
-  gap:0;padding:0 4px 0 10px;line-height:1.1;flex:0 0 auto;
-  font-variant-numeric:tabular-nums;
+  display:flex;align-items:baseline;gap:5px;flex:0 0 auto;
+  line-height:1.1;font-variant-numeric:tabular-nums;
 }
-.clock b{font-size:17px;font-weight:600;letter-spacing:.4px;color:var(--text)}
-.clock span{font-size:10px;color:var(--text-3);margin-top:1px}
+.clock b{font-size:15px;font-weight:600;letter-spacing:.3px;color:var(--text)}
+.clock span{font-size:10.5px;color:var(--text-3)}
 
 /* ---------- R5：按宽度分档，而不是按设备 ---------- */
 /* 1) 详情面板在中等宽度改为「覆盖」，不再把正文挤窄 */
@@ -1813,13 +1813,11 @@ input,textarea,select,[contenteditable="true"],
 }
 /* 3) 窄屏顶栏：时钟只留时间，去掉日期 */
 @media (max-width:860px){
-  .clock{padding:0 2px 0 4px}
-  .clock b{font-size:15px}
+  .clock b{font-size:14px}
   .clock span{display:none}
 }
 /* 4) 手机宽度：行内元素换行、字号降一档 */
 @media (max-width:560px){
-  .clock{display:none}
   .sync-pill{display:none}
   .today-row{font-size:12.5px;gap:7px;padding:7px 8px}
   .today-l1{flex-wrap:wrap;row-gap:3px}
