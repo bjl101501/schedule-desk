@@ -576,7 +576,7 @@ function openShortcuts() {
     '<div class="hint" style="margin-top:6px">在输入框里打字时不会触发这些快捷键。</div>' +
     '</div></div>');
 }
-/* 标题旁的数字时钟：时:分 + 小号秒，每秒只改两个文本节点 */
+/* 表盘时钟：等宽字体显示时:分，小号秒跟在后面 */
 function startClock() {
   var tEl = document.getElementById('clockTime');
   var sEl = document.getElementById('clockSec');
@@ -587,7 +587,7 @@ function startClock() {
     if (sEl) sEl.textContent = pad2(d.getSeconds());
   }
   tick();
-  // 对齐到整秒再进 1 秒循环，避免秒数跳格
+  // 对齐到整秒再进 1 秒循环，秒数不跳格
   setTimeout(function () {
     tick();
     setInterval(tick, 1000);
