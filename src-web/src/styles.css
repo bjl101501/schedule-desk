@@ -1849,6 +1849,11 @@ html[data-theme="ink"] .clock{
    这样 1 正好落在暗段 8 的右边竖段上，和真数码管一致 */
 .clock .dg{display:grid;width:.4727em;margin-right:.075em}
 .clock .dg:last-child{margin-right:0}
+/* 同一组里的两位（时、分、秒）靠得更近：管缝缩到 2/3；
+   与冒号、与秒之间仍是原来的 .075em，不动 */
+.clock .tm .dg:nth-child(1),
+.clock .tm .dg:nth-child(4),
+.clock .sec .dg:nth-child(1){margin-right:.05em}
 .clock .dg > span{grid-area:1/1;text-align:center;white-space:nowrap}
 .clock .dg .on{position:relative;z-index:2;color:var(--clk-on)}
 .clock .dg .on.one{text-align:right}
