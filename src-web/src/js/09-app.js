@@ -576,17 +576,31 @@ function openShortcuts() {
     '<div class="hint" style="margin-top:6px">在输入框里打字时不会触发这些快捷键。</div>' +
     '</div></div>');
 }
-/* 表盘时钟：等宽字体显示时:分，小号秒跟在后面 */
+/* 表盘时钟：每位一个格子，格子里叠着暗段 8，这里只改亮段那层 */
 function startClock() {
-  var hEl = document.getElementById('clockH');
-  var mEl = document.getElementById('clockM');
-  var sEl = document.getElementById('clockSec');
-  if (!hEl) return;
+  var h1 = document.getElementById('clockH1');
+  var h2 = document.getElementById('clockH2');
+  var m1 = document.getElementById('clockM1');
+  var m2 = document.getElementById('clockM2');
+  var s1 = document.getElementById('clockS1');
+  var s2 = document.getElementById('clockS2');
+  if (!h1) return;
+  // 1 只有一段竖线，靠右放才落在暗段 8 的右边竖段上
+  function put(el, ch) {
+    if (!el) return;
+    el.textContent = ch;
+    if (ch === '1') el.classList.add('one');
+    else el.classList.remove('one');
+  }
   function tick() {
     var d = new Date();
-    hEl.textContent = pad2(d.getHours());
-    mEl.textContent = pad2(d.getMinutes());
-    if (sEl) sEl.textContent = pad2(d.getSeconds());
+    var hh = pad2(d.getHours()), mm = pad2(d.getMinutes()), ss = pad2(d.getSeconds());
+    put(h1, hh.charAt(0));
+    put(h2, hh.charAt(1));
+    put(m1, mm.charAt(0));
+    put(m2, mm.charAt(1));
+    put(s1, ss.charAt(0));
+    put(s2, ss.charAt(1));
   }
   tick();
   // 对齐到整秒再进 1 秒循环，秒数不跳格
