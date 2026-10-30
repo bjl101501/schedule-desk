@@ -554,6 +554,7 @@ def main() -> int:
     html = src_index.read_text(encoding="utf-8")
     css = src_css.read_text(encoding="utf-8")
 
+    font_dir = SRC_DIR / "fonts"
     js_files = sorted(js_dir.glob("*.js"))
     if not js_files:
         print("no js sources found", file=sys.stderr)
@@ -568,6 +569,14 @@ def main() -> int:
         (OUT_DIR / "js" / f.name).write_text(text, encoding="utf-8", newline="")
         total += len(text.encode())
 
+    # 字体是二进制资源，直接按字节复制
+    if font_dir.exists():
+        (OUT_DIR / "fonts").mkdir(exist_ok=True)
+        for f in sorted(font_dir.iterdir()):
+            if f.is_file():
+                (OUT_DIR / "fonts" / f.name).write_bytes(f.read_bytes())
+                total += f.stat().st_size
+
     files = {
         "index.html": html,
         "styles.css": css,
@@ -581,6 +590,7 @@ def main() -> int:
     print(f"built into {OUT_DIR}:")
     print(f"  index.html + styles.css + 2 shims + {len(js_files)} js modules")
     print(f"  total {total/1024:.1f} KB")
+    print("  fonts: %s" % (", ".join(x.name for x in font_dir.iterdir()) if font_dir.exists() else "none"))
     return 0
 
 

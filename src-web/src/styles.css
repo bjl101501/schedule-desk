@@ -1798,38 +1798,34 @@ input,textarea,select,[contenteditable="true"],
 
 /* ---------- 顶栏数字时钟：安静地待在最右边 ---------- */
 /* 时钟：等宽数字 + 秒针小点，做成一枚安静的胶囊 */
-/* 表盘时钟：中性灰底 + 近黑等宽数字，底光在面板上，数字本身不发光 */
+@font-face{
+  font-family:'Digital-7 Mono';
+  src:url('fonts/digital-7-mono.ttf') format('truetype');
+  font-weight:400;font-style:normal;font-display:swap;
+}
+/* 表盘时钟：中性灰底 + 数字管字体，无发光 */
 .clock{
-  display:inline-flex;align-items:flex-end;gap:7px;height:40px;padding:0 12px 7px;
+  display:inline-flex;align-items:flex-end;gap:4px;height:40px;padding:0 11px 7px;
   border-radius:9px;border:1px solid #D5D5D5;background:#E9E9E9;
-  flex:0 0 auto;line-height:1;
-  box-shadow:
-    inset 0 0 14px rgba(255,255,255,.85),
-    0 0 16px rgba(190,190,190,.45),
-    0 1px 2px rgba(0,0,0,.05);
+  background-clip:padding-box;overflow:hidden;
+  flex:0 0 auto;line-height:1;box-shadow:none;
 }
 html[data-theme="dusk"] .clock,
-html[data-theme="ink"] .clock{
-  border-color:#2C2C2C;background:#181818;
-  box-shadow:
-    inset 0 0 16px rgba(255,255,255,.055),
-    0 0 18px rgba(0,0,0,.45),
-    0 1px 3px rgba(0,0,0,.35);
-}
+html[data-theme="ink"] .clock{border-color:#2C2C2C;background:#181818}
 .clock b{
-  font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
-  font-size:22px;font-weight:700;letter-spacing:.5px;
+  font-family:'Digital-7 Mono',ui-monospace,monospace;
+  font-size:27px;font-weight:400;letter-spacing:1px;
   color:#141414;font-variant-numeric:tabular-nums;
 }
 .clock em{
-  font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
-  font-style:normal;font-size:11px;font-weight:600;letter-spacing:.2px;
-  color:#6E6E6E;min-width:14px;padding-bottom:1px;
+  font-family:'Digital-7 Mono',ui-monospace,monospace;
+  font-style:normal;font-size:12.5px;font-weight:400;letter-spacing:0;
+  color:#7A7A7A;min-width:16px;padding-bottom:3px;
 }
 html[data-theme="dusk"] .clock b,
-html[data-theme="ink"] .clock b{color:#F0F0F0}
+html[data-theme="ink"] .clock b{color:#EDEDED}
 html[data-theme="dusk"] .clock em,
-html[data-theme="ink"] .clock em{color:#9A9A9A}
+html[data-theme="ink"] .clock em{color:#8E8E8E}
 
 /* 四象限拖拽：落点整格高亮，浮层不再吃卡片的过渡动画 */
 .qbox.dragover{background:var(--brand-softer);box-shadow:inset 0 0 0 2px var(--brand)}
