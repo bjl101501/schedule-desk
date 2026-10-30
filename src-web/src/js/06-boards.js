@@ -51,7 +51,8 @@ function bindQuadrantEvents(root) {
   // 每次重绘都会再进来一次：先把上一轮挂的监听撤干净，避免重复触发
   if (bindQuadrantEvents._off) { bindQuadrantEvents._off(); bindQuadrantEvents._off = null; }
 
-  var dragId = null, sx = 0, sy = 0, moved = false, justDragged = false;
+  var dragId = null, srcEl = null, ghost = null, dropBox = null;
+  var sx = 0, sy = 0, offX = 0, offY = 0, moved = false, justDragged = false;
 
   function cardOf(id) {
     var hit = null;
@@ -59,6 +60,43 @@ function bindQuadrantEvents(root) {
       if (c.getAttribute('data-tid') === id) hit = c;
     });
     return hit;
+  }
+
+  // 拖起来的瞬间：克隆一张卡片当浮层，原卡片变淡——与看板、时间线是同一套观感
+  function beginDrag() {
+    moved = true;
+    srcEl = cardOf(dragId);
+    if (!srcEl) return;
+    var r = srcEl.getBoundingClientRect();
+    offX = Math.min(sx - r.left, r.width - 12);
+    offY = Math.min(sy - r.top, r.height - 8);
+    ghost = srcEl.cloneNode(true);
+    ghost.className = 'drag-ghost kcard';
+    ghost.style.width = r.width + 'px';
+    ghost.style.height = r.height + 'px';
+    ghost.style.left = r.left + 'px';
+    ghost.style.top = r.top + 'px';
+    document.body.appendChild(ghost);
+    srcEl.classList.add('dragging');
+    document.body.classList.add('is-dragging');
+    showDragTip('松手移到对应象限');
+    buzz();
+  }
+
+  function paintTarget(box) {
+    if (box === dropBox) return;
+    if (dropBox && dropBox.parentNode) dropBox.parentNode.classList.remove('dragover');
+    dropBox = box;
+    if (dropBox && dropBox.parentNode) dropBox.parentNode.classList.add('dragover');
+  }
+
+  function cleanupDrag() {
+    if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+    ghost = null;
+    if (srcEl) { srcEl.classList.remove('dragging'); srcEl = null; }
+    paintTarget(null);
+    document.body.classList.remove('is-dragging');
+    hideDragTip();
   }
 
   function onDown(e) {
@@ -70,35 +108,45 @@ function bindQuadrantEvents(root) {
 
   function onMove(e) {
     if (!dragId) return;
-    if (!moved && Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) > 6) {
-      moved = true;
-      var c = cardOf(dragId);
-      if (c) c.classList.add('dragging');
-      document.body.classList.add('is-dragging');
+    if (!moved) {
+      if (Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) <= 6) return;
+      beginDrag();
     }
+    e.preventDefault();
+    if (ghost) {
+      // 贴着窗口边缘时把浮层收回可视区，别让卡片半边被裁掉
+      var gw = ghost.offsetWidth, gh = ghost.offsetHeight;
+      ghost.style.left = Math.max(6, Math.min(e.clientX - offX, window.innerWidth - gw - 6)) + 'px';
+      ghost.style.top = Math.max(6, Math.min(e.clientY - offY, window.innerHeight - gh - 6)) + 'px';
+    }
+    var under = document.elementFromPoint(e.clientX, e.clientY);
+    paintTarget(under && under.closest ? under.closest('[data-qdrop]') : null);
   }
 
   function onUp(e) {
     if (!dragId) return;
-    var id = dragId; dragId = null;
-    Array.prototype.forEach.call(root.querySelectorAll('.kcard'), function (c) {
-      c.classList.remove('dragging');
-    });
-    document.body.classList.remove('is-dragging');
+    var id = dragId, target = dropBox;
+    dragId = null;
+    cleanupDrag();
     if (!moved) return;
     justDragged = true;
-    var el = document.elementFromPoint(e.clientX, e.clientY);
-    var box = el && el.closest ? el.closest('[data-qdrop]') : null;
-    if (!box) return;
+    if (!target) return;
     var t = findTask(id);
     if (!t) return;
-    var q = box.getAttribute('data-qdrop');
+    var q = target.getAttribute('data-qdrop');
     t.important = (q === 'q1' || q === 'q2');
     t.urgent = (q === 'q2' || q === 'q3');
     cacheLocal();
     refreshAll();
     apiUpdateTask(t, ['重要', '紧急']);
     toast('已移到「' + ({ q1: '重要不紧急', q2: '重要紧急', q3: '不重要紧急', q4: '不重要不紧急' })[q] + '」');
+  }
+
+  // 拖到一半切走窗口：收掉浮层，别留在屏幕上
+  function onBlur() {
+    if (!dragId) return;
+    dragId = null;
+    cleanupDrag();
   }
 
   function onClick(e) {
@@ -114,13 +162,16 @@ function bindQuadrantEvents(root) {
   document.addEventListener('pointermove', onMove);
   document.addEventListener('pointerup', onUp);
   document.addEventListener('pointercancel', onUp);
+  window.addEventListener('blur', onBlur);
 
   bindQuadrantEvents._off = function () {
+    cleanupDrag();
     root.removeEventListener('pointerdown', onDown);
     root.removeEventListener('click', onClick);
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
     document.removeEventListener('pointercancel', onUp);
+    window.removeEventListener('blur', onBlur);
   };
 }
 

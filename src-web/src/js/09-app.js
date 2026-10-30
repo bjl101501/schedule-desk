@@ -576,18 +576,22 @@ function openShortcuts() {
     '<div class="hint" style="margin-top:6px">在输入框里打字时不会触发这些快捷键。</div>' +
     '</div></div>');
 }
-/* 顶栏数字时钟：只显示到分钟，15 秒对一次表，开销可以忽略 */
+/* 标题旁的数字时钟：时:分 + 小号秒，每秒只改两个文本节点 */
 function startClock() {
   var tEl = document.getElementById('clockTime');
-  var dEl = document.getElementById('clockDate');
+  var sEl = document.getElementById('clockSec');
   if (!tEl) return;
   function tick() {
     var d = new Date();
     tEl.textContent = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
-    if (dEl) dEl.textContent = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + weekdayName(d);
+    if (sEl) sEl.textContent = pad2(d.getSeconds());
   }
   tick();
-  setInterval(tick, 15000);
+  // 对齐到整秒再进 1 秒循环，避免秒数跳格
+  setTimeout(function () {
+    tick();
+    setInterval(tick, 1000);
+  }, 1000 - (Date.now() % 1000));
 }
 
 function bindShortcuts() {
