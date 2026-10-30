@@ -1826,7 +1826,7 @@ input,textarea,select,[contenteditable="true"],
   --clk-sec:#6E6E6E;
   --clk-sec-off:#DCDCDC;
   display:inline-flex;align-items:center;gap:3px;height:40px;padding:0 7px;
-  border-radius:9px;border:1px solid #D5D5D5;background:var(--clk-bg);
+  border-radius:9px;border:1px solid #BFBFBF;background:var(--clk-bg);
   background-clip:padding-box;overflow:hidden;
   flex:0 0 auto;line-height:1;box-shadow:none;
 }
@@ -1834,7 +1834,7 @@ html[data-theme="dusk"] .clock,
 html[data-theme="ink"] .clock{
   --clk-bg:#181818;--clk-on:#EDEDED;--clk-off:#2A2A2A;--clk-sec:#8E8E8E;
   --clk-sec-off:#262626;
-  border-color:#2C2C2C;
+  border-color:#3C3C3C;
 }
 /* 一位数字 = 一个格子；数字字形宽 .4727em，右边 .075em 是管与管的缝 */
 .clock .tm,
