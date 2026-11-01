@@ -1,6 +1,6 @@
 /* 计算层：排序 / 范围 / 筛选 / 清单标签集合 / 连续天数。全部把状态作为参数传进来 */
 import type { Filters, Habit, Task, ViewKey } from './types';
-import { addDays, dayDiff, parseAnchor, parseHM, parseYmd, stampDay, today0, ymd } from './date';
+import { addDays, dayDiff, parseAnchor, parseHM, parseYmd, stampDay, ymd } from './date';
 import { EB_OFFSETS, PRIOS } from './constants';
 import { reminderState, taskState } from './window';
 
@@ -174,7 +174,7 @@ export function pendingReminders(tasks: Task[], now: number): { task: Task; r: N
  * 改日期 / 时间之后把提醒基准一起挪过去。
  * 只改 t.date 不动 remindCfg.anchor 的话：提醒还在旧的那天响，而且一直算「逾期」。
  */
-export function syncRemindAnchor(t: Task, oldDate: string, oldTime: string): boolean {
+export function syncRemindAnchor(t: Task, oldTime: string): boolean {
   if (!t || !t.remindCfg) return false;
   const cfg = t.remindCfg;
   if (!t.date) {
@@ -197,15 +197,6 @@ export function syncRemindAnchor(t: Task, oldDate: string, oldTime: string): boo
   // 日子变了，原来的「已提醒」标记作废
   t.remindCfg = { anchor: next, offsets: (cfg.offsets || EB_OFFSETS).slice(), read: [] };
   return true;
-}
-
-/** 时段文案：给今日面板与列表用 */
-export function todayStr(now: number = Date.now()): string {
-  return ymd(new Date(now));
-}
-
-export function defaultToday(): Date {
-  return today0();
 }
 
 /*

@@ -10,6 +10,7 @@ import type { Countdown, DbRow, Habit, Pomodoro, RemindCfg, Sub, Task } from './
 import { normCountdown, normHabit, normPomo, normTask } from './task';
 import { isoToYmd, parseAnchor } from './date';
 import { DB_IDS, EB_OFFSETS } from './constants';
+import { flattenProps } from './props';
 
 export interface Bundle {
   tasks: Task[];
@@ -38,31 +39,6 @@ function hasChineseProps(r: unknown): boolean {
   const o = propsOf(r);
   return typeof o['标题'] !== 'undefined' || typeof o['名称'] !== 'undefined';
 }
-
-/*
-  中文列名在存档里是 {标题:{text:'x'}} 这种 PropValue 形态，
-  而 normTask/normHabit 读的是「已展平」的行（标题:'x'）——桥接层平时做这层展平，
-  导入走的是纯函数，得在这里补一次，否则标题会变成 '[object Object]'。
-*/
-function flatten(props: Record<string, unknown>): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  Object.keys(props).forEach((k) => {
-    const v = props[k];
-    if (v && typeof v === 'object') {
-      const o = v as Record<string, unknown>;
-      if ('text' in o) out[k] = o.text;
-      else if ('number' in o) out[k] = o.number;
-      else if ('date' in o) out[k] = o.date;
-      else if ('select' in o) out[k] = o.select;
-      else if ('checkbox' in o) out[k] = o.checkbox;
-      else out[k] = v;
-    } else {
-      out[k] = v;
-    }
-  });
-  return out;
-}
-
 
 function normSubs(raw: unknown): Sub[] {
   return arr(raw)
@@ -189,7 +165,7 @@ function camelPomo(r: unknown): Pomodoro {
 
 function pickTasks(list: unknown[]): Task[] {
   return list
-    .map((r) => (hasChineseProps(r) ? normTask(flatten(propsOf(r)) as DbRow) : camelTask(r)))
+    .map((r) => (hasChineseProps(r) ? normTask(flattenProps(propsOf(r)) as DbRow) : camelTask(r)))
     .filter((t) => !!t.title);
 }
 
@@ -201,13 +177,13 @@ function pickByTable(tables: Record<string, unknown>): Bundle {
   return {
     tasks: pickTasks(rows(DB_IDS.tasks)),
     habits: rows(DB_IDS.habits)
-      .map((r) => normHabit(flatten(propsOf(r)) as DbRow))
+      .map((r) => normHabit(flattenProps(propsOf(r)) as DbRow))
       .filter((h) => !!h.name),
     countdowns: rows('gVxrxS4S2Zb2xddhphNdjT')
-      .map((r) => normCountdown(flatten(propsOf(r)) as DbRow))
+      .map((r) => normCountdown(flattenProps(propsOf(r)) as DbRow))
       .filter((c) => !!c.name),
     pomodoros: rows(DB_IDS.pomodoros)
-      .map((r) => normPomo(flatten(propsOf(r)) as DbRow))
+      .map((r) => normPomo(flattenProps(propsOf(r)) as DbRow))
       .filter((p) => !!p.task)
   };
 }
@@ -229,13 +205,13 @@ export function parseBundleText(text: string): Bundle {
   const bundle: Bundle = {
     tasks: pickTasks(tasksRaw),
     habits: arr(root.habits)
-      .map((r) => (hasChineseProps(r) ? normHabit(flatten(propsOf(r)) as DbRow) : camelHabit(r)))
+      .map((r) => (hasChineseProps(r) ? normHabit(flattenProps(propsOf(r)) as DbRow) : camelHabit(r)))
       .filter((h) => !!h.name),
     countdowns: arr(root.countdowns)
-      .map((r) => (hasChineseProps(r) ? normCountdown(flatten(propsOf(r)) as DbRow) : camelCountdown(r)))
+      .map((r) => (hasChineseProps(r) ? normCountdown(flattenProps(propsOf(r)) as DbRow) : camelCountdown(r)))
       .filter((c) => !!c.name),
     pomodoros: arr(root.pomodoros)
-      .map((r) => (hasChineseProps(r) ? normPomo(flatten(propsOf(r)) as DbRow) : camelPomo(r)))
+      .map((r) => (hasChineseProps(r) ? normPomo(flattenProps(propsOf(r)) as DbRow) : camelPomo(r)))
       .filter((p) => !!p.task)
   };
 

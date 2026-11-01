@@ -18,11 +18,13 @@ export function clearPanel(close: () => void): boolean {
   return true;
 }
 
-export function closeActivePanel(): void {
-  if (!active) return;
+/** 关掉当前浮层；返回「真的关掉了一个」，Esc 靠这个决定要不要继续往上剥 */
+export function closeActivePanel(): boolean {
+  if (!active) return false;
   const f = active;
   active = null;
   f();
+  return true;
 }
 
 export function place(el: HTMLElement, anchor: HTMLElement, opts: PlaceOpts = {}): void {

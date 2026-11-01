@@ -2,14 +2,15 @@
   import type { Task } from '$lib/domain/types';
   import { addDays, dayDiff, hmStr, parseHM, parseYmd, ymd } from '$lib/domain/date';
   import { prioCls, segDateText, subPlan, subStats, taskSpan } from '$lib/domain/task';
-  import { app } from '$lib/store/app.svelte';
   import { todayD } from '$lib/store/clock.svelte';
   import { toggleTaskDetail } from '$lib/store/ui.svelte';
+  import { isDetailOpen } from '$lib/store/overlay.svelte';
   import { isSuppressed } from '$lib/actions/suppress';
   import Icon from '$lib/ui/Icon.svelte';
   import TaskRow from '$lib/components/TaskRow.svelte';
   import { pointerDrag } from '$lib/actions/drag';
   import { dropTimeline, taskById } from '$lib/store/dndActions.svelte';
+  import { beginDragSession, endDragSession } from '$lib/store/dragSession.svelte';
 
   let { rows }: { rows: Task[] } = $props();
 
@@ -149,7 +150,7 @@
         handle: '[data-gbar]',
         threshold: 6,
         onStart: (el, e) => {
-          app.dragging = true;
+          beginDragSession();
           el.classList.add('dragging');
           resizing = !!(e.target as HTMLElement).closest('[data-gresize]');
           const g = document.querySelector('.gantt') as HTMLElement | null;
@@ -159,7 +160,7 @@
           grabDay = Math.round(((e.clientX - r.left) / Math.max(1, r.width)) * view.days);
         },
         onEnd: (el, e, moved) => {
-          app.dragging = false;
+          endDragSession();
           el.classList.remove('dragging');
           if (!moved) return;
           const g = document.querySelector('.gantt') as HTMLElement | null;
@@ -192,7 +193,7 @@
           {#each lane as x (x.t.id)}
             {@const segs = subPlan(x.t).filter((g) => g.days > 0)}
             <div
-              class="g-bar {prioCls(x.t)}{segs.length > 1 ? ' has-segs' : ''}{app.detailId === x.t.id ? ' active' : ''}"
+              class="g-bar {prioCls(x.t)}{segs.length > 1 ? ' has-segs' : ''}{isDetailOpen(x.t.id) ? ' active' : ''}"
               data-gbar={x.t.id}
               title={tipOf(x.t, x.span)}
               style={barStyle(x.off, x.span, view.days)}

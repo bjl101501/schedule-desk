@@ -5,9 +5,9 @@
   import { TAG_COLORS } from '$lib/domain/constants';
   import { taskState } from '$lib/domain/window';
   import { clock, todayD } from '$lib/store/clock.svelte';
-  import { app } from '$lib/store/app.svelte';
   import { deleteTask, toggleDone } from '$lib/store/data.svelte';
   import { askDeleteTask, toggleTaskDetail, openTaskEditor } from '$lib/store/ui.svelte';
+  import { isDetailOpen } from '$lib/store/overlay.svelte';
   import { isSuppressed } from '$lib/actions/suppress';
   import Icon from '$lib/ui/Icon.svelte';
   import Flags from './Flags.svelte';
@@ -49,12 +49,12 @@
 
   function onDel(e: MouseEvent): void {
     e.stopPropagation();
-    askDeleteTask(t.id, t.title, () => deleteTask(t.id));
+    askDeleteTask(t.title, () => deleteTask(t.id));
   }
 </script>
 
 <div
-  class="task{t.done ? ' done' : ''}{app.detailId === t.id ? ' active' : ''}"
+  class="task{t.done ? ' done' : ''}{isDetailOpen(t.id) ? ' active' : ''}"
   data-tid={t.id}
   onclick={onRowClick}
 >

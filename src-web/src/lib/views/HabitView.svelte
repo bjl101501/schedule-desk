@@ -4,6 +4,7 @@
   import { calcStreak } from '$lib/domain/selectors';
   import { app } from '$lib/store/app.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
+  import { habitNav, habitToday, setHabitMode } from '$lib/store/nav.svelte';
   import { toast } from '$lib/store/toast.svelte';
   import { apiSaveHabit, cacheLocal, data } from '$lib/store/data.svelte';
   import { uiState } from '$lib/store/ui.svelte';
@@ -100,7 +101,7 @@
   });
 
   function navCal(step: number): void {
-    app.habitCursor = new Date(cur.getFullYear(), cur.getMonth() + step, 1);
+    habitNav(step);
   }
 
   function editHabit(id: string): void {
@@ -123,8 +124,8 @@
       {doneToday >= data.habits.length ? ' 个，今天全部打卡完成' : ' 个 · 连续坚持的人最酷'}
     </div>
     <div class="seg" style="margin-left:auto">
-      <button data-habmode="cards" class={app.habitMode !== 'cal' ? 'on' : ''} onclick={() => (app.habitMode = 'cards')}>卡片</button>
-      <button data-habmode="cal" class={app.habitMode === 'cal' ? 'on' : ''} onclick={() => (app.habitMode = 'cal')}>日历总览</button>
+      <button data-habmode="cards" class={app.habitMode !== 'cal' ? 'on' : ''} onclick={() => setHabitMode('cards')}>卡片</button>
+      <button data-habmode="cal" class={app.habitMode === 'cal' ? 'on' : ''} onclick={() => setHabitMode('cal')}>日历总览</button>
     </div>
   </div>
 
@@ -136,7 +137,7 @@
           <button data-hcalnav="-1" onclick={() => navCal(-1)}><Icon name="chevL" /></button>
           <button data-hcalnav="1" onclick={() => navCal(1)}><Icon name="chevR" /></button>
         </div>
-        <button class="cal-today-btn" data-hcaltoday onclick={() => (app.habitCursor = today0())}>本月</button>
+        <button class="cal-today-btn" data-hcaltoday onclick={habitToday}>本月</button>
       </div>
       <div class="hcal-whead">{#each weekNames as w (w)}<div>{w}</div>{/each}</div>
       <div class="hcal-grid">

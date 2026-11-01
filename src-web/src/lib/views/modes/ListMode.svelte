@@ -10,6 +10,7 @@
   import { applyVisibleOrder } from '$lib/store/dndActions.svelte';
   import { setSortMode } from '$lib/store/app.svelte';
   import { toast } from '$lib/store/toast.svelte';
+  import { beginDragSession, endDragSession } from '$lib/store/dragSession.svelte';
 
   let { rows }: { rows: Task[] } = $props();
   const today = $derived(todayD());
@@ -22,7 +23,7 @@
       .filter(Boolean);
 
   function onDragEnd(el: HTMLElement, e: PointerEvent, moved: boolean): void {
-    app.dragging = false;
+    endDragSession();
     el.classList.remove('dragging');
     fx?.end();
     fx = null;
@@ -82,7 +83,7 @@
     use:pointerDrag={{
       handle: '[data-tid]',
       onStart: (el) => {
-        app.dragging = true;
+        beginDragSession();
         el.classList.add('dragging');
         fx = beginDrag({ source: el, scrollEl: () => document.getElementById('content') });
       },

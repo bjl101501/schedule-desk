@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { todayD } from '$lib/store/clock.svelte';
   import { data } from '$lib/store/data.svelte';
   import { app, setFilters } from '$lib/store/app.svelte';
   import { uiState, openTaskDetail } from '$lib/store/ui.svelte';
@@ -7,7 +6,6 @@
   import { prepareForm } from '$lib/actions/prepare-form';
 
   let kw = $state(app.filters.kw);
-  const today = todayD();
 
   const rows = $derived.by(() => {
     const k = kw.trim().toLowerCase();

@@ -2,7 +2,7 @@
   import { dateLabel, parseYmd, today0, uid, ymd } from '$lib/domain/date';
   import { parseQuick } from '$lib/domain/quickparse';
   import { app } from '$lib/store/app.svelte';
-  import { data, saveTask } from '$lib/store/data.svelte';
+  import { saveTask } from '$lib/store/data.svelte';
   import { toast } from '$lib/store/toast.svelte';
   import { openTaskEditor, uiState } from '$lib/store/ui.svelte';
   import Icon from '$lib/ui/Icon.svelte';
@@ -52,7 +52,6 @@
       span: 1,
       createdAt: ymd(today0())
     };
-    void data;
     saveTask(t);
     close();
     toast.show('已添加：' + r.title + (r.time ? ' · ' + r.time : ''));

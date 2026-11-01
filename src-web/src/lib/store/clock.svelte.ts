@@ -1,6 +1,6 @@
 /* 全应用唯一的 15 秒心跳 + 对齐整分钟的时钟。
    旧版有两个 15s 定时器（状态刷新、同步轮询）和一个 1s 时钟，这里合并成两处。 */
-import { app } from './app.svelte';
+import { isDragging } from './dragSession.svelte';
 
 export const clock = $state({
   now: Date.now(),
@@ -20,7 +20,7 @@ export function startClock(onTick?: () => void): () => void {
   if (timer) return () => stopClock();
   timer = setInterval(() => {
     // 拖拽期间不推进，避免节点被重排
-    if (!app.dragging) clock.now = Date.now();
+    if (!isDragging()) clock.now = Date.now();
     if (onTick) onTick();
   }, 15000);
 

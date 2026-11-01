@@ -64,7 +64,3 @@ export async function updateCheck(): Promise<UpdateInfo> {
 export async function updateInstall(): Promise<{ ok?: boolean; error?: string; __error?: string }> {
   return (await invokeSafe('update_install')) as { ok?: boolean; error?: string };
 }
-
-export async function notifyNow(title: string, body: string): Promise<void> {
-  await invokeSafe('notify_now', { title, body });
-}

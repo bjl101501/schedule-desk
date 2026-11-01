@@ -2,11 +2,12 @@
   import type { VMode } from '$lib/domain/types';
   import { addDays, shortDate, weekdayName, ymd } from '$lib/domain/date';
   import { activeFilterCount } from '$lib/domain/selectors';
-  import { app, setSortMode, setFilters } from '$lib/store/app.svelte';
+  import { app, setSortMode } from '$lib/store/app.svelte';
+  import { setVMode } from '$lib/store/nav.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
   import { data } from '$lib/store/data.svelte';
   import { openDrawer } from '$lib/store/nav.svelte';
-  import { openQuickAdd, uiState } from '$lib/store/ui.svelte';
+  import { uiState } from '$lib/store/ui.svelte';
     import { toast } from '$lib/store/toast.svelte';
   import Icon from '$lib/ui/Icon.svelte';
   import Clock from './Clock.svelte';
@@ -69,11 +70,6 @@
     { k: 'kanban', tip: '看板视图：按状态、优先级或清单分列，可拖动换列。', icon: 'kanban' },
     { k: 'timeline', tip: '时间线视图：按天排开，看跨度最直观。', icon: 'timeline' }
   ];
-
-  function setVMode(k: VMode): void {
-    app.vmode = k;
-    app.listLimit = 60;
-  }
 
   function toggleSort(): void {
     setSortMode(app.sortMode === 'manual' ? 'time' : 'manual');

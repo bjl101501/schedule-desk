@@ -6,7 +6,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "check": "svelte-check --tsconfig ./tsconfig.json && node build/check-writes.mjs",
+    "check:test": "tsc -p tsconfig.test.json",
+    "check:ui": "node build/ui-check.mjs",
+    "check:remedy": "node build/remedy-check.mjs",
     "test": "bun test src-web/src/lib"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { addDays, dayDiff, durText, hmStr, mdShort, parseAnchor, parseHM, parseYmd, stampDay, stampTime, today0, toDtLocal, weekdayName, tagColor as tagColorOf } from '$lib/domain/date';
+  import { addDays, dayDiff, durText, hmStr, mdShort, parseAnchor, parseHM, parseYmd, stampDay, stampTime, toDtLocal, weekdayName, tagColor as tagColorOf } from '$lib/domain/date';
   import { PRIO_LABEL, TAG_COLORS } from '$lib/domain/constants';
   import { quadName, ebStageName } from '$lib/domain/chips';
   import { repeatLabel, subPlan, subStats, subLate, segDateText, taskSpan } from '$lib/domain/task';
@@ -7,14 +7,16 @@
   import { clock, todayD } from '$lib/store/clock.svelte';
   import { deleteTask, findTask, toggleDone, toggleSubAt } from '$lib/store/data.svelte';
   import { closeTaskDetail, openTaskEditor, uiState } from '$lib/store/ui.svelte';
+  import type { Layer } from '$lib/store/overlay.svelte';
   import { toast } from '$lib/store/toast.svelte';
   import Icon from '$lib/ui/Icon.svelte';
 
-  const id = uiState.detailId;
+  // 由层栈传入：换一条任务时整层会换 uid 重挂载，不会再拿旧快照
+  let { layer }: { layer: Extract<Layer, { kind: 'detail' }> } = $props();
+  const id = $derived(layer.id);
   const t = $derived(findTask(id));
   const tick = $derived(clock.now);
   const today = $derived(todayD());
-  const t0 = today0();
 
   const view = $derived.by(() => {
     void tick;

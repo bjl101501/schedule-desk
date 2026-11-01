@@ -1,7 +1,7 @@
 <script lang="ts">
   import { today0, ymd } from '$lib/domain/date';
   import {
-    SNAP_KEY, clearTables, data, dataJob, importBundle, readDailySnaps, seedDemo, writeSafetySnapshot
+    clearTables, data, dataJob, importBundle, readDailySnaps, readSafetySnapshot, seedDemo, writeSafetySnapshot
   } from '$lib/store/data.svelte';
   import { bundleCount, parseBundleText } from '$lib/domain/backup';
   import { downloadBlob } from '$lib/bridge/export';
@@ -86,12 +86,7 @@
   }
 
   function restoreSnapshot(): void {
-    let raw = '';
-    try {
-      raw = localStorage.getItem(SNAP_KEY) || '';
-    } catch {
-      raw = '';
-    }
+    const raw = readSafetySnapshot();
     if (!raw) {
       toast.show('还没有可恢复的快照');
       return;

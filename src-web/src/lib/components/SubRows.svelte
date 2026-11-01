@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Task } from '$lib/domain/types';
-  import { durText, ymd } from '$lib/domain/date';
+  import { durText } from '$lib/domain/date';
   import { segDateText, subLate, subPlan, subStats } from '$lib/domain/task';
   import { app } from '$lib/store/app.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
@@ -17,7 +17,7 @@
   const tick = $derived(clock.now);
 
   const subs = $derived(t.subs || []);
-  const visIdx = $derived(subs.map((x, i) => i).filter((i) => !only || !subs[i].done));
+  const visIdx = $derived(subs.map((_, i) => i).filter((i) => !only || !subs[i].done));
   const lastVis = $derived(visIdx.length ? visIdx[visIdx.length - 1] : -1);
   const shown = $derived(visIdx.length);
 

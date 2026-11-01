@@ -4,7 +4,7 @@
 */
 import type { Countdown, DbRow, Habit, Pomodoro, Task } from '$lib/domain/types';
 import { DB_IDS } from '$lib/domain/constants';
-import { addDays, stampNow, today0, uid, ymd } from '$lib/domain/date';
+import { stampNow, today0, uid, ymd } from '$lib/domain/date';
 import {
   cloneNextRepeat, normCountdown, normHabit, normPomo, normTask, subStats, syncDoneFromSubs
 } from '$lib/domain/task';
@@ -13,6 +13,7 @@ import { cdToProps, habitToProps, pomoToProps, taskToProps } from '$lib/domain/p
 import { buildSeed } from '$lib/domain/seed';
 import { cleanHolidayName, fallbackHoliday, HOLIDAY_API, type HolidayInfo } from '$lib/domain/holiday';
 import { db, dbAvailable, flushNow } from '$lib/bridge/db';
+import { STORAGE_KEYS, readJson, readRaw, writeJson, writeRaw } from './storage';
 import type { Bundle } from '$lib/domain/backup';
 import { app } from './app.svelte';
 import { markOffline, markSynced, markSyncing } from './sync.svelte';
@@ -54,7 +55,7 @@ function loadAllRows(which: 'tasks' | 'habits' | 'countdowns' | 'pomodoros', gua
 
 export async function loadAll(): Promise<void> {
   if (!dbAvailable()) {
-    app.online = false;
+    
     markOffline('离线模式');
     loadLocalCache();
     app.loaded = true;
@@ -62,7 +63,7 @@ export async function loadAll(): Promise<void> {
     return;
   }
   markSyncing();
-  app.busy++;
+  
   try {
     const [tasks, habits, countdowns, pomodoros] = await Promise.all([
       loadAllRows('tasks'),
@@ -74,9 +75,8 @@ export async function loadAll(): Promise<void> {
     data.habits = habits.map(normHabit);
     data.countdowns = countdowns.map(normCountdown);
     data.pomodoros = pomodoros.map(normPomo);
-    app.online = true;
     app.loaded = true;
-    app.busy--;
+
     markSynced();
     autoSnapshotDaily();
     if (!data.tasks.length && !data.habits.length && !seededFlag()) {
@@ -87,8 +87,8 @@ export async function loadAll(): Promise<void> {
     ensureHolidayCountdown();
   } catch (err) {
     console.error('[database] 数据加载失败:', err);
-    app.online = false;
-    app.busy--;
+    
+    
     markOffline('离线模式');
     loadLocalCache();
     app.loaded = true;
@@ -98,26 +98,23 @@ export async function loadAll(): Promise<void> {
 /* ---------- 长任务（清空 / 导入）进度 ---------- */
 export const dataJob = $state({ on: false, label: '', done: 0, total: 0 });
 
-const SNAP_KEY = 'wb_schedule_snapshot';
+const SNAP_KEY = STORAGE_KEYS.snapshot;
 
 /** 删除前的安全快照：与备份弹窗的「恢复上次快照」共用同一个键 */
 export function writeSafetySnapshot(reason: string): boolean {
-  try {
-    localStorage.setItem(
-      SNAP_KEY,
-      JSON.stringify({
-        at: Date.now(),
-        reason,
-        tasks: $state.snapshot(data.tasks),
-        habits: $state.snapshot(data.habits),
-        countdowns: $state.snapshot(data.countdowns),
-        pomodoros: $state.snapshot(data.pomodoros)
-      })
-    );
-    return true;
-  } catch {
-    return false;
-  }
+  return writeJson(SNAP_KEY, {
+    at: Date.now(),
+    reason,
+    tasks: $state.snapshot(data.tasks),
+    habits: $state.snapshot(data.habits),
+    countdowns: $state.snapshot(data.countdowns),
+    pomodoros: $state.snapshot(data.pomodoros)
+  });
+}
+
+/** 读上次的安全快照原文（备份弹窗恢复时用，键名不外泄） */
+export function readSafetySnapshot(): string {
+  return readRaw(SNAP_KEY) || '';
 }
 
 export { SNAP_KEY };
@@ -243,7 +240,7 @@ export async function importBundle(
 }
 
 /* ---------- 本地缓存（260ms 合并写入） ---------- */
-const CACHE_KEY = 'wb_schedule_cache';
+const CACHE_KEY = STORAGE_KEYS.cache;
 let cacheTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function cacheLocal(): void {
@@ -259,25 +256,18 @@ export function flushCache(): void {
     clearTimeout(cacheTimer);
     cacheTimer = null;
   }
-  try {
-    localStorage.setItem(
-      CACHE_KEY,
-      JSON.stringify({
-        ts: Date.now(),
-        tasks: $state.snapshot(data.tasks),
-        habits: $state.snapshot(data.habits),
-        countdowns: $state.snapshot(data.countdowns),
-        pomodoros: $state.snapshot(data.pomodoros)
-      })
-    );
-  } catch {
-    /* ignore */
-  }
+  writeJson(CACHE_KEY, {
+    ts: Date.now(),
+    tasks: $state.snapshot(data.tasks),
+    habits: $state.snapshot(data.habits),
+    countdowns: $state.snapshot(data.countdowns),
+    pomodoros: $state.snapshot(data.pomodoros)
+  });
 }
 
 export function loadLocalCache(): void {
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
+    const raw = readRaw(CACHE_KEY);
     if (!raw) return;
     const o = JSON.parse(raw);
     if (!o) return;
@@ -466,17 +456,15 @@ export function saveTask(t: Task): Promise<void> {
 /* ---------- 示例数据 ---------- */
 function seededFlag(): boolean {
   try {
-    return localStorage.getItem('wb_schedule_seeded') === '1';
+    return readRaw(STORAGE_KEYS.seeded) === '1';
   } catch {
     return false;
   }
 }
 function markSeeded(): void {
-  try {
-    localStorage.setItem('wb_schedule_seeded', '1');
-  } catch {
-    /* ignore */
-  }
+  // 必须写裸 '1'：Rust 侧第一次启动的判断就是 seeded === '1'，
+  // 写成 JSON（"1"）会被当成「没种过」，清空后重启又把示例数据种回来
+  writeRaw(STORAGE_KEYS.seeded, '1');
 }
 
 export async function seedDemo(): Promise<void> {
@@ -500,17 +488,12 @@ export async function seedDemo(): Promise<void> {
 }
 
 /* ---------- 下一个假期 ---------- */
-const HOLIDAY_CACHE = 'wb_holiday_cache_v2';
+const HOLIDAY_CACHE = STORAGE_KEYS.holiday;
 let holidayBusy = false;
 
 function fetchNextHoliday(cb: (h: HolidayInfo) => void): void {
   const today = ymd(today0());
-  let cache: HolidayInfo | null = null;
-  try {
-    cache = JSON.parse(localStorage.getItem(HOLIDAY_CACHE) || 'null');
-  } catch {
-    cache = null;
-  }
+  let cache = readJson<HolidayInfo | null>(HOLIDAY_CACHE, null);
   if (cache && cache.date && cache.date >= today && cache.at && Date.now() - cache.at < 2 * 3600 * 1000) {
     cb(cache);
     return;
@@ -519,11 +502,7 @@ function fetchNextHoliday(cb: (h: HolidayInfo) => void): void {
   const finish = (v: HolidayInfo) => {
     if (done) return;
     done = true;
-    try {
-      localStorage.setItem(HOLIDAY_CACHE, JSON.stringify(v));
-    } catch {
-      /* ignore */
-    }
+    writeJson(HOLIDAY_CACHE, v);
     cb(v);
   };
   const giveUp = () => finish(fallbackHoliday(today));
@@ -604,7 +583,7 @@ export function ensureHolidayCountdown(): void {
 }
 
 /* ---------- 每日快照 ---------- */
-const DAILY_KEY = 'wb_schedule_daily';
+const DAILY_KEY = STORAGE_KEYS.daily;
 
 export interface DailySnap {
   day: string;
@@ -615,11 +594,8 @@ export interface DailySnap {
 }
 
 export function readDailySnaps(): DailySnap[] {
-  try {
-    return JSON.parse(localStorage.getItem(DAILY_KEY) || '[]') || [];
-  } catch {
-    return [];
-  }
+  const v = readJson<DailySnap[]>(DAILY_KEY, []);
+  return Array.isArray(v) ? v : [];
 }
 
 export function autoSnapshotDaily(): void {
@@ -635,7 +611,7 @@ export function autoSnapshotDaily(): void {
       countdowns: $state.snapshot(data.countdowns) as Countdown[]
     });
     if (arr.length > 7) arr = arr.slice(arr.length - 7);
-    localStorage.setItem(DAILY_KEY, JSON.stringify(arr));
+    writeJson(DAILY_KEY, arr);
   } catch {
     /* ignore */
   }
@@ -659,19 +635,3 @@ export async function restoreDailySnap(day: string): Promise<boolean> {
   return true;
 }
 
-/** 备份导入：用一批新数据整体替换（调用方负责先清空） */
-export function replaceAll(next: { tasks?: Task[]; habits?: Habit[]; countdowns?: Countdown[]; pomodoros?: Pomodoro[] }): void {
-  data.tasks = (next.tasks || []).map((t) => ({ ...t, id: '' }));
-  data.habits = (next.habits || []).map((h) => ({ ...h, id: '' }));
-  data.countdowns = (next.countdowns || []).map((c) => ({ ...c, id: '' }));
-  data.pomodoros = (next.pomodoros || []).map((p) => ({ ...p, id: '' }));
-}
-
-export function todayYmd(): string {
-  return ymd(today0());
-}
-
-export function addDaysStr(s: string, n: number): string {
-  const d = new Date(s);
-  return ymd(addDays(d, n));
-}

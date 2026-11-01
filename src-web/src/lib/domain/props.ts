@@ -73,3 +73,28 @@ export function pomoToProps(p: Pomodoro): Props {
     暂停时长: { number: Number(p.pauseSec) || 0 }
   };
 }
+
+/**
+ * 把存档里的 {text/date/number/select/checkbox} 还原成标量。
+ * 桥接层读库、导入解析存档、备份恢复三处都要这一步；
+ * 之前 db.ts 与 backup.ts 各写一份，导入时字段名对不上会静默变 [object Object]。
+ */
+export function flattenProps(props: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (!props || typeof props !== 'object') return out;
+  for (const k of Object.keys(props)) {
+    const v = props[k];
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      const o = v as Record<string, unknown>;
+      if ('text' in o) out[k] = o.text;
+      else if ('date' in o) out[k] = o.date;
+      else if ('number' in o) out[k] = o.number;
+      else if ('select' in o) out[k] = o.select;
+      else if ('checkbox' in o) out[k] = !!o.checkbox;
+      else out[k] = v;
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}

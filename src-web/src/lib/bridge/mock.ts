@@ -3,8 +3,9 @@
   真机行为与这里共用同一个 db.ts 门面，差别只在文件落盘。
 */
 import { setTransport, type Transport } from './invoke';
+import { RESET_KEYS, STORAGE_KEYS, readRaw, removeKey, writeRaw } from '$lib/store/storage';
 
-const KEY = 'sd_mock_store';
+const KEY = STORAGE_KEYS.mockDb;
 const VERSION = '2.3.0-mock';
 
 interface Rec {
@@ -17,7 +18,7 @@ interface Rec {
 
 function load(): Record<string, Rec[]> {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = readRaw(KEY);
     return raw ? (JSON.parse(raw) as Record<string, Rec[]>) : {};
   } catch {
     return {};
@@ -27,7 +28,7 @@ function load(): Record<string, Rec[]> {
 function save(tables: Record<string, Rec[]>): void {
   try {
     const raw = JSON.stringify(tables);
-    localStorage.setItem(KEY, raw);
+    writeRaw(KEY, raw);
     console.info('[mock] save', raw.length, 'bytes');
   } catch (e) {
     console.info('[mock] save failed', String(e));
@@ -37,17 +38,12 @@ function save(tables: Record<string, Rec[]>): void {
 export function installMockBridge(): void {
   // ?reset=1：清空预览数据，等价于「第一次打开」
   if (new URLSearchParams(location.search).get('reset') === '1') {
-    localStorage.removeItem(KEY);
-    localStorage.removeItem('wb_schedule_seeded');
-    localStorage.removeItem('wb_schedule_cache');
-    localStorage.removeItem('wb_schedule_daily');
-    localStorage.removeItem('sd_mock_first_run');
-    localStorage.removeItem('wb_holiday_cache_v2');
+    RESET_KEYS.forEach(removeKey);
   }
   const tables = load();
   console.info('[mock] boot tables', Object.keys(tables).map((k) => k.slice(0, 4) + '=' + tables[k].length).join(','));
   // 预览默认不进引导；要测引导就加 ?onboard=1
-  let firstRun = localStorage.getItem('sd_mock_first_run') === '1';
+  let firstRun = readRaw(STORAGE_KEYS.mockFirstRun) === '1';
   if (new URLSearchParams(location.search).get('onboard') === '1') firstRun = true;
 
   const transport: Transport = async (cmd, args) => {
@@ -97,7 +93,7 @@ export function installMockBridge(): void {
         return { ok: false, error: '浏览器预览不支持选择目录' };
       case 'finish_onboarding':
         firstRun = false;
-        localStorage.setItem('sd_mock_first_run', '0');
+        writeRaw(STORAGE_KEYS.mockFirstRun, '0');
         return { ok: true };
       case 'open_data_dir':
         return null;

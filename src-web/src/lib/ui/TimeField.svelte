@@ -2,7 +2,8 @@
   import { pad2 } from '$lib/domain/date';
   import { portal } from '$lib/actions/portal';
   import { valueProp } from '$lib/actions/value-prop';
-  import { place, registerPanel, clearPanel } from '$lib/actions/float';
+  import { clearPanel } from '$lib/actions/float';
+  import { popover } from '$lib/actions/popover';
   import Icon from './Icon.svelte';
 
   let {
@@ -16,7 +17,6 @@
 
   let open = $state(false);
   let anchor = $state<HTMLButtonElement | null>(null);
-  let panel = $state<HTMLElement | null>(null);
   let selH = $state(9);
   let selM = $state(0);
   let dirty = false;
@@ -50,33 +50,7 @@
     selM = value ? parseInt(value.slice(3, 5), 10) : 0;
     dirty = false;
     open = true;
-    registerPanel(close);
   }
-
-  $effect(() => {
-    if (!open || !panel || !anchor) return;
-    place(panel, anchor, { minWidth: 206 });
-    // 打开时把选中项滚到中间
-    for (const k of ['h', 'm']) {
-      const col = panel.querySelector<HTMLElement>('[data-col="' + k + '"]');
-      const on = col?.querySelector<HTMLElement>('.on');
-      if (col && on) col.scrollTop = Math.max(0, on.offsetTop - col.clientHeight / 2 + 14);
-    }
-    const onDown = (e: MouseEvent) => {
-      const t = e.target as Node | null;
-      if (panel?.contains(t) || anchor?.contains(t)) return;
-      close();
-    };
-    const id = setTimeout(() => {
-      document.addEventListener('mousedown', onDown, true);
-      window.addEventListener('resize', close);
-    }, 0);
-    return () => {
-      clearTimeout(id);
-      document.removeEventListener('mousedown', onDown, true);
-      window.removeEventListener('resize', close);
-    };
-  });
 
   function pickHour(h: number): void {
     selH = h;
@@ -113,7 +87,24 @@
 </button>
 
 {#if open}
-  <div class="float-panel tm-panel" bind:this={panel} data-for={fieldId || undefined} use:portal>
+  <div
+    class="float-panel tm-panel"
+    data-for={fieldId || undefined}
+    use:portal
+    use:popover={{
+      anchor,
+      onClose: close,
+      minWidth: 206,
+      // 打开时把选中项滚到中间，否则 24 小时里默认选中项在视野外
+      afterPlace: (el) => {
+        for (const k of ['h', 'm']) {
+          const col = el.querySelector<HTMLElement>('[data-col="' + k + '"]');
+          const on = col?.querySelector<HTMLElement>('.on');
+          if (col && on) col.scrollTop = Math.max(0, on.offsetTop - col.clientHeight / 2 + 14);
+        }
+      }
+    }}
+  >
     <div class="tm-pop">
       <div class="tm-head"><b>{pad2(selH)}:{pad2(selM)}</b><span>选小时 / 分钟</span></div>
       <div class="tm-body">

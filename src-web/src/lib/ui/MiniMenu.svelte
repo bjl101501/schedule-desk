@@ -4,6 +4,7 @@
   import { theme, setTheme } from '$lib/store/theme.svelte';
   import { createList, createTag, removeList, removeTag, renameList, renameTag, toggleArchive } from '$lib/store/listActions.svelte';
   import { isArchived } from '$lib/store/meta.svelte';
+  import { popover } from '$lib/actions/popover';
   import Icon from './Icon.svelte';
 
   let menu = $state<HTMLElement | null>(null);
@@ -57,20 +58,9 @@
     uiState.miniMenu = null;
   }
 
-  // 点外面关掉：捕获阶段监听，避免被别的 click 处理先吃掉
-  $effect(() => {
-    if (!uiState.miniMenu) return;
-    const onDown = (e: MouseEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (t && t.closest('#miniMenu')) return;
-      close();
-    };
-    const id = setTimeout(() => document.addEventListener('mousedown', onDown, true), 0);
-    return () => {
-      clearTimeout(id);
-      document.removeEventListener('mousedown', onDown, true);
-    };
-  });
+
+
+
 </script>
 
 {#if uiState.miniMenu}
@@ -79,6 +69,7 @@
     class="mini-menu{uiState.miniMenu.kind === 'theme' ? ' theme-menu' : ''}"
     bind:this={menu}
     style="left:{left}px;top:{top}px"
+    use:popover={{ anchor: null, onClose: close }}
   >
     {#if uiState.miniMenu.kind === 'theme'}
       {#each THEMES as t (t.k)}

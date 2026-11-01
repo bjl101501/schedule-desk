@@ -1,5 +1,6 @@
 /* 视图与交互状态：替代旧全局单例 S 的「界面」部分 */
 import type { CalMode, Filters, KanbanGroup, SortMode, VMode, ViewKey } from '$lib/domain/types';
+import { STORAGE_KEYS, readRaw, writeRaw } from './storage';
 
 export const PAGE = 60;
 
@@ -16,7 +17,6 @@ export const app = $state({
   selectedTag: null as string | null,
   filters: { prio: [], tags: [], status: 'todo', from: '', to: '', kw: '' } as Filters,
   sortMode: 'time' as SortMode,
-  detailId: '',
   subOnly: {} as Record<string, boolean>,
   habitMode: 'cards' as 'cards' | 'cal',
   habitCursor: null as Date | null,
@@ -24,20 +24,15 @@ export const app = $state({
   drawer: false,
   listLimit: PAGE,
   loaded: false,
-  online: true,
-  busy: 0,
-  /** 拖拽期间冻结时钟，避免 15s tick 把节点挪走导致抖动 */
-  dragging: false,
-  /** 调试用：refreshAll() 只让这里 +1，真正的失效靠响应式 */
-  rev: 0
+  loadedAt: 0
 });
 
 /** 排序方式存本机：旧版 boot 读 / 顶栏写 wb_schedule_sort，重写时漏了 */
-const SORT_KEY = 'wb_schedule_sort';
+
 
 export function hydratePrefs(): void {
   try {
-    const v = localStorage.getItem(SORT_KEY);
+    const v = readRaw(STORAGE_KEYS.sort);
     if (v === 'time' || v === 'manual') app.sortMode = v;
   } catch {
     /* ignore */
@@ -46,19 +41,12 @@ export function hydratePrefs(): void {
 
 export function setSortMode(v: SortMode): void {
   app.sortMode = v;
-  try {
-    localStorage.setItem(SORT_KEY, v);
-  } catch {
-    /* ignore */
-  }
+  writeRaw(STORAGE_KEYS.sort, v);
 }
 
+/** 兼容旧调用：真正的刷新靠响应式，这里只是为了让脚本有个「重算一次」的入口 */
 export function refreshAll(): void {
-  app.rev++;
-}
-
-export function resetListLimit(): void {
-  app.listLimit = PAGE;
+  app.loadedAt = Date.now();
 }
 
 /** 滚动回第一屏：styles.css 有 scroll-behavior:smooth，直接赋 0 会「滑」上去 */

@@ -11,7 +11,7 @@
   import { pointerDrag, hitAt } from '$lib/actions/drag';
   import { beginDrag, type DragFx } from '$lib/actions/dragFx';
   import { setCdGroupOrder } from '$lib/store/meta.svelte';
-  import { app } from '$lib/store/app.svelte';
+  import { beginDragSession, endDragSession } from '$lib/store/dragSession.svelte';
 
   const tick = $derived(clock.now);
 
@@ -28,7 +28,7 @@
   let fx: DragFx | null = null;
 
   function onGroupEnd(el: HTMLElement, e: PointerEvent, moved: boolean): void {
-    app.dragging = false;
+    endDragSession();
     el.closest('.cdgroup')?.classList.remove('dragging');
     fx?.end();
     fx = null;
@@ -114,7 +114,7 @@
     handle: '[data-cdgh]',
     threshold: 6,
     onStart: (el) => {
-      app.dragging = true;
+      beginDragSession();
       el.closest('.cdgroup')?.classList.add('dragging');
       fx = beginDrag({ source: el.closest('.cdgroup') as HTMLElement, scrollEl: () => document.getElementById('content') });
     },

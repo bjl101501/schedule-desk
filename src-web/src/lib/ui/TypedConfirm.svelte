@@ -1,52 +1,40 @@
 <script lang="ts">
-  import { uiState } from '$lib/store/ui.svelte';
+  import type { TypedReq } from '$lib/store/overlay.svelte';
+  import { pop } from '$lib/store/overlay.svelte';
   import Icon from './Icon.svelte';
+
+  let { req }: { req: TypedReq } = $props();
 
   let input = $state<HTMLInputElement | null>(null);
   let val = $state('');
-  const hit = $derived(!!uiState.typed && val.trim() === uiState.typed.word);
+  const hit = $derived(val.trim() === req.word);
 
   $effect(() => {
-    if (uiState.typed) {
-      val = '';
-      setTimeout(() => {
-        try {
-          input?.focus();
-        } catch {
-          /* ignore */
-        }
-      }, 80);
-    }
+    const id = setTimeout(() => input?.focus(), 80);
+    return () => clearTimeout(id);
   });
 
   function ok(): void {
-    if (!uiState.typed || !hit) return;
-    const fn = uiState.typed.onOk;
-    uiState.typed = null;
+    if (!hit) return;
+    const fn = req.onOk;
+    pop();
     setTimeout(fn, 160);
   }
 </script>
 
-{#if uiState.typed}
-  {@const t = uiState.typed}
-  <div class="modal-mask in" onclick={(e) => { if (e.target === e.currentTarget) uiState.typed = null; }}>
-    <div class="modal sm">
-      <div class="m-head">
-        <h3>{t.title}</h3>
-        <button class="m-close" onclick={() => (uiState.typed = null)}><Icon name="close" /></button>
-      </div>
-      <div class="m-body">
-        <div style="font-size:13px;color:var(--text-2);line-height:1.75">{@html t.desc}</div>
-        <div class="field">
-          <label>输入「{t.word}」确认<span class="hint">此操作无法撤销</span></label>
-          <input class="inp" id="tcInput" bind:this={input} bind:value={val} placeholder={t.word} style="height:40px;font-size:15px" />
-        </div>
-      </div>
-      <div class="m-foot">
-        <div class="spacer"></div>
-        <button class="btn btn-sec" id="tcCancel" onclick={() => (uiState.typed = null)}>取消</button>
-        <button class="btn btn-danger" id="tcOk" disabled={!hit} style="opacity:{hit ? 1 : 0.5}" onclick={ok}>确认删除</button>
-      </div>
-    </div>
+<div class="m-head">
+  <h3>{req.title}</h3>
+  <button class="m-close" onclick={() => pop()}><Icon name="close" /></button>
+</div>
+<div class="m-body">
+  <div style="font-size:13px;color:var(--text-2);line-height:1.75">{@html req.desc}</div>
+  <div class="field">
+    <label>输入「{req.word}」确认<span class="hint">此操作无法撤销</span></label>
+    <input class="inp" id="tcInput" bind:this={input} bind:value={val} placeholder={req.word} style="height:40px;font-size:15px" />
   </div>
-{/if}
+</div>
+<div class="m-foot">
+  <div class="spacer"></div>
+  <button class="btn btn-sec" id="tcCancel" onclick={() => pop()}>取消</button>
+  <button class="btn btn-danger" id="tcOk" disabled={!hit} style="opacity:{hit ? 1 : 0.5}" onclick={ok}>确认删除</button>
+</div>

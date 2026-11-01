@@ -2,7 +2,8 @@
   import { addDays, parseYmd, startOfWeek, today0, weekdayName, ymd } from '$lib/domain/date';
   import { portal } from '$lib/actions/portal';
   import { valueProp } from '$lib/actions/value-prop';
-  import { place, registerPanel, clearPanel } from '$lib/actions/float';
+  import { clearPanel } from '$lib/actions/float';
+  import { popover } from '$lib/actions/popover';
   import Icon from './Icon.svelte';
 
   let {
@@ -50,35 +51,7 @@
     const cur = value ? parseYmd(value) : today0();
     view = new Date((cur || today0()).getFullYear(), (cur || today0()).getMonth(), 1);
     open = true;
-    registerPanel(close);
   }
-
-  // 打开后按实际尺寸摆一次，翻转判断才准
-  $effect(() => {
-    if (!open || !panel || !anchor) return;
-    place(panel, anchor, { minWidth: 252 });
-    const onDown = (e: MouseEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (panel?.contains(t as Node) || anchor?.contains(t as Node)) return;
-      close();
-    };
-    const onScroll = (e: Event) => {
-      const t = e.target as HTMLElement | null;
-      if (t && panel?.contains(t)) return;
-      close();
-    };
-    const id = setTimeout(() => {
-      document.addEventListener('mousedown', onDown, true);
-      window.addEventListener('resize', close);
-      document.addEventListener('scroll', onScroll, true);
-    }, 0);
-    return () => {
-      clearTimeout(id);
-      document.removeEventListener('mousedown', onDown, true);
-      window.removeEventListener('resize', close);
-      document.removeEventListener('scroll', onScroll, true);
-    };
-  });
 
   const cells = $derived.by(() => {
     const y = view.getFullYear();
@@ -134,7 +107,13 @@
 </button>
 
 {#if open}
-  <div class="float-panel cal-panel" bind:this={panel} data-for={fieldId || undefined} use:portal>
+  <div
+    class="float-panel cal-panel"
+    bind:this={panel}
+    data-for={fieldId || undefined}
+    use:portal
+    use:popover={{ anchor, onClose: close, minWidth: 252, closeOnScroll: true }}
+  >
     <div class="cal-pop">
       <div class="cal-head">
         <button type="button" class="cal-nav" aria-label="上个月" onclick={() => nav(-1)}><Icon name="chevL" /></button>

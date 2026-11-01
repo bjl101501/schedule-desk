@@ -4,10 +4,11 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["bun"],
+    "types": ["vite/client"],
     "strict": true,
     "noImplicitAny": true,
-    "noUnusedLocals": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noEmit": true,
     "allowJs": false,
     "isolatedModules": true,
@@ -24,8 +25,7 @@
   "include": [
     "src-web/src/**/*.ts",
     "src-web/src/**/*.svelte",
-    "src-web/src/**/*.svelte.ts",
     "vite.config.ts"
   ],
-  "exclude": ["src-web/src/js/**", "src-web/build/**", "node_modules"]
+  "exclude": ["src-web/build/**", "node_modules", "src-web/src/**/*.test.ts"]
 }

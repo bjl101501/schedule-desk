@@ -8,6 +8,7 @@
   所以这里只抽骨架，落点仍由调用方给。
 */
 import { suppressNextClick } from './suppress';
+import { endDragSession } from '$lib/store/dragSession.svelte';
 
 export interface PointerDragOpts {
   /** 触发拖拽的选择器（相对 node） */
@@ -24,6 +25,7 @@ export function pointerDrag(node: HTMLElement, opts: PointerDragOpts) {
 
   let down: { x: number; y: number; el: HTMLElement; id: number } | null = null;
   let dragging = false;
+  let lastEvent: PointerEvent | null = null;
 
   function onDown(e: PointerEvent): void {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -39,6 +41,7 @@ export function pointerDrag(node: HTMLElement, opts: PointerDragOpts) {
 
   function onPointerMove(e: PointerEvent): void {
     if (!down) return;
+    lastEvent = e;
     if (!dragging) {
       const dx = e.clientX - down.x;
       const dy = e.clientY - down.y;
@@ -52,6 +55,7 @@ export function pointerDrag(node: HTMLElement, opts: PointerDragOpts) {
 
   function finish(e: PointerEvent): void {
     if (!down) return;
+    lastEvent = e;
     const el = down.el;
     const moved = dragging;
     current.onEnd?.(el, e, moved);
@@ -70,6 +74,14 @@ export function pointerDrag(node: HTMLElement, opts: PointerDragOpts) {
       current = next;
     },
     destroy() {
+      // 拖到一半组件被卸载（切视图 / 关面板）：必须走一次收尾，
+      // 否则 app.dragging 永远为真 → 时钟与外部重载一起卡死
+      if (down) {
+        if (lastEvent) current.onEnd?.(down.el, lastEvent, dragging);
+        down = null;
+        dragging = false;
+        endDragSession();
+      }
       node.removeEventListener('pointerdown', onDown);
       document.removeEventListener('pointermove', onPointerMove, true);
       document.removeEventListener('pointerup', finish, true);

@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import { chooseDataDirQuiet, defaultDataDir, finishOnboarding, restartApp } from '$lib/bridge/desktop';
   import { toast } from '$lib/store/toast.svelte';
-  import Icon from '$lib/ui/Icon.svelte';
 
   let dir = $state('');
   let busy = $state(false);

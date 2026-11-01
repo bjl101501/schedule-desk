@@ -1,16 +1,18 @@
 <script lang="ts">
   import type { Task, CalMode } from '$lib/domain/types';
-  import { addDays, hmStr, parseHM, parseYmd, sameDay, startOfWeek, today0, weekdayName, ymd } from '$lib/domain/date';
-  import { prioCls, segDateText, subPlan, subStats, taskSpan } from '$lib/domain/task';
+  import { addDays, hmStr, parseHM, parseYmd, sameDay, startOfWeek, weekdayName, ymd } from '$lib/domain/date';
+  import { prioCls, subPlan, subStats, taskSpan } from '$lib/domain/task';
   import { app } from '$lib/store/app.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
   import { data } from '$lib/store/data.svelte';
-  import { openTaskDetail, openTaskEditor } from '$lib/store/ui.svelte';
+  import { openTaskDetail } from '$lib/store/ui.svelte';
   import { isSuppressed } from '$lib/actions/suppress';
   import Icon from '$lib/ui/Icon.svelte';
   import { pointerDrag, hitAt } from '$lib/actions/drag';
   import { beginDrag, type DragFx } from '$lib/actions/dragFx';
   import { dropToAllDay, dropToDate, dropToDateTime } from '$lib/store/dndActions.svelte';
+  import { calBack, calNav, calToday, cursorOf, openDayView, openMonthView, setCalDays, setCalMode, setCalWeeks } from '$lib/store/calendarActions.svelte';
+  import { beginDragSession, endDragSession } from '$lib/store/dragSession.svelte';
 
   const HOUR_H = 36;
   const DAY_MIN = 1440;
@@ -85,20 +87,6 @@
     }
   });
 
-  function nav(step: number): void {
-    const c = cursor;
-    if (app.calMode === 'year') app.cursor = new Date(c.getFullYear() + step, c.getMonth(), 1);
-    else if (app.calMode === 'month') app.cursor = new Date(c.getFullYear(), c.getMonth() + step, 1);
-    else if (app.calMode === 'week') app.cursor = addDays(c, 7 * step);
-    else if (app.calMode === 'multiweek') app.cursor = addDays(c, 7 * app.calWeeks * step);
-    else if (app.calMode === 'day') app.cursor = addDays(c, step);
-    else app.cursor = addDays(c, app.calDays * step);
-  }
-
-  function goToday(): void {
-    app.cursor = today0();
-  }
-
   let fx: DragFx | null = null;
   let lineEl: HTMLElement | null = null;
   let bubEl: HTMLElement | null = null;
@@ -142,11 +130,11 @@
   const mdDrag = {
     handle: '.md-ev2, .md-adchip, .wev',
     onStart: (el: HTMLElement) => {
-      app.dragging = true;
+      beginDragSession();
       el.classList.add('dragging');
       fx = beginDrag({ source: el, scrollEl: () => el.closest('.md-wrap') as HTMLElement | null });
     },
-    onMove: (el: HTMLElement, e: PointerEvent) => {
+    onMove: (_el: HTMLElement, e: PointerEvent) => {
       if (!fx) return;
       const day = hitAt(e, '.md-day, .md-allday, .wcol-body');
       fx.move(e);
@@ -166,7 +154,7 @@
       fx.mark(day, 'box', '松手改到 ' + ds.slice(5) + ' ' + hmStr(min));
     },
     onEnd: (el: HTMLElement, e: PointerEvent, moved: boolean) => {
-      app.dragging = false;
+      endDragSession();
       el.classList.remove('dragging');
       hideTimeCursor();
       fx?.end();
@@ -189,23 +177,16 @@
   };
 
   function openMonth(m: number): void {
-    app.calReturn = { mode: 'year', cursor: new Date(cursor) };
-    app.cursor = new Date(cursor.getFullYear(), m, 1);
-    app.calMode = 'month';
+    openMonthView(cursorOf(), m);
   }
 
   function openDay(ds: string): void {
     if (isSuppressed()) return;
-    app.calReturn = { mode: app.calMode, cursor: cursor };
-    app.cursor = parseYmd(ds)!;
-    app.calMode = 'day';
+    openDayView(ds);
   }
 
   function backTo(): void {
-    if (!app.calReturn) return;
-    app.calMode = app.calReturn.mode;
-    app.cursor = app.calReturn.cursor;
-    app.calReturn = null;
+    calBack();
   }
 
   function openTask(id: string): void {
@@ -368,9 +349,6 @@
     }
   });
 
-  void openTaskEditor;
-  void segDateText;
-  void taskSpan;
 </script>
 
 <div class="cal-shell">
@@ -380,10 +358,10 @@
     {/if}
     <span class="cal-title">{title}</span>
     <div class="cal-nav">
-      <button data-calnav="-1" onclick={() => nav(-1)}><Icon name="chevL" /></button>
-      <button data-calnav="1" onclick={() => nav(1)}><Icon name="chevR" /></button>
+      <button data-calnav="-1" onclick={() => calNav(-1)}><Icon name="chevL" /></button>
+      <button data-calnav="1" onclick={() => calNav(1)}><Icon name="chevR" /></button>
     </div>
-    <button class="cal-today-btn" data-caltoday onclick={goToday}>今天</button>
+    <button class="cal-today-btn" data-caltoday onclick={calToday}>今天</button>
     <div style="margin-left:auto;display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end;max-width:100%;min-width:0">
       <div class="cal-legend" title="日历里日程块的底色只由优先级决定，和清单、标签无关">
         <b><i style="background:var(--red)"></i>P0</b>
@@ -394,19 +372,19 @@
       {#if app.calMode === 'multiweek'}
         <div class="cal-views">
           {#each [2, 3, 4] as n (n)}
-            <button data-calweeks={n} class={app.calWeeks === n ? 'on' : ''} onclick={() => (app.calWeeks = n)}>{n} 周</button>
+            <button data-calweeks={n} class={app.calWeeks === n ? 'on' : ''} onclick={() => setCalWeeks(n)}>{n} 周</button>
           {/each}
         </div>
       {:else if app.calMode === 'multiday'}
         <div class="cal-views">
           {#each [3, 5, 7] as n (n)}
-            <button data-caldays={n} class={app.calDays === n ? 'on' : ''} onclick={() => (app.calDays = n)}>{n} 天</button>
+            <button data-caldays={n} class={app.calDays === n ? 'on' : ''} onclick={() => setCalDays(n)}>{n} 天</button>
           {/each}
         </div>
       {/if}
       <div class="cal-views" style="margin-left:0">
         {#each modes as m (m.k)}
-          <button data-calmode={m.k} class={app.calMode === m.k ? 'on' : ''} onclick={() => (app.calMode = m.k)}>{m.t}</button>
+          <button data-calmode={m.k} class={app.calMode === m.k ? 'on' : ''} onclick={() => setCalMode(m.k)}>{m.t}</button>
         {/each}
       </div>
     </div>
@@ -438,11 +416,11 @@
       use:pointerDrag={{
         handle: '[data-tid]',
         onStart: (el) => {
-          app.dragging = true;
+          beginDragSession();
           el.classList.add('dragging');
           fx = beginDrag({ source: el, scrollEl: () => document.getElementById('content') });
         },
-        onMove: (el, e) => {
+        onMove: (_el, e) => {
           if (!fx) return;
           const cell = hitAt(e, '[data-cdate]');
           const ds = cell?.getAttribute('data-cdate') || '';
@@ -450,7 +428,7 @@
           fx.mark(cell, 'box', ds ? '松手改到 ' + ds.slice(5) : '');
         },
         onEnd: (el, e, moved) => {
-          app.dragging = false;
+          endDragSession();
           el.classList.remove('dragging');
           if (!moved) return;
           const cell = hitAt(e, '[data-cdate]');

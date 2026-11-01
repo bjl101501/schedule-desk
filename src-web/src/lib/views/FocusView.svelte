@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { addDays, dayDiff, parseYmd, startOfWeek, today0, ymd } from '$lib/domain/date';
+  import { dayDiff, parseYmd, startOfWeek, today0, ymd } from '$lib/domain/date';
   import { FOCUS_MODES, type FocusMode } from '$lib/domain/constants';
   import { data } from '$lib/store/data.svelte';
   import { clock } from '$lib/store/clock.svelte';

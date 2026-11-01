@@ -8,6 +8,7 @@
 */
 import type { DbResult, DbRow, Props } from '../domain/types';
 import { invoke, transport } from './invoke';
+import { flattenProps } from '../domain/props';
 
 const ALIAS: Record<string, string> = { gVxrS4S2Zb2xddhphNdjT: 'gVxrxS4S2Zb2xddhphNdjT' };
 
@@ -87,24 +88,12 @@ function newId(): string {
 
 /** 把 {text/date/number/select/checkbox} 还原成标量，normTask 才能读到中文列名 */
 function flatten(rec: DbRow): DbRow {
-  const out: DbRow = { id: rec.id, record_id: rec.id, _id: rec.id };
-  const props = (rec.properties || {}) as Record<string, unknown>;
-  for (const k in props) {
-    if (!Object.prototype.hasOwnProperty.call(props, k)) continue;
-    const v = props[k];
-    if (v && typeof v === 'object' && !Array.isArray(v)) {
-      const o = v as Record<string, unknown>;
-      if ('text' in o) out[k] = o.text;
-      else if ('date' in o) out[k] = o.date;
-      else if ('number' in o) out[k] = o.number;
-      else if ('select' in o) out[k] = o.select;
-      else if ('checkbox' in o) out[k] = !!o.checkbox;
-      else out[k] = v;
-    } else {
-      out[k] = v;
-    }
-  }
-  return out;
+  return {
+    id: rec.id,
+    record_id: rec.id,
+    _id: rec.id,
+    ...flattenProps(rec.properties as Record<string, unknown>)
+  };
 }
 
 function liveRows(id: string): DbRow[] {
@@ -216,8 +205,7 @@ export const db: DbApi = {
 */
 export function dbReady(): Promise<DbState> {
   const p = bootstrap();
-  const g = window as unknown as { __SD_DESKTOP__?: Record<string, unknown> };
-  if (g.__SD_DESKTOP__) g.__SD_DESKTOP__.ready = p;
+  if (window.__SD_DESKTOP__) window.__SD_DESKTOP__.ready = p;
   return p;
 }
 
@@ -231,10 +219,6 @@ export function dbIsFirstRun(): boolean {
 
 export function dbVersion(): string {
   return state.version;
-}
-
-export function dbSnapshot(): Record<string, DbRow[]> {
-  return JSON.parse(JSON.stringify(state.tables));
 }
 
 /* 外部变更通知：Rust 侧没有事件广播，这里只做前端内的「拉到了新数据」信号。
@@ -260,26 +244,19 @@ export function flushNow(): void {
   }
 }
 
-/** 旧代码到处 getDB()，这里统一从这一个门面取 */
-export function getDB(): DbApi {
-  return db;
-}
-
 /** 有没有宿主（真机或 mock）。没有时按离线处理，读本地缓存 */
 export function dbAvailable(): boolean {
   return !!transport();
 }
 
-// cdp-verify.mjs 与调试脚本依赖这两个全局，保留
-const w = window as unknown as Record<string, unknown>;
-w.__SMART_PAGE__ = (w.__SMART_PAGE__ as Record<string, unknown>) || {};
-(w.__SMART_PAGE__ as Record<string, unknown>).database = db;
-w.__SD_DESKTOP__ = {
+// 手工排障时能在控制台直接查数据；类型见 types/globals.d.ts
+window.__SMART_PAGE__ = window.__SMART_PAGE__ || {};
+window.__SMART_PAGE__.database = db;
+window.__SD_DESKTOP__ = {
   database: db,
   ready: Promise.resolve(null),
   state,
   invoke,
   theTables: () => state.tables,
-  snapshot: () => dbSnapshot(),
   flushNow
 };

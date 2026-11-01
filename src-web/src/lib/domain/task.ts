@@ -1,10 +1,26 @@
 /* 任务领域逻辑：拆分、排期、重复、归一化。全部纯函数 */
-import type { Countdown, DbRow, Habit, Pomodoro, Seg, Sub, SubStat, Task } from './types';
+import type { Countdown, DbRow, Habit, Pomodoro, RemindCfg, Seg, Sub, SubStat, Task } from './types';
 import {
-  addDays, coarseSpan, dayDiff, hmStr, isoToYmd, mdShort, parseHM, parseJson, parseYmd, stampDay, stampNow, stampTime,
-  today0, ymd
+  addDays, dayDiff, hmStr, isoToYmd, mdShort, parseAnchor, parseHM, parseJson, parseYmd, stampNow, today0, ymd
 } from './date';
 import { QUAD_LABEL, themedColor } from './constants';
+
+/**
+ * 存档里的提醒配置是任意 JSON，读回来必须先校验。
+ * 之前这里是 `cfg as unknown as Task['remindCfg']`，半个坏 anchor 会一路污染状态机。
+ */
+export function remindCfgOf(raw: unknown): RemindCfg | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  const anchor = String(o.anchor || '');
+  if (!parseAnchor(anchor)) return null;
+  const nums = (v: unknown): number[] =>
+    Array.isArray(v) ? v.map((x) => Number(x)).filter((n) => Number.isFinite(n)) : [];
+  const out: RemindCfg = { anchor, offsets: nums(o.offsets), read: nums(o.read) };
+  if (typeof o.snooze === 'number') out.snooze = o.snooze;
+  if (typeof o.end === 'number') out.end = o.end;
+  return out;
+}
 
 /* ---------- 拆分 / 子项 ---------- */
 export function unpackSubs(raw: unknown): Sub[] {
@@ -38,23 +54,6 @@ export function packSubs(subs: Sub[] | undefined): string {
   );
 }
 
-export function subDoneText(t: Task | null, x: Sub, seg?: Seg | null): string {
-  if (!x || !x.done || !x.doneAt) return '';
-  const day = stampDay(x.doneAt);
-  const hm = stampTime(x.doneAt);
-  const doneD = parseYmd(day);
-  if (!doneD) return '';
-  const start = seg && seg.start ? seg.start : t && t.date ? parseYmd(t.date) : null;
-  const end = seg && seg.end ? seg.end : start;
-  if (!start || !end) return hm || day;
-  const doneMs = doneD.getTime() + (parseHM(hm) || 0) * 60000;
-  const startMs = start.getTime();
-  const endMs = addDays(end, 1).getTime();
-  if (doneMs < startMs) return '提前 ' + coarseSpan(startMs - doneMs) + '完成';
-  if (doneMs > endMs) return '逾期 ' + coarseSpan(doneMs - endMs) + '后完成';
-  return dayDiff(end, doneD) === 0 ? hm : mdShort(doneD) + ' ' + hm;
-}
-
 export function subStats(t: Task | null): SubStat {
   const subs = (t && t.subs) || [];
   const n = subs.length;
@@ -75,10 +74,6 @@ export function taskSpan(t: Task | null | undefined): number {
     if (a && b) return Math.max(1, dayDiff(a, b) + 1);
   }
   return 1;
-}
-
-export function isMultiDay(t: Task): boolean {
-  return taskSpan(t) > 1;
 }
 
 /** 改开始日期时计划区间整体平移；改成「未安排」则收起计划 */
@@ -127,16 +122,6 @@ export function subPlan(t: Task | null): Seg[] {
     out.push(seg);
   });
   return out;
-}
-
-export function planDays(t: Task): number {
-  return (t.subs || []).reduce((a, x) => a + Math.max(0, Number(x.days) || 0), 0);
-}
-
-export function plannedEnd(t: Task): Date | null {
-  const start = t && t.date ? parseYmd(t.date) : null;
-  if (!start) return null;
-  return addDays(start, taskSpan(t) - 1);
 }
 
 export function quadKey(t: Task): string {
@@ -281,7 +266,7 @@ export function normTask(r: DbRow): Task {
     urgent: !!r['紧急'],
     done: !!r['已完成'],
     remindMode: String(r['提醒模式'] || '不提醒'),
-    remindCfg: cfg as unknown as Task['remindCfg'],
+    remindCfg: remindCfgOf(cfg),
     date: isoToYmd(r['日期']),
     time: String(r['时间'] || ''),
     estimate: Number(r['预计时长']) || 0,

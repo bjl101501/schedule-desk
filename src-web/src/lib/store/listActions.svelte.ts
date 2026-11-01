@@ -1,6 +1,6 @@
 /* 清单与标签的管理动作：重命名、归档、删除、新建 */
 import { toast } from './toast.svelte';
-import { apiUpdateTask, cacheLocal, data, saveTask } from './data.svelte';
+import { apiUpdateTask, cacheLocal, data } from './data.svelte';
 import {
   addCustomList, addCustomTag, archiveList, isArchived, meta, setListOrder, setTagOrder, unarchiveList
 } from './meta.svelte';
@@ -154,8 +154,3 @@ export function createTag(): void {
   };
 }
 
-export function newTaskIn(listName: string | null = null): void {
-  void saveTask;
-  uiState.editorId = '__new__';
-  uiState.editorPreset = listName ? { list: listName } : null;
-}

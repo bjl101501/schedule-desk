@@ -10,11 +10,14 @@
   import { data } from '$lib/store/data.svelte';
   import { meta } from '$lib/store/meta.svelte';
   import { toggleTaskDetail, openTaskEditor } from '$lib/store/ui.svelte';
+  import { setKanbanGroup } from '$lib/store/nav.svelte';
+  import { isDetailOpen } from '$lib/store/overlay.svelte';
   import { isSuppressed } from '$lib/actions/suppress';
   import Icon from '$lib/ui/Icon.svelte';
   import Flags from '$lib/components/Flags.svelte';
   import { pointerDrag, hitAt } from '$lib/actions/drag';
   import { dropKanban } from '$lib/store/dndActions.svelte';
+  import { beginDragSession, endDragSession } from '$lib/store/dragSession.svelte';
 
   let { rows }: { rows: Task[] } = $props();
 
@@ -126,7 +129,7 @@
 <div class="sec-head"><h3>看板</h3><span class="meta">{groups.length} 列</span><span class="line"></span></div>
 <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">
   {#each opts as o (o.k)}
-    <button class="chip-p{app.kanbanGroup === o.k ? ' on' : ''}" data-kgroup={o.k} onclick={() => (app.kanbanGroup = o.k)}>{o.t}</button>
+    <button class="chip-p{app.kanbanGroup === o.k ? ' on' : ''}" data-kgroup={o.k} onclick={() => setKanbanGroup(o.k)}>{o.t}</button>
   {/each}
 </div>
 
@@ -135,11 +138,11 @@
   use:pointerDrag={{
     handle: '[data-tid]',
     onStart: (el) => {
-      app.dragging = true;
+      beginDragSession();
       el.classList.add('dragging');
     },
     onEnd: (el, e, moved) => {
-      app.dragging = false;
+      endDragSession();
       el.classList.remove('dragging');
       if (!moved) return;
       const col = hitAt(e, '[data-kkey]');
@@ -160,7 +163,7 @@
         {#if g.items.length}
           {#each g.items as t (t.id)}
             {@const st = subStats(t)}
-            <div class="kcard{t.done ? ' done' : ''}{app.detailId === t.id ? ' active' : ''}" data-tid={t.id} onclick={() => open(t)}>
+            <div class="kcard{t.done ? ' done' : ''}{isDetailOpen(t.id) ? ' active' : ''}" data-tid={t.id} onclick={() => open(t)}>
               <div class="kcard-title"><Flags {t} />{t.title}</div>
               {#if st.n}
                 <div class="sub-inline">

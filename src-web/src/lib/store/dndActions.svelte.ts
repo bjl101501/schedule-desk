@@ -20,17 +20,6 @@ export function applyVisibleOrder(ids: string[]): void {
   cacheLocal();
 }
 
-export function moveTaskBefore(dragId: string, targetId: string, visibleIds: string[]): void {
-  if (!dragId || !targetId || dragId === targetId) return;
-  const order = visibleIds.slice();
-  const from = order.indexOf(dragId);
-  const to = order.indexOf(targetId);
-  if (from < 0 || to < 0) return;
-  order.splice(from, 1);
-  order.splice(to, 0, dragId);
-  applyVisibleOrder(order);
-}
-
 /** 看板：落到哪一列就改成那一列代表的字段 */
 export function dropKanban(taskId: string, key: string, kind: string): void {
   const t = data.tasks.find((x) => x.id === taskId);
@@ -65,16 +54,14 @@ export function dropKanban(taskId: string, key: string, kind: string): void {
     }
   } else if (kind === 'date') {
     if (key === 'none') {
-      const oldDate = t.date;
-      const oldTime = t.time;
+            const oldTime = t.time;
       t.date = '';
-      syncRemindAnchor(t, oldDate, oldTime);
+      syncRemindAnchor(t, oldTime);
       fields.push('日期', '提醒设置');
     } else {
       const base = parseYmd(ymd(new Date()))!;
       const delta = key === 'over' ? -1 : key === 'today' ? 0 : key === 'week' ? 3 : 10;
-      const oldDate = t.date;
-      const oldTime = t.time;
+            const oldTime = t.time;
       const d = addDays(base, delta);
       if (t.plan && t.endDate && t.date) {
         const shift = dayDiff(parseYmd(t.date)!, d);
@@ -82,7 +69,7 @@ export function dropKanban(taskId: string, key: string, kind: string): void {
         fields.push('结束日期');
       }
       t.date = ymd(d);
-      syncRemindAnchor(t, oldDate, oldTime);
+      syncRemindAnchor(t, oldTime);
       fields.push('日期', '提醒设置');
     }
   }
@@ -106,14 +93,13 @@ export function dropQuadrant(taskId: string, cls: string): void {
 export function dropToDate(taskId: string, ds: string): void {
   const t = data.tasks.find((x) => x.id === taskId);
   if (!t || !ds || t.date === ds) return;
-  const oldDate = t.date;
-  const oldTime = t.time;
+    const oldTime = t.time;
   if (t.plan && t.endDate && t.date) {
     const delta = dayDiff(parseYmd(t.date)!, parseYmd(ds)!);
     t.endDate = ymd(addDays(parseYmd(t.endDate)!, delta));
   }
   t.date = ds;
-  syncRemindAnchor(t, oldDate, oldTime);
+  syncRemindAnchor(t, oldTime);
   cacheLocal();
   apiUpdateTask(t, ['日期', '结束日期', '提醒设置']);
   toast.show('已改到 ' + ds);
@@ -124,15 +110,14 @@ export function dropToDateTime(taskId: string, ds: string, hm: string): void {
   const t = data.tasks.find((x) => x.id === taskId);
   if (!t || !ds || !hm) return;
   if (t.date === ds && t.time === hm) return;
-  const oldDate = t.date;
-  const oldTime = t.time;
+    const oldTime = t.time;
   if (t.plan && t.endDate && t.date && ds !== t.date) {
     const delta = dayDiff(parseYmd(t.date)!, parseYmd(ds)!);
     t.endDate = ymd(addDays(parseYmd(t.endDate)!, delta));
   }
   t.date = ds;
   t.time = hm;
-  syncRemindAnchor(t, oldDate, oldTime);
+  syncRemindAnchor(t, oldTime);
   cacheLocal();
   apiUpdateTask(t, ['日期', '时间', '结束日期', '提醒设置']);
   toast.show('已改到 ' + ds.slice(5) + ' ' + hm);
@@ -143,15 +128,14 @@ export function dropToAllDay(taskId: string, ds: string): void {
   const t = data.tasks.find((x) => x.id === taskId);
   if (!t || !ds) return;
   if (t.date === ds && !t.time) return;
-  const oldDate = t.date;
-  const oldTime = t.time;
+    const oldTime = t.time;
   if (t.plan && t.endDate && t.date && ds !== t.date) {
     const delta = dayDiff(parseYmd(t.date)!, parseYmd(ds)!);
     t.endDate = ymd(addDays(parseYmd(t.endDate)!, delta));
   }
   t.date = ds;
   t.time = '';
-  syncRemindAnchor(t, oldDate, oldTime);
+  syncRemindAnchor(t, oldTime);
   cacheLocal();
   apiUpdateTask(t, ['日期', '时间', '结束日期', '提醒设置']);
   toast.show('已改为全天');
@@ -162,14 +146,13 @@ export function dropTimeline(taskId: string, newStart: string, newSpan?: number)
   const t = data.tasks.find((x) => x.id === taskId);
   if (!t) return;
   if (newStart) {
-    const oldDate = t.date;
-    const oldTime = t.time;
+        const oldTime = t.time;
     if (t.plan && t.endDate && t.date && newStart !== t.date) {
       const delta = dayDiff(parseYmd(t.date)!, parseYmd(newStart)!);
       t.endDate = ymd(addDays(parseYmd(t.endDate)!, delta));
     }
     t.date = newStart;
-    syncRemindAnchor(t, oldDate, oldTime);
+    syncRemindAnchor(t, oldTime);
   }
   if (newSpan && newSpan > 0 && t.plan) {
     t.endDate = ymd(addDays(parseYmd(t.date)!, newSpan - 1));

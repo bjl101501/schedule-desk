@@ -1,6 +1,7 @@
 <script lang="ts">
   import { portal } from '$lib/actions/portal';
-  import { place, registerPanel, clearPanel } from '$lib/actions/float';
+  import { clearPanel } from '$lib/actions/float';
+  import { popover } from '$lib/actions/popover';
   import Icon from './Icon.svelte';
 
   let {
@@ -21,7 +22,6 @@
 
   let open = $state(false);
   let pickBtn = $state<HTMLButtonElement | null>(null);
-  let menu = $state<HTMLElement | null>(null);
   let input: HTMLInputElement;
 
   const count = $derived(value.length);
@@ -91,26 +91,7 @@
       return;
     }
     open = true;
-    registerPanel(close);
   }
-
-  $effect(() => {
-    if (!open || !menu || !pickBtn) return;
-    const r = pickBtn.getBoundingClientRect();
-    const w = Math.min(260, Math.max(r.width || 0, 180));
-    menu.style.width = w + 'px';
-    place(menu, pickBtn, { minWidth: w, gap: 5 });
-    const onDown = (e: MouseEvent) => {
-      const t = e.target as Node | null;
-      if (menu?.contains(t) || pickBtn?.contains(t)) return;
-      close();
-    };
-    const id = setTimeout(() => document.addEventListener('mousedown', onDown, true), 0);
-    return () => {
-      clearTimeout(id);
-      document.removeEventListener('mousedown', onDown, true);
-    };
-  });
 
   function pick(v: string): void {
     const i = value.indexOf(v);
@@ -141,7 +122,21 @@
 </div>
 
 {#if open}
-  <div class="pick-menu multi" bind:this={menu} use:portal>
+  <div
+    class="pick-menu multi"
+    use:portal
+    use:popover={{
+      anchor: pickBtn,
+      onClose: close,
+      minWidth: 180,
+      // 面板宽度跟着按钮走，但不小于 180、不超过 260
+      afterPlace: (el) => {
+        const r = pickBtn?.getBoundingClientRect();
+        const w = Math.min(260, Math.max(r?.width || 0, 180));
+        el.style.width = w + 'px';
+      }
+    }}
+  >
     {#if !suggestions.length}
       <div class="pick-menu-empty">还没有已有标签。<br />在左边输入框写名字回车，就建一个新的。</div>
     {:else}

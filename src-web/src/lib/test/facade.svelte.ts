@@ -8,9 +8,12 @@ import { subStats } from '$lib/domain/task';
 import { today0, ymd } from '$lib/domain/date';
 import { alertSummary, sortTasks, visibleTasks } from '$lib/domain/selectors';
 import { app, refreshAll } from '$lib/store/app.svelte';
+import { sync as syncState } from '$lib/store/sync.svelte';
 import { clock, clockRunning, todayD } from '$lib/store/clock.svelte';
 import { data } from '$lib/store/data.svelte';
-import { closeTaskDetail, openQuickAdd, openTaskDetail, openTaskEditor, uiState } from '$lib/store/ui.svelte';
+import { openQuickAdd, openTaskDetail, openTaskEditor, uiState } from '$lib/store/ui.svelte';
+import { pop } from '$lib/store/overlay.svelte';
+import { isDragging } from '$lib/store/dragSession.svelte';
 import { clearTables, dataJob, importBundle } from '$lib/store/data.svelte';
 import { completeFromReminder, markRemindRead } from '$lib/store/remind.svelte';
 import { parseBundleText } from '$lib/domain/backup';
@@ -27,22 +30,12 @@ export function installTestFacade(): void {
       flushSync(() => fn(...a));
     };
 
-  /** 只关最上层：模板选择器之类叠在编辑器里的层先关，语义与旧版一致 */
+  /** 只关最上层：与 Esc 的语义一致，脚本按「调用一次关一层」使用 */
   function closeModal(): void {
-    const stacked = document.querySelectorAll('.modal-mask.stacked');
-    if (stacked.length) {
-      const top = stacked[stacked.length - 1] as HTMLElement;
-      (top.querySelector('.m-close') as HTMLElement | null)?.click();
-      return;
+    if (!pop()) {
+      // 栈空时兜底：浮层菜单也一起收掉
+      uiState.miniMenu = null;
     }
-    uiState.editorId = '';
-    uiState.quickAdd = false;
-    uiState.search = false;
-    uiState.filter = false;
-    uiState.reminder = false;
-    uiState.settings = false;
-    uiState.backup = false;
-    closeTaskDetail();
   }
 
   const api = {
@@ -64,7 +57,7 @@ export function installTestFacade(): void {
         habits: data.habits.length,
         countdowns: data.countdowns.length,
         pomodoros: data.pomodoros.length,
-        online: app.online,
+        online: syncState.online,
         loaded: app.loaded,
         view: app.view
       };
@@ -85,6 +78,8 @@ export function installTestFacade(): void {
       return document.querySelector(sel)?.getAttribute('data-value') ?? '';
     },
     schedulerRunning: () => clockRunning(),
+    isDragging: () => isDragging(),
+    nowTick: () => clock.now,
     visibleTasks: () =>
       visibleTasks(
         data.tasks,
@@ -104,5 +99,5 @@ export function installTestFacade(): void {
     completeRemind: (id: string) => completeFromReminder(id),
     alertCount: () => alertSummary(data.tasks, clock.now).total
   };
-  (window as unknown as Record<string, unknown>).__SD_TEST__ = api;
+  window.__SD_TEST__ = api as unknown as Record<string, unknown>;
 }

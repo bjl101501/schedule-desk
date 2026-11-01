@@ -16,11 +16,32 @@ export interface Sub {
   doneAt: string;
 }
 
+/**
+ * 打开任务编辑器时携带的意图。之前是 Record<string, unknown>，下游一路 as 到底。
+ */
+export interface EditorPreset {
+  /** 从详情进编辑器：保存 / 返回后回到详情 */
+  fromDetail?: boolean;
+  /** 快速添加带过来的初值 */
+  initial?: { title?: string; date?: string; time?: string; tags?: string[]; prio?: string };
+  /** 看板列头「+」：按当前分组维度预填（kind 与 KanbanGroup 同名） */
+  group?: { kind: string; key: string };
+  /** 清单 / 优先级快捷新建 */
+  presetGroup?: string;
+  value?: string;
+  /** 直接落到指定清单 */
+  list?: string;
+}
+
 export interface RemindCfg {
   anchor: string;
+  /** 相对 anchor 的提前量（分钟），0 = 到点 */
   offsets: number[];
+  /** 已确认的节点下标；不写回这里，铃铛就永远清不掉 */
   read: number[];
   snooze?: number;
+  /** 1 = 结束时刻再提醒一次。Rust 侧 remind.rs 会读这个键，别改名 */
+  end?: number;
 }
 
 export interface Task {

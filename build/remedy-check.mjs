@@ -1,122 +1,29 @@
-// R8 收口验收：数据安全、导入、提醒闭环、拖拽、面板调宽、弹窗复位
+// 行为验收：数据安全、导入、提醒闭环、拖拽、面板调宽、弹窗复位
 // 用法：node remedy-check.mjs <输出目录> [端口]
 import fs from 'node:fs';
+import { target, connect, evaluate, shot, sleep, drag, doubleClick, key, resize, exceptions } from './lib/cdp.mjs';
 
 const OUT = process.argv[2] || '.';
 const PORT = process.argv[3] || '9222';
-const ENDPOINT = `http://127.0.0.1:${PORT}`;
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 fs.mkdirSync(OUT, { recursive: true });
 
-async function target() {
-  for (let i = 0; i < 80; i++) {
-    try {
-      const res = await fetch(`${ENDPOINT}/json/list`);
-      const list = await res.json();
-      const page = list.find((t) => t.type === 'page' && t.webSocketDebuggerUrl);
-      if (page) return page;
-    } catch {
-      /* not up yet */
-    }
-    await sleep(500);
-  }
-  throw new Error('CDP endpoint not reachable');
-}
-
-function connect(url) {
-  const ws = new WebSocket(url);
-  const pending = new Map();
-  const events = [];
-  let seq = 0;
-  ws.addEventListener('message', (ev) => {
-    const msg = JSON.parse(ev.data);
-    if (msg.id && pending.has(msg.id)) {
-      const { resolve, reject } = pending.get(msg.id);
-      pending.delete(msg.id);
-      if (msg.error) reject(new Error(JSON.stringify(msg.error)));
-      else resolve(msg.result);
-    } else if (msg.method) events.push(msg);
-  });
-  const ready = new Promise((resolve, reject) => {
-    ws.addEventListener('open', resolve, { once: true });
-    ws.addEventListener('error', reject, { once: true });
-  });
-  const send = (method, params = {}) =>
-    new Promise((resolve, reject) => {
-      const id = ++seq;
-      pending.set(id, { resolve, reject });
-      ws.send(JSON.stringify({ id, method, params }));
-    });
-  return { ws, ready, send, events };
-}
-
-async function evaluate(cdp, expression) {
-  const res = await cdp.send('Runtime.evaluate', {
-    expression,
-    awaitPromise: true,
-    returnByValue: true,
-    userGesture: true
-  });
-  if (res.exceptionDetails) {
-    const d = res.exceptionDetails;
-    throw new Error(d.exception?.description || d.text);
-  }
-  return res.result?.value;
-}
-
-async function shot(cdp, name) {
-  const r = await cdp.send('Page.captureScreenshot', { format: 'png' });
-  fs.writeFileSync(`${OUT}/${name}.png`, Buffer.from(r.data, 'base64'));
-}
-
-async function mouse(cdp, type, x, y, extra = {}) {
-  await cdp.send('Input.dispatchMouseEvent', {
-    type,
-    x: Math.round(x),
-    y: Math.round(y),
-    button: 'left',
-    buttons: type === 'mouseReleased' ? 0 : 1,
-    clickCount: 1,
-    ...extra
-  });
-}
-
-
-async function doubleClick(cdp, x, y) {
-  const px = Math.round(x);
-  const py = Math.round(y);
-  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: px, y: py, buttons: 0 });
-  for (const count of [1, 2]) {
-    await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: px, y: py, button: 'left', buttons: 1, clickCount: count });
-    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: px, y: py, button: 'left', buttons: 0, clickCount: count });
-    await sleep(40);
-  }
-  await sleep(200);
-}
-
-async function drag(cdp, from, to, steps = 12) {
-  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: from.x, y: from.y, buttons: 0 });
-  await mouse(cdp, 'mousePressed', from.x, from.y);
-  for (let i = 1; i <= steps; i++) {
-    const x = from.x + ((to.x - from.x) * i) / steps;
-    const y = from.y + ((to.y - from.y) * i) / steps;
-    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Math.round(x), y: Math.round(y), button: 'left', buttons: 1 });
-    await sleep(16);
-  }
-  await mouse(cdp, 'mouseReleased', to.x, to.y);
-  await sleep(220);
-}
-
 async function main() {
-  const t = await target();
+  const t = await target(PORT);
   const cdp = connect(t.webSocketDebuggerUrl);
   await cdp.ready;
   await cdp.send('Page.enable');
   await cdp.send('Runtime.enable');
+  // 面板相关断言依赖视口宽度，钉死 1280×800
+  await resize(cdp, 1280, 800);
 
   const report = {};
+  const rows = [];
+  const ck = (id, ok, detail) => {
+    rows.push({ id, ok: !!ok, detail });
+    return !!ok;
+  };
 
-  // ---------- 2. 提醒闭环：知道了之后角标下降，reload 后不回弹 ----------
+  // ---------- 1. 提醒闭环：知道了之后角标下降，reload 后不回弹 ----------
   const pend = await evaluate(
     cdp,
     `(() => {
@@ -133,7 +40,7 @@ async function main() {
     await sleep(350);
     report.remind.after = await evaluate(cdp, '__SD_TEST__.alertCount()');
     await cdp.send('Page.reload');
-    await sleep(2400);
+    await sleep(2600);
     report.remind.afterReload = await evaluate(
       cdp,
       `(() => { const t = __SD_TEST__.tasks.find(x => x.id === ${JSON.stringify(pend.id)}); return t ? (t.remindCfg.read || []).length : -1; })()`
@@ -142,8 +49,9 @@ async function main() {
   } else {
     report.remind.ok = false;
   }
+  ck('remind.read', report.remind.ok, report.remind);
 
-  // ---------- 1. 真清空：清完 + reload 仍为空 ----------
+  // ---------- 2. 真清空：清完 + reload 仍为空 ----------
   report.clear = {};
   report.clear.before = await evaluate(cdp, '__SD_TEST__.counts.tasks');
   await evaluate(cdp, 'window.__SD_TEST__.clearAll()');
@@ -151,11 +59,12 @@ async function main() {
   report.clear.after = await evaluate(cdp, '__SD_TEST__.counts.tasks');
   report.clear.seeded = await evaluate(cdp, "localStorage.getItem('wb_schedule_seeded')");
   await cdp.send('Page.reload');
-  await sleep(2600);
+  await sleep(2800);
   report.clear.afterReload = await evaluate(cdp, '__SD_TEST__.counts.tasks');
   report.clear.ok = report.clear.before > 0 && report.clear.after === 0 && report.clear.afterReload === 0;
+  ck('clear.persist', report.clear.ok, report.clear);
 
-  // ---------- 2. 真追加导入：导两次 = 两倍，reload 后仍在 ----------
+  // ---------- 3. 真追加导入：导两次 = 两倍，reload 后仍在 ----------
   const bundle = JSON.stringify({
     app: '日程台',
     tasks: [
@@ -181,42 +90,47 @@ async function main() {
     countdowns: second.countdowns
   };
   await cdp.send('Page.reload');
-  await sleep(2600);
+  await sleep(2800);
   const afterReload = await evaluate(cdp, '__SD_TEST__.counts');
   report.import.afterReload = afterReload.tasks;
   report.import.ok =
     first.tasks === 2 && second.tasks === 4 && report.import.unique && report.import.noEmpty && afterReload.tasks === 4;
+  ck('import.append', report.import.ok, report.import);
 
   // ---------- 4. 快捷键 3 → 四象限 ----------
-  await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: '3', text: '3', windowsVirtualKeyCode: 51 });
-  await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: '3', windowsVirtualKeyCode: 51 });
-  await sleep(300);
+  await key(cdp, '3', 51);
+  await sleep(350);
   report.keyboard = { view: await evaluate(cdp, '__SD_TEST__.counts.view') };
   report.keyboard.ok = report.keyboard.view === 'quadrant';
+  ck('keyboard.digit', report.keyboard.ok, report.keyboard);
 
   // ---------- 5. 列表拖拽排序 ----------
   await evaluate(cdp, "__SD_TEST__.goView('next7')");
-  await sleep(600);
-  const rows = await evaluate(
+  await sleep(650);
+  const rows2 = await evaluate(
     cdp,
     `Array.from(document.querySelectorAll('.task-list [data-tid]')).slice(0, 2).map(n => {
        const r = n.getBoundingClientRect();
        return { id: n.getAttribute('data-tid'), x: r.left + r.width / 2, y: r.top + r.height / 2 };
      })`
   );
-  report.drag = { rows: rows.map((r) => r.id) };
-  if (rows.length === 2) {
-    await drag(cdp, rows[0], rows[1]);
-    const order = await evaluate(cdp, "Array.from(document.querySelectorAll('.task-list [data-tid]')).slice(0, 2).map(n => n.getAttribute('data-tid'))");
+  report.drag = { rows: rows2.map((r) => r.id) };
+  if (rows2.length === 2) {
+    await drag(cdp, rows2[0], rows2[1]);
+    const order = await evaluate(
+      cdp,
+      "Array.from(document.querySelectorAll('.task-list [data-tid]')).slice(0, 2).map(n => n.getAttribute('data-tid'))"
+    );
     report.drag.after = order;
     report.drag.sortText = await evaluate(cdp, "document.querySelector('#btnSort .txt')?.textContent");
     report.drag.ghostGone = await evaluate(cdp, "!document.querySelector('.drag-ghost')");
-    report.drag.ok = order[0] === rows[1].id && order[1] === rows[0].id && report.drag.ghostGone;
+    report.drag.ok = order[0] === rows2[1].id && order[1] === rows2[0].id && report.drag.ghostGone;
   } else {
     report.drag.ok = false;
   }
+  ck('drag.list', report.drag.ok, report.drag);
 
-  // ---------- 6. 日历改时刻：日视图里把色块往下拖 1 小时 ----------
+  // ---------- 6. 日历改时刻 ----------
   await evaluate(cdp, "__SD_TEST__.goView('calendar')");
   await evaluate(
     cdp,
@@ -226,7 +140,7 @@ async function main() {
        __SD_TEST__.setCal({ calMode: 'day', cursor: d });
      })()`
   );
-  await sleep(600);
+  await sleep(650);
   const block = await evaluate(
     cdp,
     `(() => {
@@ -241,75 +155,138 @@ async function main() {
   report.calDrag = { block };
   if (block && block.time) {
     await drag(cdp, { x: block.x, y: block.y }, { x: block.x, y: block.y + 72 });
-    const now = await evaluate(cdp, `(() => { const t = __SD_TEST__.tasks.find(x => x.id === ${JSON.stringify(block.id)}); return t ? t.time : ''; })()`);
+    const now = await evaluate(
+      cdp,
+      `(() => { const t = __SD_TEST__.tasks.find(x => x.id === ${JSON.stringify(block.id)}); return t ? t.time : ''; })()`
+    );
     report.calDrag.after = now;
     report.calDrag.ok = now !== block.time;
   } else {
     report.calDrag.ok = false;
   }
+  ck('drag.calendar', report.calDrag.ok, report.calDrag);
 
   // ---------- 7. 面板调宽 + 双击复位 ----------
   await evaluate(cdp, "__SD_TEST__.goView('today')");
   await sleep(400);
-  await evaluate(cdp, "__SD_TEST__.openTaskDetail(__SD_TEST__.tasks[0].id)");
-  await sleep(500);
+  await evaluate(cdp, '__SD_TEST__.openTaskDetail(__SD_TEST__.tasks[0].id)');
+  await sleep(550);
   const grip = await evaluate(
     cdp,
     `(() => { const g = document.querySelector('.panel-grip'); if (!g) return null; const r = g.getBoundingClientRect(); return { x: r.left + 4, y: r.top + 200 }; })()`
   );
   report.panel = { grip: !!grip };
   if (grip) {
-    const w0 = await evaluate(cdp, "parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panel-w')) || 440");
+    const w0 = await evaluate(
+      cdp,
+      "parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panel-w')) || 440"
+    );
     await drag(cdp, grip, { x: grip.x - 120, y: grip.y }, 8);
-    const w1 = await evaluate(cdp, "parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panel-w')) || 440");
+    const w1 = await evaluate(
+      cdp,
+      "parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panel-w')) || 440"
+    );
     const grip2 = await evaluate(
       cdp,
       `(() => { const g = document.querySelector('.panel-grip'); const r = g.getBoundingClientRect(); return { x: r.left + 4, y: r.top + 200 }; })()`
     );
     await doubleClick(cdp, grip2.x, grip2.y);
-    await sleep(250);
-    const w2 = await evaluate(cdp, "parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panel-w')) || 440");
+    await sleep(280);
+    const w2 = await evaluate(
+      cdp,
+      "parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panel-w')) || 440"
+    );
     report.panel.widths = [w0, w1, w2];
-    report.panel.ok = w1 > w0 && w2 === 440;
+    report.panel.ok = w0 === 440 && w1 > w0 && w2 === 440;
   } else {
     report.panel.ok = false;
   }
-  await shot(cdp, 'panel');
+  ck('panel.resize', report.panel.ok, report.panel);
+  await shot(cdp, OUT, 'panel');
   await evaluate(cdp, '__SD_TEST__.closeModal()');
 
   // ---------- 8. 弹窗拖动 / 双击复位 ----------
-  await evaluate(cdp, "__SD_TEST__.closeModal(); __SD_TEST__.uiState.settings = true");
-  await sleep(450);
+  await evaluate(cdp, '__SD_TEST__.closeModal(); __SD_TEST__.uiState.settings = true');
+  await sleep(500);
   const head = await evaluate(
     cdp,
     `(() => { const h = document.querySelector('#modalRoot .m-head h3'); const r = h.getBoundingClientRect(); return { x: r.left + 12, y: r.top + r.height / 2 }; })()`
   );
   await drag(cdp, head, { x: head.x + 80, y: head.y + 40 }, 8);
   const floated = await evaluate(cdp, "!!document.querySelector('#modalRoot .modal.floating')");
-  const movedTo = await evaluate(cdp, "(() => { const m = document.querySelector('#modalRoot .modal.floating'); return m ? Math.round(m.getBoundingClientRect().left) : -1; })()");
+  const movedTo = await evaluate(
+    cdp,
+    "(() => { const m = document.querySelector('#modalRoot .modal.floating'); return m ? Math.round(m.getBoundingClientRect().left) : -1; })()"
+  );
   await doubleClick(cdp, head.x + 80, head.y + 40);
-  await sleep(250);
+  await sleep(280);
   const back = await evaluate(cdp, "!document.querySelector('#modalRoot .modal.floating')");
   report.modal = { floated, movedTo, back, ok: floated && back };
+  ck('modal.drag', report.modal.ok, report.modal);
   await evaluate(cdp, '__SD_TEST__.closeModal()');
 
-  // ---------- 9. 页面异常 ----------
-  report.errors = cdp.events
-    .filter((e) => e.method === 'Runtime.exceptionThrown')
-    .map((e) => e.params.exceptionDetails.exception?.description || e.params.exceptionDetails.text)
-    .filter((x) => !String(x).includes('ResizeObserver'));
+  // ---------- 9. 拖拽中断：卸载/失焦后不留残留 ----------
+  await evaluate(cdp, "__SD_TEST__.goView('next7')");
+  await sleep(550);
+  const abortAt = await evaluate(
+    cdp,
+    `(() => {
+       const n = document.querySelector('.task-list [data-tid]');
+       if (!n) return null;
+       const r = n.getBoundingClientRect();
+       return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+     })()`
+  );
+  if (abortAt) {
+    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: abortAt.x, y: abortAt.y, buttons: 0 });
+    await cdp.send('Input.dispatchMouseEvent', {
+      type: 'mousePressed',
+      x: abortAt.x,
+      y: abortAt.y,
+      button: 'left',
+      buttons: 1,
+      clickCount: 1
+    });
+    for (let i = 1; i <= 4; i++) {
+      await cdp.send('Input.dispatchMouseEvent', {
+        type: 'mouseMoved',
+        x: abortAt.x,
+        y: abortAt.y + i * 6,
+        button: 'left',
+        buttons: 1
+      });
+      await sleep(20);
+    }
+    report.abort = { dragging: await evaluate(cdp, '__SD_TEST__.isDragging()') };
+    // 拖到一半切视图：组件卸载，必须自动收尾
+    await evaluate(cdp, "__SD_TEST__.goView('today')");
+    await sleep(450);
+    report.abort.afterUnmount = await evaluate(
+      cdp,
+      `(() => ({ dragging: __SD_TEST__.isDragging(), ghost: !!document.querySelector('.drag-ghost'),
+                 bodyCls: document.body.classList.contains('is-dragging') }))()`
+    );
+    const t0 = await evaluate(cdp, '__SD_TEST__.nowTick()');
+    await sleep(16000); // 跨过 15s tick
+    report.abort.tickMoved = (await evaluate(cdp, '__SD_TEST__.nowTick()')) > t0;
+    report.abort.ok =
+      report.abort.dragging === true &&
+      report.abort.afterUnmount.dragging === false &&
+      report.abort.afterUnmount.ghost === false &&
+      report.abort.afterUnmount.bodyCls === false &&
+      report.abort.tickMoved === true;
+  } else {
+    report.abort = { ok: false, reason: 'no task row' };
+  }
+  ck('drag.abort', report.abort.ok, report.abort);
 
-  report.pass =
-    report.clear.ok &&
-    report.import.ok &&
-    report.remind.ok &&
-    report.keyboard.ok &&
-    report.drag.ok &&
-    report.calDrag.ok &&
-    report.panel.ok &&
-    report.modal.ok &&
-    report.errors.length === 0;
+  // ---------- 10. 页面异常 ----------
+  report.errors = exceptions(cdp);
+  ck('errors.none', report.errors.length === 0, report.errors);
 
+  report.checks = rows;
+  report.fails = rows.filter((r) => !r.ok).map((r) => r.id);
+  report.pass = report.fails.length === 0;
   fs.writeFileSync(`${OUT}/remedy-report.json`, JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report, null, 2));
   cdp.ws.close();

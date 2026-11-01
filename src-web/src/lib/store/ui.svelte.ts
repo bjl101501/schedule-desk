@@ -1,91 +1,249 @@
 /*
-  界面层的「意图」状态：谁要打开编辑器、详情、快速添加、筛选……
-  组件只读这里，不互相 import 编辑器，避免循环依赖。
+  uiState 是「界面意图」的兼容门面：读是派生，写是动作。
+
+  真实状态在 overlay.stack（见 overlay.svelte.ts）。保留这个名字是因为
+  二十多个组件都在读它，改签名会把 diff 摊到每个视图；但写入一律转成
+  open/close，组件不再直接改布尔。
+
+  迷你菜单与换肤菜单是浮层（不占层栈），单独放 popover。
 */
-import { app } from './app.svelte';
+import type { EditorPreset } from '$lib/domain/types';
+import {
+  closeKind,
+  closeTaskDetail,
+  closeTaskEditor,
+  detailIdOf,
+  editorIdOf,
+  hasKind,
+  layerOf,
+  openTaskDetail,
+  openTaskEditor,
+  push,
+  toggleTaskDetail
+} from './overlay.svelte';
+import type { ConfirmReq, PromptReq, TypedReq } from './overlay.svelte';
 
-export interface ConfirmReq {
-  title: string;
-  desc: string;
-  okText: string;
-  danger: boolean;
-  onOk: () => void;
+export type { ConfirmReq, PromptReq, TypedReq };
+
+export interface MiniMenuState {
+  kind: 'list' | 'tag' | 'theme';
+  name: string;
+  x: number;
+  y: number;
 }
 
-export interface PromptReq {
-  title: string;
-  label: string;
-  value: string;
-  placeholder: string;
-  okText: string;
-  onOk: (v: string) => void;
+export const popover = $state({ menu: null as MiniMenuState | null });
+
+type FlagKind = 'quickAdd' | 'search' | 'filter' | 'reminder' | 'settings' | 'backup' | 'help' | 'shortcuts';
+
+/** 一层「只有开关、没有负载」的弹窗 */
+function flag(kind: FlagKind) {
+  return {
+    get(): boolean {
+      return hasKind(kind);
+    },
+    set(on: boolean) {
+      if (on) {
+        if (!hasKind(kind)) push(kind === 'quickAdd' ? { kind, draft: '' } : { kind });
+      } else {
+        closeKind(kind);
+      }
+    }
+  };
 }
 
-export interface TypedConfirmReq {
-  title: string;
-  desc: string;
-  word: string;
-  onOk: () => void;
-}
+const quickAddFlag = flag('quickAdd');
+const searchFlag = flag('search');
+const filterFlag = flag('filter');
+const reminderFlag = flag('reminder');
+const settingsFlag = flag('settings');
+const backupFlag = flag('backup');
+const helpFlag = flag('help');
+const shortcutsFlag = flag('shortcuts');
 
-export const uiState = $state({
-  detailId: '',
-  editorId: '' as string,
-  editorPreset: null as Record<string, unknown> | null,
-  quickAdd: false,
-  quickDraft: '',
-  search: false,
-  filter: false,
-  reminder: false,
-  settings: false,
-  backup: false,
-  shortcuts: false,
-  help: false,
-  themeMenu: false,
-  miniMenu: null as null | { kind: 'list' | 'tag' | 'theme'; name: string; x: number; y: number },
-  confirm: null as ConfirmReq | null,
-  prompt: null as PromptReq | null,
-  typed: null as TypedConfirmReq | null,
-  habitEditor: null as null | { id: string },
-  cdEditor: null as null | { id: string }
-});
+export const uiState = {
+  /* 任务详情 / 编辑器 */
+  get detailId(): string {
+    return detailIdOf();
+  },
+  set detailId(v: string) {
+    if (v) openTaskDetail(v);
+    else closeTaskDetail();
+  },
+  get editorId(): string {
+    return editorIdOf();
+  },
+  set editorId(v: string) {
+    if (v) openTaskEditor(v);
+    else closeTaskEditor();
+  },
+  get editorPreset(): EditorPreset | null {
+    return layerOf('editor')?.preset ?? null;
+  },
 
-export function openTaskDetail(id: string): void {
-  app.detailId = id;
-  uiState.detailId = id;
-}
+  /* 轻量弹窗 */
+  get quickAdd() {
+    return quickAddFlag.get();
+  },
+  set quickAdd(v: boolean) {
+    quickAddFlag.set(v);
+  },
+  get quickDraft(): string {
+    return layerOf('quickAdd')?.draft ?? '';
+  },
+  set quickDraft(v: string) {
+    closeKind('quickAdd');
+    push({ kind: 'quickAdd', draft: v });
+  },
+  get search() {
+    return searchFlag.get();
+  },
+  set search(v: boolean) {
+    searchFlag.set(v);
+  },
+  get filter() {
+    return filterFlag.get();
+  },
+  set filter(v: boolean) {
+    filterFlag.set(v);
+  },
+  get reminder() {
+    return reminderFlag.get();
+  },
+  set reminder(v: boolean) {
+    reminderFlag.set(v);
+  },
+  get settings() {
+    return settingsFlag.get();
+  },
+  set settings(v: boolean) {
+    settingsFlag.set(v);
+  },
+  get backup() {
+    return backupFlag.get();
+  },
+  set backup(v: boolean) {
+    backupFlag.set(v);
+  },
+  get help() {
+    return helpFlag.get();
+  },
+  set help(v: boolean) {
+    helpFlag.set(v);
+  },
+  get shortcuts() {
+    return shortcutsFlag.get();
+  },
+  set shortcuts(v: boolean) {
+    shortcutsFlag.set(v);
+  },
 
-/** 再点一次同一条就收起（旧版 toggleDetailFromClick 的语义） */
-export function toggleTaskDetail(id: string): void {
-  if (!id) return;
-  if (uiState.detailId === id && !uiState.editorId) closeTaskDetail();
-  else openTaskDetail(id);
-}
+  /* 浮层菜单 */
+  get miniMenu(): MiniMenuState | null {
+    return popover.menu;
+  },
+  set miniMenu(v: MiniMenuState | null) {
+    popover.menu = v;
+  },
+  get themeMenu(): boolean {
+    return popover.menu?.kind === 'theme';
+  },
+  set themeMenu(v: boolean) {
+    popover.menu = v ? { kind: 'theme', name: '', x: 0, y: 0 } : null;
+  },
 
-export function closeTaskDetail(): void {
-  app.detailId = '';
-  uiState.detailId = '';
-}
+  /* 确认类 */
+  get confirm(): ConfirmReq | null {
+    return layerOf('confirm')?.req ?? null;
+  },
+  set confirm(v: ConfirmReq | null) {
+    closeKind('confirm');
+    if (v) push({ kind: 'confirm', req: v });
+  },
+  get prompt(): PromptReq | null {
+    return layerOf('prompt')?.req ?? null;
+  },
+  set prompt(v: PromptReq | null) {
+    closeKind('prompt');
+    if (v) push({ kind: 'prompt', req: v });
+  },
+  get typed(): TypedReq | null {
+    return layerOf('typed')?.req ?? null;
+  },
+  set typed(v: TypedReq | null) {
+    closeKind('typed');
+    if (v) push({ kind: 'typed', req: v });
+  },
 
-export function openTaskEditor(id = '', preset: Record<string, unknown> | null = null): void {
-  uiState.editorId = id || '__new__';
-  uiState.editorPreset = preset;
-  uiState.quickAdd = false;
-  uiState.detailId = '';
-  app.detailId = '';
-}
+  /* 习惯 / 纪念日编辑器 */
+  get habitEditor(): { id: string } | null {
+    const l = layerOf('habitEditor');
+    return l ? { id: l.id } : null;
+  },
+  set habitEditor(v: { id: string } | null) {
+    closeKind('habitEditor');
+    if (v) push({ kind: 'habitEditor', id: v.id });
+  },
+  get cdEditor(): { id: string } | null {
+    const l = layerOf('cdEditor');
+    return l ? { id: l.id } : null;
+  },
+  set cdEditor(v: { id: string } | null) {
+    closeKind('cdEditor');
+    if (v) push({ kind: 'cdEditor', id: v.id });
+  }
+};
 
-export function closeTaskEditor(): void {
-  uiState.editorId = '';
-  uiState.editorPreset = null;
-}
+/* ---------------- 动作 ---------------- */
 
 export function openQuickAdd(draft = ''): void {
-  uiState.quickDraft = draft;
-  uiState.quickAdd = true;
+  closeKind('quickAdd');
+  push({ kind: 'quickAdd', draft });
 }
 
-export function askDeleteTask(id: string, title: string, onOk: () => void): void {
+export function closeQuickAdd(): void {
+  closeKind('quickAdd');
+}
+
+export function openSearch(): void {
+  searchFlag.set(true);
+}
+
+export function openFilter(): void {
+  filterFlag.set(true);
+}
+
+export function openReminder(): void {
+  reminderFlag.set(true);
+}
+
+export function openSettings(): void {
+  settingsFlag.set(true);
+}
+
+export function openBackup(): void {
+  backupFlag.set(true);
+}
+
+export function openHelp(): void {
+  helpFlag.set(true);
+}
+
+export function openShortcuts(): void {
+  shortcutsFlag.set(true);
+}
+
+export function openHabitEditor(id: string): void {
+  closeKind('habitEditor');
+  push({ kind: 'habitEditor', id });
+}
+
+export function openCountdownEditor(id: string): void {
+  closeKind('cdEditor');
+  push({ kind: 'cdEditor', id });
+}
+
+export function askDeleteTask(title: string, onOk: () => void): void {
   uiState.confirm = {
     title: '删除事项',
     desc: '确定删除「' + title + '」？删除后无法恢复。',
@@ -95,78 +253,4 @@ export function askDeleteTask(id: string, title: string, onOk: () => void): void
   };
 }
 
-export function closeTopLayer(): boolean {
-  if (uiState.typed) {
-    uiState.typed = null;
-    return true;
-  }
-  if (uiState.prompt) {
-    uiState.prompt = null;
-    return true;
-  }
-  if (uiState.confirm) {
-    uiState.confirm = null;
-    return true;
-  }
-  if (uiState.miniMenu) {
-    uiState.miniMenu = null;
-    return true;
-  }
-  if (uiState.themeMenu) {
-    uiState.themeMenu = false;
-    return true;
-  }
-  if (uiState.quickAdd) {
-    uiState.quickAdd = false;
-    return true;
-  }
-  if (uiState.search) {
-    uiState.search = false;
-    return true;
-  }
-  if (uiState.filter) {
-    uiState.filter = false;
-    return true;
-  }
-  if (uiState.reminder) {
-    uiState.reminder = false;
-    return true;
-  }
-  if (uiState.backup) {
-    uiState.backup = false;
-    return true;
-  }
-  if (uiState.settings) {
-    uiState.settings = false;
-    return true;
-  }
-  if (uiState.shortcuts) {
-    uiState.shortcuts = false;
-    return true;
-  }
-  if (uiState.help) {
-    uiState.help = false;
-    return true;
-  }
-  if (uiState.editorId) {
-    uiState.editorId = '';
-    return true;
-  }
-  if (uiState.detailId) {
-    closeTaskDetail();
-    return true;
-  }
-  if (uiState.habitEditor) {
-    uiState.habitEditor = null;
-    return true;
-  }
-  if (uiState.cdEditor) {
-    uiState.cdEditor = null;
-    return true;
-  }
-  if (app.drawer) {
-    app.drawer = false;
-    return true;
-  }
-  return false;
-}
+export { closeTaskDetail, closeTaskEditor, openTaskDetail, openTaskEditor, toggleTaskDetail };

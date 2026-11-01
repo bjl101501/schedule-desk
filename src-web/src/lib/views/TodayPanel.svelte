@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Task } from '$lib/domain/types';
-  import { addDays, coarseSpan, dayDiff, ymd } from '$lib/domain/date';
+  import { coarseSpan, dayDiff, ymd } from '$lib/domain/date';
   import { subPlan, subStats } from '$lib/domain/task';
   import { inScope, sortTasks } from '$lib/domain/selectors';
   import { reminderState, taskState, taskWindow } from '$lib/domain/window';

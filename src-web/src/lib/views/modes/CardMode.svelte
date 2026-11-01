@@ -9,6 +9,7 @@
   import { clock, todayD } from '$lib/store/clock.svelte';
   import { toggleDone } from '$lib/store/data.svelte';
   import { toggleTaskDetail } from '$lib/store/ui.svelte';
+  import { isDetailOpen } from '$lib/store/overlay.svelte';
   import { pointerDrag, hitAt, ratioX } from '$lib/actions/drag';
   import { beginDrag, type DragFx } from '$lib/actions/dragFx';
   import { applyVisibleOrder } from '$lib/store/dndActions.svelte';
@@ -19,6 +20,7 @@
   import Flags from '$lib/components/Flags.svelte';
   import SubRows from '$lib/components/SubRows.svelte';
   import StateChip from '$lib/components/StateChip.svelte';
+  import { beginDragSession, endDragSession } from '$lib/store/dragSession.svelte';
 
   let { rows }: { rows: Task[] } = $props();
   const today = $derived(todayD());
@@ -26,7 +28,7 @@
   const part = $derived(rows.slice(0, app.listLimit || PAGE));
 
   function cls(t: Task): string {
-    return 'tcard ' + (t.prio ? String(t.prio).toLowerCase() : '') + (t.done ? ' done' : '') + (app.detailId === t.id ? ' active' : '');
+    return 'tcard ' + (t.prio ? String(t.prio).toLowerCase() : '') + (t.done ? ' done' : '') + (isDetailOpen(t.id) ? ' active' : '');
   }
 
   function dateCls(t: Task): string {
@@ -44,7 +46,7 @@
       .filter(Boolean);
 
   function onDragEnd(el: HTMLElement, e: PointerEvent, moved: boolean): void {
-    app.dragging = false;
+    endDragSession();
     el.classList.remove('dragging');
     fx?.end();
     fx = null;
@@ -81,7 +83,7 @@
   use:pointerDrag={{
     handle: '[data-tid]',
     onStart: (el) => {
-      app.dragging = true;
+      beginDragSession();
       el.classList.add('dragging');
       fx = beginDrag({ source: el, scrollEl: () => document.getElementById('content') });
     },

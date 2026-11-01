@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { PRIOS, TAG_COLORS } from '$lib/domain/constants';
+  import { PRIOS } from '$lib/domain/constants';
   import { allTags } from '$lib/domain/selectors';
   import { app, setFilters } from '$lib/store/app.svelte';
   import { data } from '$lib/store/data.svelte';

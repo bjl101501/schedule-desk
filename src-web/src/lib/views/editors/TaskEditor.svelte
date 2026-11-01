@@ -12,12 +12,12 @@
   import { meta, addCustomList, addCustomTag } from '$lib/store/meta.svelte';
   import { toast } from '$lib/store/toast.svelte';
   import { closeTaskEditor, openTaskDetail, uiState } from '$lib/store/ui.svelte';
+  import { openTemplatePicker, type Layer } from '$lib/store/overlay.svelte';
   import { deleteTask } from '$lib/store/data.svelte';
   import DateField from '$lib/ui/DateField.svelte';
   import TimeField from '$lib/ui/TimeField.svelte';
   import TagInput from '$lib/ui/TagInput.svelte';
   import Icon from '$lib/ui/Icon.svelte';
-  import TemplatePicker from './TemplatePicker.svelte';
   import { prepareForm } from '$lib/actions/prepare-form';
 
   const SUB_TPLS = [
@@ -27,26 +27,23 @@
     { k: 'chores', t: '家务分工', items: [['整理房间', 20], ['洗衣', 15], ['做饭', 40], ['洗碗', 15]] }
   ] as const;
 
-  const isNew = $derived(uiState.editorId === '__new__');
-  const src = $derived(isNew ? null : findTask(uiState.editorId));
-  const fromDetail = $derived(!!(uiState.editorPreset && (uiState.editorPreset as Record<string, unknown>).fromDetail));
+  let { layer }: { layer: Extract<Layer, { kind: 'editor' }> } = $props();
+  const isNew = $derived(layer.id === '__new__');
+  const src = $derived(isNew ? null : findTask(layer.id));
+  const fromDetail = $derived(!!layer.preset?.fromDetail);
 
   const t0 = today0();
-  void app;
 
   // 新建时的预设（看板列头 +、清单内新建）
   function presetField(key: string): string {
-    const p = uiState.editorPreset as Record<string, unknown> | null;
+    const p = layer.preset;
     if (!p) return '';
-    const g = p.group as { kind: string; key: string } | undefined;
-    if (g && g.kind === key) return g.key;
+    if (p.group && p.group.kind === key) return p.group.key;
     if (p.presetGroup === key) return String(p.value || '');
     return '';
   }
 
-  const init = (uiState.editorPreset as Record<string, unknown> | null)?.initial as
-    | { title?: string; date?: string; time?: string; tags?: string[]; prio?: string }
-    | undefined;
+  const init = layer.preset?.initial;
 
   let title = $state(src?.title ?? init?.title ?? '');
   let note = $state(src?.note ?? '');
@@ -71,7 +68,6 @@
   let subs = $state<Sub[]>(
     (src?.subs || []).map((x, i) => ({ id: x.id || 's' + i, title: x.title, min: Number(x.min) || 0, days: Number(x.days) || 0, done: !!x.done, doneAt: x.doneAt || '' }))
   );
-  let showTpl = $state(false);
   let listMenu = $state(false);
 
   // 预计用时：内部一律存分钟，输入框按当前单位显示
@@ -191,9 +187,10 @@
   }
 
   function back(): void {
-    const id = uiState.editorId;
+    const id = layer.id;
     closeTaskEditor();
-    if (id && id !== '__new__') setTimeout(() => openTaskDetail(id), 160);
+    // 详情层在编辑器下面，关掉就露出来了；直接打开会把它的 uid 换掉（白丢滚动位置）
+    if (id && id !== '__new__') openTaskDetail(id);
   }
 
   let saving = $state(false);
@@ -405,7 +402,7 @@
   {/if}
   <h3>{isNew ? '新建日程' : fromDetail ? '修改日程' : '编辑日程'}</h3>
   {#if isNew}
-    <button type="button" class="m-tpl" id="edTpl" onclick={() => (showTpl = true)}><Icon name="copy" /> 用已有日程填充</button>
+    <button type="button" class="m-tpl" id="edTpl" onclick={() => openTemplatePicker(pickFromTemplate)}><Icon name="copy" /> 用已有日程填充</button>
   {/if}
   <button class="m-close" onclick={close}><Icon name="close" /></button>
 </div>
@@ -631,6 +628,3 @@
   <button class="btn btn-pri" id="edSave" onclick={save} disabled={saving}>{saving ? '保存中…' : isNew ? '添加事项' : '保存修改'}</button>
 </div>
 
-{#if showTpl}
-  <TemplatePicker onpick={pickFromTemplate} onclose={() => (showTpl = false)} />
-{/if}

@@ -1,21 +1,19 @@
 <script lang="ts">
   import { THEMES } from '$lib/domain/constants';
-  import { todayD } from '$lib/store/clock.svelte';
   import { clearTables, dataJob, readDailySnaps, restoreDailySnap, seedDemo, writeSafetySnapshot } from '$lib/store/data.svelte';
   import { sync } from '$lib/store/sync.svelte';
   import { setTheme, theme } from '$lib/store/theme.svelte';
   import { uiState } from '$lib/store/ui.svelte';
   import { toast } from '$lib/store/toast.svelte';
-  import { dbConfig, dbIsFirstRun, dbVersion } from '$lib/bridge/db';
+  import { dbConfig, dbVersion } from '$lib/bridge/db';
   import {
-    chooseDataDir, defaultDataDir, openDataDir, restartApp, updateCheck, updateInstall, webdavSave, webdavTest
+    chooseDataDir, openDataDir, restartApp, updateCheck, updateInstall, webdavSave, webdavTest
   } from '$lib/bridge/desktop';
   import Icon from '$lib/ui/Icon.svelte';
   import { prepareForm } from '$lib/actions/prepare-form';
 
   const cfg = $derived(dbConfig());
   const snaps = $derived(readDailySnaps());
-  const today = todayD();
 
   let davUrl = $state(cfg.webdav?.url || '');
   let davUser = $state(cfg.webdav?.username || '');

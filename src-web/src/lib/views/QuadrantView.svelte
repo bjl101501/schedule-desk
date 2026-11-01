@@ -2,7 +2,7 @@
   import type { Task } from '$lib/domain/types';
   import { dayDiff, parseYmd, shortDate, tagColor as tagColorOf } from '$lib/domain/date';
   import { TAG_COLORS } from '$lib/domain/constants';
-  import { prioCls, subStats } from '$lib/domain/task';
+  import { subStats } from '$lib/domain/task';
   import { sortTasks } from '$lib/domain/selectors';
   import { app } from '$lib/store/app.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
@@ -13,6 +13,7 @@
   import Flags from '$lib/components/Flags.svelte';
   import { pointerDrag, hitAt } from '$lib/actions/drag';
   import { dropQuadrant } from '$lib/store/dndActions.svelte';
+  import { beginDragSession, endDragSession } from '$lib/store/dragSession.svelte';
 
   const tick = $derived(clock.now);
   const today = $derived(todayD());
@@ -62,11 +63,11 @@
   use:pointerDrag={{
     handle: '[data-tid]',
     onStart: (el) => {
-      app.dragging = true;
+      beginDragSession();
       el.classList.add('dragging');
     },
     onEnd: (el, e, moved) => {
-      app.dragging = false;
+      endDragSession();
       el.classList.remove('dragging');
       if (!moved) return;
       const box = hitAt(e, '.qbox');

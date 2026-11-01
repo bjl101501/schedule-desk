@@ -9,7 +9,7 @@ import { loadAll } from '$lib/store/data.svelte';
 import { startClock } from '$lib/store/clock.svelte';
 import { applyStatus } from '$lib/store/sync.svelte';
 import { uiState } from '$lib/store/ui.svelte';
-import { app } from '$lib/store/app.svelte';
+import { isDragging } from '$lib/store/dragSession.svelte';
 import { syncStatus } from '$lib/bridge/desktop';
 import { installTestFacade } from '$lib/test/facade.svelte';
 
@@ -66,7 +66,7 @@ onUpdated(() => {
   if (reloadTimer) clearTimeout(reloadTimer);
   reloadTimer = setTimeout(() => {
     reloadTimer = null;
-    if (uiState.editorId || app.dragging) return;
+    if (uiState.editorId || isDragging()) return;
     void loadAll();
   }, 320);
 });

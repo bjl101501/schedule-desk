@@ -100,6 +100,3 @@ export function skipFocus(): void {
   focus.left = focus.total;
 }
 
-export function focusTickRunning(): boolean {
-  return !!timer;
-}

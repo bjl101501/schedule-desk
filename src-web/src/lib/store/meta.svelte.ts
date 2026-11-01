@@ -3,32 +3,7 @@
   旧代码每次 render 现读 localStorage，所以看不出「读的不是响应式」；
   改到 Svelte 必须收编成 $state，否则拖完侧栏不重排。
 */
-const K = {
-  lists: 'wb_schedule_custom_lists',
-  tags: 'wb_schedule_custom_tags',
-  archived: 'wb_schedule_archived_lists',
-  listOrder: 'wb_schedule_list_order',
-  tagOrder: 'wb_schedule_tag_order',
-  cdGroupOrder: 'wb_schedule_cdgroup_order',
-  panelW: 'wb_schedule_panel_w'
-};
-
-function readArr(key: string): string[] {
-  try {
-    const v = JSON.parse(localStorage.getItem(key) || '[]');
-    return Object.prototype.toString.call(v) === '[object Array]' ? (v as string[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeArr(key: string, arr: string[]): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(arr));
-  } catch {
-    /* 容量满时忽略 */
-  }
-}
+import { STORAGE_KEYS as K, readArr, readRaw, writeArr, writeRaw } from './storage';
 
 export const meta = $state({
   customLists: [] as string[],
@@ -47,7 +22,7 @@ export function hydrateMeta(): void {
   meta.listOrder = readArr(K.listOrder);
   meta.tagOrder = readArr(K.tagOrder);
   meta.cdGroupOrder = readArr(K.cdGroupOrder);
-  const w = Number(localStorage.getItem(K.panelW) || 0);
+  const w = Number(readRaw(K.panelW) || 0);
   meta.panelW = w >= 360 && w <= 760 ? Math.round(w) : 440;
   applyPanelWidth(meta.panelW);
 }
@@ -59,11 +34,7 @@ export function applyPanelWidth(w: number): void {
 }
 
 export function savePanelWidth(): void {
-  try {
-    localStorage.setItem(K.panelW, String(meta.panelW));
-  } catch {
-    /* ignore */
-  }
+  writeRaw(K.panelW, String(meta.panelW));
 }
 
 export function addCustomList(name: string): string {
@@ -77,7 +48,9 @@ export function addCustomList(name: string): string {
 }
 
 export function addCustomTag(name: string): string {
-  const n = String(name || '').trim().replace(/^#/, '');
+  const n = String(name || '')
+    .trim()
+    .replace(/^#/, '');
   if (!n) return '';
   if (meta.customTags.indexOf(n) === -1) {
     meta.customTags.push(n);

@@ -11,9 +11,8 @@ export function setTransport(fn: Transport | null): void {
 }
 
 function hostTransport(): Transport | null {
-  const w = window as unknown as { __TAURI_INTERNALS__?: { invoke?: Transport } };
-  const t = w.__TAURI_INTERNALS__;
-  return t && typeof t.invoke === 'function' ? t.invoke.bind(t) : null;
+  const t = window.__TAURI_INTERNALS__;
+  return t && typeof t.invoke === 'function' ? (t.invoke.bind(t) as Transport) : null;
 }
 
 export function transport(): Transport | null {
