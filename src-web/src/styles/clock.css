@@ -1,9 +1,10 @@
 /* ---------- 顶栏数字时钟 ---------- */
 /* Digital-7 非等宽版。数码管的关键是「暗段」：每一位底下压一个 8，
    亮段是当前数字，未点亮的段用接近底色的浅灰——这样才像一块真的段显表盘。 */
+/* 路径相对本文件（styles/），字体在 src/fonts/；写成 fonts/… 会解析到 styles/fonts/ 而静默失败 */
 @font-face{
   font-family:'Digital-7';
-  src:url('fonts/digital-7.ttf') format('truetype');
+  src:url('../fonts/digital-7.ttf') format('truetype');
   font-weight:400;font-style:normal;font-display:swap;
 }
 .clock{

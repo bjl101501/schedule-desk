@@ -118,7 +118,7 @@ src-tauri/src/sync.rs         WebDAV 客户端
 src-tauri/src/remind.rs       提醒调度
 src-tauri/src/update.rs       GitHub 更新
 build/build.sh                本机一键构建（前端 + exe → dist/）
-build/ui-check.mjs            界面回归：状态矩阵 + 编辑器交互 + 截图（走 CDP）
+build/ui-check.mjs            界面回归：54 条断言 + 截图（状态矩阵 / 浮层 / 图标 / 字体 / 编辑器交互，走 CDP）
 docs/                         截图、使用说明、日程台-功能表.md（完整功能手册）
 dist/                         本地构建输出，不入库
 CHANGELOG.md                  版本记录
@@ -126,7 +126,7 @@ CHANGELOG.md                  版本记录
 
 **`src-web/src` 是唯一维护对象**，改动直接写进对应模块；`src-web/build` 是产物，
 每次构建整体重生成。领域层不碰 DOM、不碰 Tauri，能脱离界面单测
-（`bun test`，40 条断言覆盖状态矩阵、提醒节点、拆分排期、快速解析）。
+（`bun test`，60 条断言覆盖状态矩阵、提醒节点、拆分排期、快速解析、日历分道与贴边钳制）。
 
 ## 文档
 

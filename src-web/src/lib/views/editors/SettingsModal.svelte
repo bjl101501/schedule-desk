@@ -178,8 +178,9 @@
   <div class="field">
     <label>引用与致谢</label>
     <div style="font-size:12.5px;color:var(--text-3);line-height:1.85">
-      表格能力来自 WorkBuddy「资料库」结构，桌面外壳使用 Tauri 2，界面为手写 CSS，
-      不引入图标库与图表库。行楷字体来自 LXGW WenKai GB（CDN 加载，离线时回落系统字体）。
+      表格能力来自 WorkBuddy「资料库」结构，桌面外壳使用 Tauri 2，界面为手写 CSS；
+      图标来自 Lucide（另有少量自制），图表是手绘 SVG，不引入图表库。
+      行楷字体来自 LXGW WenKai GB（CDN 加载，离线时回落系统字体）。
     </div>
   </div>
 

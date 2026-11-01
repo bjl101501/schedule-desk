@@ -37,6 +37,13 @@
 - 补 `.ico` 基线类（`fill:none;stroke:currentColor;stroke-width:2`）：
   页面里另有 14 条 `svg{}` 规则只写尺寸不写描边，以前靠浏览器默认值蒙混，现在显式声明。
 
+### 修复
+
+- **数码字体从 v3.3.0 起就没加载过**。样式拆成 `styles/` 后 `@font-face` 的
+  `url('fonts/digital-7.ttf')` 变成相对 `styles/` 解析，文件不存在，Vite 只在构建日志里
+  留一行 `didn't resolve`，界面静默回落到系统字体。改成 `../fonts/digital-7.ttf`，
+  并加 `clock.font` 断言（查 `document.fonts` 里 Digital-7 是不是 `loaded`），以后再错会红。
+
 ### 可见变化
 
 - `more`（…）的圆点由 r=1.5 变 r=1，`trash` / `box` 加了圆角，`edit` / `refresh` 形状重画，
@@ -47,11 +54,12 @@
 
 - 新增两个运行时依赖（都是本地包，无网络请求）：`@floating-ui/dom@1.8.0`（MIT）、
   `@lucide/svelte@1.66.0`（ISC），许可与来源记进 `docs/第三方资源.md`。
-- 产物：JS 308.7 KB → 340.0 KB（+31 KB，gzip +6.7 KB）。
+- 产物：JS 308.7 KB → 340.0 KB（+31 KB，gzip +6.7 KB）；前端产物合计 472 KB（含回归的数码字体 34 KB）。
 - `ui-check` 的 `tip.noOverlap` 原来是同步读矩形，实际读到的是上一帧的空元素（等于没测）；
   改成等两帧再量，并加「不是空元素 / 贴上方或侧边 / 在视口内」三个条件。
-  新增 `picker.inViewport`、`picker.followScroll`、`icon.render` 三条断言。
-- 门禁：单测 60 条全绿；`check` 0 error；`ui-check --strict` 0 失败；`remedy-check` 全绿。
+  新增 `picker.inViewport`、`picker.followScroll`、`icon.render`、`clock.font` 四条断言（35 → 54 条）。
+- 门禁：单测 60 条全绿；`check` 0 error；`ui-check --strict` 54 条断言 0 失败；`remedy-check` 全绿。
+  `ui-check` 现在会把断言总数写进报告（`total` / `passed`），文档里的数字以它为准。
 
 ---
 

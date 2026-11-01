@@ -103,6 +103,20 @@ async function main() {
   );
   c.check('scheduler.running', (await evaluate(cdp, '__SD_TEST__.schedulerRunning()')) === true);
 
+  // 数码字体真的加载了：样式拆文件后 @font-face 的相对路径错过一次，界面上很难一眼看出来
+  const clockFont = await evaluate(
+    cdp,
+    `(function(){
+      var el = document.querySelector('.clock .dnum, .clock b, .clock span');
+      return { ok: document.fonts.check('16px Digital-7'),
+               family: el ? getComputedStyle(el).fontFamily : '',
+               faces: Array.from(document.fonts).filter(function(f){ return /Digital-7/i.test(f.family); })
+                        .map(function(f){ return f.status; }) };
+    })()`
+  );
+  S.clockFont = clockFont;
+  c.check('clock.font', !!clockFont && clockFont.ok === true && /Digital-7/.test(clockFont.family || ''), clockFont);
+
   const count = await evaluate(cdp, 'S.tasks.length');
   c.atLeast('tasks.count', count, 10, { detail: '测试数据应至少 10 条' });
 
@@ -751,6 +765,9 @@ async function main() {
   // ---------- 24. 更新通道（联网，只取样不断言）----------
   report.update = await probe(cdp, 'window.__TAURI_INTERNALS__.invoke("update_check")');
 
+  // 把断言总数写进报告：文档里的「N 条断言」以这个数为准，别再手数
+  report.total = c.checks.length;
+  report.passed = c.checks.filter((x) => x.ok).length;
   settle(report, c, KNOWN_FAIL, STRICT);
   delete report.checks;
   fs.writeFileSync(path.join(OUT, 'ui-report.json'), JSON.stringify(report, null, 2));
