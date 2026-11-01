@@ -9,7 +9,8 @@
   import Icon from '$lib/ui/Icon.svelte';
   import TaskRow from '$lib/components/TaskRow.svelte';
   import { pointerDrag } from '$lib/actions/drag';
-  import { dropTimeline, taskById } from '$lib/store/dndActions.svelte';
+  import { dropTimeline } from '$lib/store/dndActions.svelte';
+  import { taskById } from '$lib/store/taskActions.svelte';
   import { beginDragSession, endDragSession } from '$lib/store/dragSession.svelte';
 
   let { rows }: { rows: Task[] } = $props();

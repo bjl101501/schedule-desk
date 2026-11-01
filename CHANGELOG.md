@@ -5,6 +5,55 @@
 
 ---
 
+---
+
+## v3.2.0 · 2026-11-01
+
+不改变功能，把「用 Svelte 语法写 jQuery 思路」的部分换掉。
+
+### 架构
+
+- **层栈取代 18 个布尔开关**。`store/overlay.svelte.ts` 只有一份 stack，
+  渲染顺序即层级，Esc 关栈顶一层。`ui.svelte.ts` 降级为读写门面：
+  `uiState.x` 读是派生、写转成 open/close，二十多个组件不用改调用点。
+  `App.svelte` 的 12 个弹窗挂载块合成一个 `<OverlayHost>` 循环，
+  外壳（mask / modal / panel-grip）由 `ui/overlay/spec.ts` 一张表决定。
+- **写入收敛**。`build/check-writes.mjs` 进 `bun run check`：视图与组件不得直写
+  `app.*`。原本散在 CalendarView 的 16 处游标/模式写入收进 `store/calendarActions.svelte.ts`。
+- **拖拽会话**。`store/dragSession.svelte.ts` 用计数替代 `app.dragging` 布尔；
+  `drag.ts` 的 `destroy()` 补调收尾。此前拖到一半切视图会让 `dragging` 永久为真，
+  连带时钟停走、外部变更重载永久失效。
+- **浮层统一**。`actions/popover.ts` 取代 DateField / TimeField / TagInput / MiniMenu
+  四份「定位 + 点外面关闭 + setTimeout(0)」；`closeActivePanel()` 返回 boolean，
+  Esc 依次剥：浮层 → 栈顶 → 抽屉。
+- **动作层**。`store/taskActions.svelte.ts` 的 `applyDateChange` 收掉 6 份
+  「改日期 + 平移计划 + 同步提醒基准 + 按字段白名单落库」
+  （看板 / 日历 / 全天 / 时间线 / 日视图 / 编辑器），`taskById` 收掉 11 处内联查找。
+- **存储收敛**。`store/storage.ts` 是 localStorage 的唯一入口（15 个键名一处定义），
+  `lib/store` 之外只剩 `bridge/mock.ts` 与 `index.html` 两处例外。
+
+### 修复
+
+- 三套确认框被挂载两遍（一次确认渲染两层遮罩、抢两次焦点）。
+- 切换详情条目时面板内容不刷新（`id` 只取一次，`[data-task]` 与内容会打架）。
+- Esc 在日期面板里把整个编辑器关掉（浮层不在关闭链上）。
+- 习惯 / 纪念日编辑器不是右侧面板，而是居中弹窗（与功能表承诺不符）。
+- 拖拽途中卸载导致 `app.dragging` 永久为真 → 时钟停走、外部重载失效。
+- 清空数据后重启会把示例数据种回来（种子标记被写成 JSON `"1"`，判定用的是裸 `'1'`）。
+- 面板拖宽手柄挂在遮罩层上，absolute 定位相对整窗，拖不动。
+
+### 工程
+
+- `build/lib/cdp.mjs` 抽出三个脚本共用的 CDP 样板；`ui-check` 每条断言都会
+  失败并设退出码，新增 `--strict` 与 `KNOWN_FAIL`；删掉 4 条取不到节点的恒真断言。
+- 删除已失效的 `build/cdp-verify.mjs`（查的 `window.S`、`sd_database_v1` 早已不存在）。
+- 删 16 个死导出、12 个未用 import、6 处 `void` 钉子、`addDaysStr`（UTC 解析错）。
+- `tsconfig` 打开 `noUnusedLocals` / `noUnusedParameters`；测试用独立
+  `tsconfig.test.json` 承载 Bun 类型，前端代码不再被 `@types/bun` 污染。
+- `RemindCfg` 补 `end` 字段（Rust 侧 `remind.rs` 一直在读，TS 侧靠强转压着），
+  读库改为校验而非 `as unknown as`。
+- 单测 48 条全绿；`ui-check --strict` 0 失败；`remedy-check` 全绿（新增拖拽中断断言）。
+
 ## v3.1.0 · 2026-11-01
 
 按功能表逐条收口，修掉重写时丢掉的能力。这一版不改架构，只补行为。
