@@ -147,18 +147,16 @@ function remindChipHtml(t) {
     var hit = isEb ? '待复习' : '已提醒';
     return '<span class="m due-remind hit" data-remind-id="' + esc(t.id) + '">' + svgIcon('bell') + hit + '</span>';
   }
-  if (r.at - Date.now() > 24 * 3600 * 1000) {
-    return '<span class="m due-remind soon none" data-remind-id="' + esc(t.id) + '">' + svgIcon('bell') + '已设提醒</span>';
-  }
+  // 下一跳还有多久就写多久：3 天后、12 小时后、40 分钟后，不用「已设提醒」这种空话
   return '<span class="m due-remind soon" data-remind-id="' + esc(t.id) + '">' + svgIcon('bell') + relTime(r.at) + '</span>';
 }
 
-/* 没有待触发的提醒时：设过提醒说「已设提醒」，完全没设过说「无提醒」——
-   两者在列表里必须能分开，否则「没有」和「已经提醒过」长得一样 */
+/* 没有待触发的提醒时：设过的（节点都确认过了）说「已提醒」，
+   完全没设过说「无提醒」——两者在列表里必须能分开 */
 function remindIdleChip(t) {
   var had = !!(t.remindCfg && t.remindCfg.anchor);
   return '<span class="m due-remind' + (had ? ' soon none' : ' none') + '">' +
-    svgIcon('bell') + (had ? '已设提醒' : '无提醒') + '</span>';
+    svgIcon('bell') + (had ? '已提醒' : '无提醒') + '</span>';
 }
 
 /* 只改状态文字，不重建 DOM：滚动位置、展开的子项都不会被打断 */
@@ -178,16 +176,13 @@ function patchLiveState() {
     if (!r) {
       if (t.done) { n.parentNode && n.parentNode.removeChild(n); return; }
       n.className = 'm due-remind' + (t.remindCfg && t.remindCfg.anchor ? ' soon none' : ' none');
-      n.innerHTML = svgIcon('bell') + (t.remindCfg && t.remindCfg.anchor ? '已设提醒' : '无提醒');
+      n.innerHTML = svgIcon('bell') + (t.remindCfg && t.remindCfg.anchor ? '已提醒' : '无提醒');
       return;
     }
     var isEb = t.remindMode === '艾宾浩斯';
     if (r.overdue) {
       n.className = 'm due-remind hit';
       n.innerHTML = svgIcon('bell') + (isEb ? '待复习' : '已提醒');
-    } else if (r.at - Date.now() > 24 * 3600 * 1000) {
-      n.className = 'm due-remind soon none';
-      n.innerHTML = svgIcon('bell') + '已设提醒';
     } else {
       n.className = 'm due-remind soon';
       n.innerHTML = svgIcon('bell') + relTime(r.at);

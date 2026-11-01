@@ -576,6 +576,27 @@ function openShortcuts() {
     '<div class="hint" style="margin-top:6px">在输入框里打字时不会触发这些快捷键。</div>' +
     '</div></div>');
 }
+/* 冒号两个点按物理像素对齐。
+   3px 在 1.5 倍屏上是 4.5 个物理像素：上点被抹成 4 行、下点 5 行，
+   看起来就是「上点小、下点大」。这里把点宽取整到物理像素，上下位置也对齐到
+   物理像素栅格，两个点才会一模一样。换显示器（DPR 变）时重算。 */
+function fitClockDots() {
+  var ck = document.querySelector('.clock .ck-c');
+  if (!ck) return;
+  var dpr = window.devicePixelRatio || 1;
+  var snap = function (v) { return Math.round(v * dpr) / dpr; };
+  var dot = Math.max(1, Math.round(3 * dpr)) / dpr;
+  var root = document.documentElement.style;
+  root.setProperty('--ck-dot', dot + 'px');
+  root.setProperty('--ck-y1', snap(11) + 'px');
+  root.setProperty('--ck-y2', snap(20) + 'px');
+  // 点到底的位置也要落在物理像素上，别让下点比上点多半行。
+  // 先把上一轮的位移清掉再量，否则位移会叠加（rect 里已经含了 transform）
+  ck.style.transform = '';
+  var top = ck.getBoundingClientRect().top;
+  var fix = Math.round(top * dpr) / dpr - top;
+  if (Math.abs(fix) > 0.01) ck.style.transform = 'translateY(' + fix + 'px)';
+}
 /* 表盘时钟：每位一个格子，格子里叠着暗段 8，这里只改亮段那层。
    只显示到分钟，秒由冒号闪烁表达，所以每分钟醒一次就够。 */
 function startClock() {
@@ -584,6 +605,8 @@ function startClock() {
   var m1 = document.getElementById('clockM1');
   var m2 = document.getElementById('clockM2');
   if (!h1) return;
+  fitClockDots();
+  window.addEventListener('resize', fitClockDots);
   // 1 只有一段竖线，靠右放才落在暗段 8 的右边竖段上
   function put(el, ch) {
     if (!el) return;

@@ -484,12 +484,6 @@ function renderKanbanBody() {
 }
 /* ---------- 时间线：按日期的横道图 ---------- */
 var GANTT_DEFAULT_DAYS = 7;
-function listColorOf(name) {
-  var lists = allLists();
-  var i = lists.indexOf(name);
-  if (i < 0) return LIST_COLORS[0];
-  return LIST_COLORS[i % LIST_COLORS.length];
-}
 // 时间线主条的 HTML，泳道渲染和子项展开都要用
 function barHtmlOf(x) {
   var t = x.t, days = S._ganttDays || 7;
@@ -510,10 +504,10 @@ function barHtmlOf(x) {
     }).join('') + '</div>';
   }
   var meta2 = segs.length > 1 ? segs.length + ' 段 · ' + x.span + ' 天' : timeTxt;
-  return '<div class="g-bar' + (segs.length > 1 ? ' has-segs' : '') + (S.detailId === t.id ? ' active' : '') +
+  return '<div class="g-bar ' + prioCls(t) + (segs.length > 1 ? ' has-segs' : '') + (S.detailId === t.id ? ' active' : '') +
     '" data-gbar="' + esc(t.id) + '" title="' + esc(tip) + '"' +
     // 左右各留 2px：贴到最左 / 最右的那条不会被容器圆角切掉
-    ' style="left:calc(' + left + '% + 2px);width:calc(' + width + '% - 4px);border-left-color:' + listColorOf(t.list) + '">' +
+    ' style="left:calc(' + left + '% + 2px);width:calc(' + width + '% - 4px)">' +
     segsHtml +
     '<span class="g-bar-t">' + esc(t.title) + '</span>' +
     '<span class="g-bar-m">' + esc(meta2) + '</span>' +
