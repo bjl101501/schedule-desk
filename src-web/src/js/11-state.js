@@ -137,14 +137,28 @@ function stateChipHtml(t) {
 
 function remindChipHtml(t) {
   var r = reminderState(t);
-  if (!r) return '';
+  // 没设提醒也占个位：不然「没有」和「还没轮到」在列表里长得一模一样
+  if (!r) {
+    if (t.done) return '';
+    return remindIdleChip(t);
+  }
   var isEb = t.remindMode === '艾宾浩斯';
   if (r.overdue) {
     var hit = isEb ? '待复习' : '已提醒';
     return '<span class="m due-remind hit" data-remind-id="' + esc(t.id) + '">' + svgIcon('bell') + hit + '</span>';
   }
-  if (r.at - Date.now() > 24 * 3600 * 1000) return '';
+  if (r.at - Date.now() > 24 * 3600 * 1000) {
+    return '<span class="m due-remind soon none" data-remind-id="' + esc(t.id) + '">' + svgIcon('bell') + '已设提醒</span>';
+  }
   return '<span class="m due-remind soon" data-remind-id="' + esc(t.id) + '">' + svgIcon('bell') + relTime(r.at) + '</span>';
+}
+
+/* 没有待触发的提醒时：设过提醒说「已设提醒」，完全没设过说「无提醒」——
+   两者在列表里必须能分开，否则「没有」和「已经提醒过」长得一样 */
+function remindIdleChip(t) {
+  var had = !!(t.remindCfg && t.remindCfg.anchor);
+  return '<span class="m due-remind' + (had ? ' soon none' : ' none') + '">' +
+    svgIcon('bell') + (had ? '已设提醒' : '无提醒') + '</span>';
 }
 
 /* 只改状态文字，不重建 DOM：滚动位置、展开的子项都不会被打断 */
@@ -161,11 +175,19 @@ function patchLiveState() {
     var t = findTask(n.getAttribute('data-remind-id'));
     if (!t) return;
     var r = reminderState(t);
-    if (!r) { n.parentNode && n.parentNode.removeChild(n); return; }
+    if (!r) {
+      if (t.done) { n.parentNode && n.parentNode.removeChild(n); return; }
+      n.className = 'm due-remind' + (t.remindCfg && t.remindCfg.anchor ? ' soon none' : ' none');
+      n.innerHTML = svgIcon('bell') + (t.remindCfg && t.remindCfg.anchor ? '已设提醒' : '无提醒');
+      return;
+    }
     var isEb = t.remindMode === '艾宾浩斯';
     if (r.overdue) {
       n.className = 'm due-remind hit';
       n.innerHTML = svgIcon('bell') + (isEb ? '待复习' : '已提醒');
+    } else if (r.at - Date.now() > 24 * 3600 * 1000) {
+      n.className = 'm due-remind soon none';
+      n.innerHTML = svgIcon('bell') + '已设提醒';
     } else {
       n.className = 'm due-remind soon';
       n.innerHTML = svgIcon('bell') + relTime(r.at);

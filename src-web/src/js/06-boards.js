@@ -40,7 +40,7 @@ function renderQuadrantView() {
           t.tags.slice(0, 2).map(function (g) { return '<span class="tag-chip ' + tagColor(g) + '">#' + esc(g) + '</span>'; }).join('') +
           (t.date ? '<span class="kcard-date ' + (diff < 0 ? 'over' : diff === 0 ? 'today' : '') + '">' + shortDate(parseYmd(t.date)) + '</span>' : '') +
           '</div></div>';
-      }).join('') : '<div class="qempty">暂无任务</div>') +
+      }).join('') : '<div class="qempty">暂无事项</div>') +
       '</div></div>';
   });
   html += '</div>';
@@ -685,7 +685,7 @@ function renderStatsView() {
   var legend = tagKeys.length ? tagKeys.map(function (k, i) {
     return '<div class="dl"><i style="background:' + colors[i % colors.length] + '"></i>' +
       '<span class="dn2">#' + esc(k) + '</span><span class="dv2">' + tagMap[k] + '</span></div>';
-  }).join('') : '<div style="font-size:12px;color:var(--text-3)">还没有给任务打标签</div>';
+  }).join('') : '<div style="font-size:12px;color:var(--text-3)">还没有给事项打标签</div>';
 
   var heat = '';
   var heatStart = addDays(startOfWeek(t0), -17 * 7);
@@ -711,7 +711,7 @@ function renderStatsView() {
 
   swapContent(
     '<div class="stat-cards">' +
-    '<div class="scard"><div class="sl">' + svgIcon('inbox') + '待办任务</div>' +
+    '<div class="scard"><div class="sl">' + svgIcon('inbox') + '待办事项</div>' +
     '<div class="sv"><b data-sp-bindable="database" data-sp-database-id="RBTQ4jwngkyjWiZE7VqCJZ">' + live + '</b><small>项</small></div>' +
     '<div class="sd">其中逾期 <b style="color:var(--red)" data-sp-bindable="database" data-sp-database-id="RBTQ4jwngkyjWiZE7VqCJZ">' + overdue + '</b> 项</div></div>' +
     '<div class="scard"><div class="sl">' + svgIcon('check') + '今日完成</div>' +
@@ -726,13 +726,13 @@ function renderStatsView() {
     '</div>' +
 
     '<div class="chart-grid">' +
-    '<div class="chart-card"><h4>近 7 天任务趋势</h4><div class="csub">实心为已完成，浅色为当天安排的任务数</div>' +
+    '<div class="chart-card"><h4>近 7 天事项趋势</h4><div class="csub">实心为已完成，浅色为当天安排的事项数</div>' +
     '<div class="bar-chart">' + bars + '</div>' +
     '<div class="legend"><span><i style="background:var(--brand)"></i>已完成</span><span><i style="background:var(--heat-1)"></i>安排</span></div></div>' +
-    '<div class="chart-card"><h4>任务标签分布</h4><div class="csub">看看你的时间都花在哪类事上 · 多标签任务会重复计数</div>' +
+    '<div class="chart-card"><h4>事项标签分布</h4><div class="csub">看看你的时间都花在哪类事上 · 多标签事项会重复计数</div>' +
     '<div class="donut-wrap"><div class="donut"><svg width="132" height="132" viewBox="0 0 132 132">' +
     '<circle cx="66" cy="66" r="52" fill="none" stroke="#eef2f8" stroke-width="17"/>' + ringSegs + '</svg>' +
-    '<div class="donut-center"><b data-sp-bindable="database" data-sp-database-id="RBTQ4jwngkyjWiZE7VqCJZ">' + S.tasks.length + '</b><span>总任务</span></div></div>' +
+    '<div class="donut-center"><b data-sp-bindable="database" data-sp-database-id="RBTQ4jwngkyjWiZE7VqCJZ">' + S.tasks.length + '</b><span>总事项</span></div></div>' +
     '<div class="donut-legend">' + legend + '</div></div></div>' +
     '</div>' +
 

@@ -405,7 +405,7 @@ function normTask(r) {
   }
   return {
     id: r._id || r.record_id || r.id,
-    title: r['标题'] || '未命名任务',
+    title: r['标题'] || '未命名事项',
     note: r['备注'] || '',
     list: r['清单'] || '收集箱',
     tags: String(r['标签'] || '').split(',').filter(function (x) { return !!x; }),
@@ -489,7 +489,7 @@ function apiAddTask(t) {
   return db.addRecord({ databaseId: 'RBTQ4jwngkyjWiZE7VqCJZ', properties: taskToProps(t) }).then(function (r) {
     if (r && r.id) t.id = r.id;
     setSync('synced', '已同步');
-  }).catch(function (e) { console.error('[database] 新增任务失败:', e); setSync('offline', '同步失败'); toast('任务未同步，请检查网络'); });
+  }).catch(function (e) { console.error('[database] 新增任务失败:', e); setSync('offline', '同步失败'); toast('事项未同步，请检查网络'); });
 }
 function apiUpdateTask(t, partial) {
   var db = getDB(); if (!db || !t.id) return Promise.resolve();

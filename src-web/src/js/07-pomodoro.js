@@ -29,7 +29,7 @@ function renderFocusView() {
   }).join('') : '<div style="font-size:12px;color:var(--text-3)">今天还没开始专注，先来一个 25 分钟吧</div>';
 
   var taskOpts = S.tasks.filter(function (t) { return !t.done; }).slice(0, 40);
-  var selHtml = '<option value="">不关联任务</option>' + taskOpts.map(function (t) {
+  var selHtml = '<option value="">不关联事项</option>' + taskOpts.map(function (t) {
     return '<option value="' + esc(t.id) + '"' + (T.taskId === t.id ? ' selected' : '') + '>' + esc(t.title) + '</option>';
   }).join('');
 
@@ -83,7 +83,7 @@ function renderFocusView() {
     '<div class="fside-card"><h4>' + svgIcon('clock') + '最近专注</h4><div class="pomo-list">' + recentHtml + '</div></div>' +
     '<div class="fside-card"><h4>' + svgIcon('bulb') + '专注小贴士</h4>' +
     '<div style="font-size:12px;color:var(--text-2);line-height:1.8">' +
-    '· 开始前先选一个具体任务，避免「假专注」<br>' +
+    '· 开始前先选一个具体事项，避免「假专注」<br>' +
     '· 25 分钟内被打断，记下来等休息时再处理<br>' +
     '· 休息时真的离开屏幕，喝水或走动</div></div>' +
     '</div></div>');
@@ -227,7 +227,7 @@ function toggleDetailFromClick(id) {
 }
 function openTaskDetail(id) {
   var t = findTask(id);
-  if (!t) { toast('这条任务已被删除'); return; }
+  if (!t) { toast('这条事项已被删除'); return; }
   var t0 = today0();
   var d = t.date ? parseYmd(t.date) : null;
   var diff = d ? dayDiff(t0, d) : null;
@@ -322,7 +322,7 @@ function openTaskDetail(id) {
   }
 
   var html = '<div class="modal wide">' +
-    '<div class="m-head"><h3>任务详情</h3><button class="m-close">' + svgIcon('close') + '</button></div>' +
+    '<div class="m-head"><h3>事项详情</h3><button class="m-close">' + svgIcon('close') + '</button></div>' +
     '<div class="m-body">' +
     '<div class="dt-head"><button class="dt-chk' + (t.done ? ' on' : '') + '" id="dtChk" title="标记完成">' + svgIcon('check') + '</button>' +
     '<h2 class="dt-title' + (t.done ? ' done' : '') + '">' + esc(t.title) + '</h2></div>' +
@@ -373,7 +373,7 @@ function openTaskDetail(id) {
         openTaskEditor(t.id, { fromDetail: true });
       });
       root.querySelector('#dtDel').addEventListener('click', function () {
-        confirmModal('删除任务', '确定删除「' + esc(t.title) + '」？删除后无法恢复。', '删除', function () {
+        confirmModal('删除事项', '确定删除「' + esc(t.title) + '」？删除后无法恢复。', '删除', function () {
           S.tasks = S.tasks.filter(function (x) { return x.id !== t.id; });
           cacheLocal();
           refreshAll();

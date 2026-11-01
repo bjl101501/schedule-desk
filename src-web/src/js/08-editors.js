@@ -64,7 +64,7 @@ function openTaskEditor(id, preset) {
     '<div class="plan-block">' +
     '<div class="plan-head">' +
     '<label class="check-line" style="margin:0"><input type="checkbox" id="edPlanOn"' + (t.plan ? ' checked' : '') + '><span>计划</span></label>' +
-    tipMark('跨多天完成的任务。勾选后选结束日期；结束时间可留空，表示到结束日 24:00。') +
+    tipMark('跨多天完成的事项。勾选后选结束日期；结束时间可留空，表示到结束日 24:00。') +
     '<span class="hint" id="edPlanHint"></span>' +
     '</div>' +
     '<div class="row2 plan-dates' + (t.plan ? '' : ' is-off') + '" id="edPlanWrap">' +
@@ -144,7 +144,7 @@ function openTaskEditor(id, preset) {
     (isNew ? '' : '<button class="btn btn-danger btn-sm" id="edDel">' + svgIcon('trash') + '删除</button>') +
     '<div class="spacer"></div>' +
     '<button class="btn btn-sec" id="edCancel">取消</button>' +
-    '<button class="btn btn-pri" id="edSave">' + (isNew ? '添加任务' : '保存修改') + '</button>' +
+    '<button class="btn btn-pri" id="edSave">' + (isNew ? '添加事项' : '保存修改') + '</button>' +
     '</div></div>';
 
   var w = openModal(html, {
@@ -713,7 +713,7 @@ function openTaskEditor(id, preset) {
       });
       var delBtn = root.querySelector('#edDel');
       if (delBtn) delBtn.addEventListener('click', function () {
-        confirmModal('删除任务', '确定删除这条任务？', '删除', function () {
+        confirmModal('删除事项', '确定删除这条事项？', '删除', function () {
           S.tasks = S.tasks.filter(function (x) { return x.id !== t.id; });
           cacheLocal(); refreshAll(); apiDeleteTask(t.id); toast('已删除');
         }, true);
@@ -771,7 +771,7 @@ function openTaskEditor(id, preset) {
       root.querySelector('#edSave').addEventListener('click', function (e) {
         var btn = e.currentTarget;
         var title = (root.querySelector('#edTitle').value || '').trim();
-        if (!title) { toast('先写一个任务标题'); return; }
+        if (!title) { toast('先写一个事项标题'); return; }
         var dateV = root.querySelector('#edDate').value;
         var timeV = root.querySelector('#edTime').value;
         var estV = readEst();
@@ -845,7 +845,7 @@ function openTaskEditor(id, preset) {
           refreshAll();
           apiAddTask(nt).then(function () {
             cacheLocal(); refreshAll();
-            toast('任务已添加');
+            toast('事项已添加');
           });
         } else {
           cacheLocal();
@@ -1056,7 +1056,7 @@ function parseQuick(raw) {
   out.time = timeFound;
 
   out.title = rest.replace(/\s+/g, ' ').replace(/^[\s,，。、]+|[\s,，。、]+$/g, '').trim();
-  if (!out.title) out.title = '新任务';
+  if (!out.title) out.title = '新事项';
   return out;
 }
 function applyAmPm(h, kw) {
@@ -1084,7 +1084,7 @@ function openQuickAdd(initial) {
       var prev = root.querySelector('#qaPreview');
       function updatePreview() {
         var r = parseQuick(input.value);
-        if (!input.value.trim()) { prev.innerHTML = '<span style="font-size:12px;color:var(--text-3)">输入任务内容，这里会实时显示识别结果</span>'; return; }
+        if (!input.value.trim()) { prev.innerHTML = '<span style="font-size:12px;color:var(--text-3)">输入事项内容，这里会实时显示识别结果</span>'; return; }
         prev.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--text)">' + esc(r.title) + '</div>' +
           '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px;font-size:11.5px;color:var(--text-2)">' +
           '<span>' + svgIcon('calendar') + ' ' + esc(dateLabel(parseYmd(r.date))) + ' ' + r.date + '</span>' +
@@ -1200,7 +1200,7 @@ function openFilter() {
   var f = { prio: S.filters.prio.slice(), tags: S.filters.tags.slice(), status: S.filters.status, from: S.filters.from, to: S.filters.to, kw: S.filters.kw };
   var tags = allTags();
   var html = '<div class="modal">' +
-    '<div class="m-head"><h3>筛选任务</h3><button class="m-close">' + svgIcon('close') + '</button></div>' +
+    '<div class="m-head"><h3>筛选事项</h3><button class="m-close">' + svgIcon('close') + '</button></div>' +
     '<div class="m-body">' +
     '<div class="field"><label>完成状态</label><div class="seg" id="ftStatus">' +
     [{ v: 'todo', t: '未完成' }, { v: 'done', t: '已完成' }, { v: 'all', t: '全部' }].map(function (o) {

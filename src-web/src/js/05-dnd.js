@@ -438,7 +438,7 @@ function enableCalendarDrag(root) {
     var t = findTask(st.id);
     ghost = document.createElement('div');
     ghost.className = 'cal-ghost';
-    ghost.textContent = t ? t.title : '任务';
+    ghost.textContent = t ? t.title : '事项';
     ghost.style.left = (e.clientX + 14) + 'px';
     ghost.style.top = (e.clientY - 16) + 'px';
     document.body.appendChild(ghost);

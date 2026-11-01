@@ -444,7 +444,7 @@ function renameList(oldName) {
 }
 function removeList(name) {
   var n = S.tasks.filter(function (t) { return (t.list || '收集箱') === name; }).length;
-  confirmModal('删除清单', '「' + esc(name) + '」' + (n ? '里有 <b>' + n + '</b> 条日程，删除后这些日程会移到「收集箱」。' : '目前没有日程。') + '<br><br>清单本身会被移除，任务不会被删除。', '删除清单', function () {
+  confirmModal('删除清单', '「' + esc(name) + '」' + (n ? '里有 <b>' + n + '</b> 条日程，删除后这些日程会移到「收集箱」。' : '目前没有日程。') + '<br><br>清单本身会被移除，事项不会被删除。', '删除清单', function () {
     writeStrArr(CUSTOM_LISTS_KEY, customLists().filter(function (x) { return x !== name; }));
     dropFromOrder('wb_schedule_list_order', name);
     S.tasks.forEach(function (t) {

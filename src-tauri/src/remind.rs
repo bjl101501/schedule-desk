@@ -383,10 +383,21 @@ pub fn due_notifications(store: &Store, dir: &Path) -> Vec<Due> {
                 if now - sent_at < snooze * 60_000 || now - sent_at > FRESH_MS * 3 {
                     continue;
                 }
+                // 「还没完成吗」说的是交付，就该挂在结束时刻上。
+                // 早先这里用开始时间，下午的日程中午就开始问「还没完成吗」，说不通。
                 let body = if win.all_day {
                     "稍后提醒 · 今天还没完成".to_string()
+                } else if now >= win.end && win.end > win.start {
+                    format!("稍后提醒 · 原定 {} 结束，还没完成吗", hm_of(win.end))
+                } else if win.end > win.start {
+                    format!(
+                        "稍后提醒 · 预计 {} 结束，还剩 {}",
+                        hm_of(win.end),
+                        coarse_text(win.end - now)
+                    )
                 } else {
-                    format!("稍后提醒 · 原定 {} 开始，还没完成吗", hm_of(win.start))
+                    // 定时但没时长：开始时刻就是截止时刻
+                    format!("稍后提醒 · 原定 {} 截止，还没完成吗", hm_of(win.start))
                 };
                 out.push(Due { title: title.clone(), body });
                 noted.sent.insert(snz, now);

@@ -18,7 +18,7 @@ function exportJson() {
     tasks: S.tasks, habits: S.habits, countdowns: S.countdowns, pomodoros: S.pomodoros
   };
   if (downloadBlob('日程台备份-' + ymd(today0()) + '.json', JSON.stringify(data, null, 2))) {
-    toast('已导出 ' + S.tasks.length + ' 个任务 · ' + S.habits.length + ' 个习惯');
+    toast('已导出 ' + S.tasks.length + ' 个事项 · ' + S.habits.length + ' 个习惯');
   }
 }
 function exportCsv() {
@@ -31,7 +31,7 @@ function exportCsv() {
       }).join(',');
   });
   var csv = '\ufeff' + head.join(',') + '\n' + rows.join('\n');
-  if (downloadBlob('日程台任务-' + ymd(today0()) + '.csv', csv, 'text/csv')) toast('已导出 CSV');
+  if (downloadBlob('日程台事项-' + ymd(today0()) + '.csv', csv, 'text/csv')) toast('已导出 CSV');
 }
 function parseBackupText(text) {
   var o = JSON.parse(String(text));
@@ -146,11 +146,11 @@ function openImport() {
       }
       function setPending(data, from) {
         var n = importCount(data);
-        if (!n) { reset('这个文件里没有可导入的数据（任务 / 习惯 / 纪念日 / 专注记录都是空的）。'); return; }
+        if (!n) { reset('这个文件里没有可导入的数据（事项 / 习惯 / 纪念日 / 专注记录都是空的）。'); return; }
         pending = data;
         okBtn.disabled = false;
         okBtn.style.opacity = 1;
-        info.innerHTML = '已识别（' + esc(from) + '）：任务 <b>' + data.tasks.length + '</b> · 习惯 <b>' +
+        info.innerHTML = '已识别（' + esc(from) + '）：事项 <b>' + data.tasks.length + '</b> · 习惯 <b>' +
           data.habits.length + '</b> · 纪念日 <b>' + data.countdowns.length + '</b> · 专注记录 <b>' +
           data.pomodoros.length + '</b><br>确认后会追加到现有数据末尾，已有数据不受影响。';
       }
@@ -198,14 +198,14 @@ function openBackup() {
     '<div class="banner" style="background:var(--green-soft);border-color:var(--green);color:var(--text);margin:0">' +
     svgIcon('check') + '<span>数据保存在本机，路径见设置里的「数据目录」。配置 WebDAV 或把目录放进同步盘即可多设备共用。</span></div>' +
     '<div class="field"><label>当前数据</label><div style="font-size:12.5px;color:var(--text-2);line-height:1.9">' +
-    '任务 <b>' + S.tasks.length + '</b> 条 · 习惯 <b>' + S.habits.length + '</b> 个 · 纪念日 <b>' + S.countdowns.length + '</b> 个 · 专注记录 <b>' + S.pomodoros.length + '</b> 条</div></div>' +
+    '事项 <b>' + S.tasks.length + '</b> 条 · 习惯 <b>' + S.habits.length + '</b> 个 · 纪念日 <b>' + S.countdowns.length + '</b> 个 · 专注记录 <b>' + S.pomodoros.length + '</b> 条</div></div>' +
     '<div style="display:flex;flex-direction:column;gap:8px">' +
     '<button class="btn btn-pri" id="bkExportJson" style="justify-content:flex-start;height:44px">' + svgIcon('download') + ' 导出 JSON 完整备份</button>' +
-    '<button class="btn btn-sec" id="bkExportCsv" style="justify-content:flex-start;height:44px">' + svgIcon('download') + ' 导出任务 CSV（Excel 可打开）</button>' +
+    '<button class="btn btn-sec" id="bkExportCsv" style="justify-content:flex-start;height:44px">' + svgIcon('download') + ' 导出事项 CSV（Excel 可打开）</button>' +
     '<button class="btn btn-sec" id="bkImport" style="justify-content:flex-start;height:44px">' + svgIcon('upload') + ' 导入备份 / 从文件恢复</button>' +
     '<button class="btn btn-sec" id="bkRestore" style="justify-content:flex-start;height:44px">' + svgIcon('refresh') + ' 恢复上次快照</button>' +
     '<button class="btn btn-sec" id="bkReseed" style="justify-content:flex-start;height:44px">' + svgIcon('refresh') + ' 重新生成示例数据</button>' +
-    '<button class="btn btn-danger" id="bkClear" style="justify-content:flex-start;height:44px">' + svgIcon('trash') + ' 清空全部任务</button>' +
+    '<button class="btn btn-danger" id="bkClear" style="justify-content:flex-start;height:44px">' + svgIcon('trash') + ' 清空全部事项</button>' +
     '</div>' +
     '</div><div class="m-foot"><div style="font-size:11px;color:var(--text-3)">导出为完整备份，导入时逐条追加，可与旧备份合并</div></div></div>', {
     onMount: function (root) {
@@ -222,12 +222,12 @@ function openBackup() {
         else {
           var dt = new Date(snap.at);
           snapBtn.innerHTML = svgIcon('refresh') + ' 恢复上次快照（' + (dt.getMonth() + 1) + '/' + dt.getDate() +
-            ' ' + pad2(dt.getHours()) + ':' + pad2(dt.getMinutes()) + '，' + (snap.tasks || []).length + ' 条任务）';
+            ' ' + pad2(dt.getHours()) + ':' + pad2(dt.getMinutes()) + '，' + (snap.tasks || []).length + ' 条事项）';
         }
         snapBtn.addEventListener('click', function () {
           var sn = readSnapshot();
           if (!sn) return;
-          confirmModal('恢复快照', '会用快照里的 ' + (sn.tasks || []).length + ' 条任务覆盖当前任务（当前 ' + S.tasks.length + ' 条）。', '恢复', function () {
+          confirmModal('恢复快照', '会用快照里的 ' + (sn.tasks || []).length + ' 条事项覆盖当前事项（当前 ' + S.tasks.length + ' 条）。', '恢复', function () {
             S.tasks = sn.tasks || [];
             S.habits = sn.habits || S.habits;
             S.countdowns = sn.countdowns || S.countdowns;
@@ -237,15 +237,15 @@ function openBackup() {
         });
       }
       root.querySelector('#bkReseed').addEventListener('click', function () {
-        confirmModal('重新生成示例数据', '会再写入一批示例任务（不影响已有数据）。确定吗？', '生成', function () {
+        confirmModal('重新生成示例数据', '会再写入一批示例事项（不影响已有数据）。确定吗？', '生成', function () {
           closeModal();
           setTimeout(function () { seedDemo(); }, 200);
           toast('正在写入示例数据…');
         });
       });
       root.querySelector('#bkClear').addEventListener('click', function () {
-        takeSnapshot('清空任务前');
-        typedConfirm('清空全部任务', '这会删除 <b>' + S.tasks.length + '</b> 条任务，且无法撤销。<br>删除前已在本机留了一份快照，可在「数据备份」里恢复。', '清空', function () {
+        takeSnapshot('清空事项前');
+        typedConfirm('清空全部事项', '这会删除 <b>' + S.tasks.length + '</b> 条事项，且无法撤销。<br>删除前已在本机留了一份快照，可在「数据备份」里恢复。', '清空', function () {
           Promise.all(S.tasks.map(function (t) { return apiDeleteTask(t.id); })).then(function () {
             var _db = getDB();
             if (!_db) return null;
@@ -267,7 +267,7 @@ function openSettings() {
     '<div class="field"><label>本地快照<span class="hint">每天首次打开自动存一份，保留 7 天</span></label>' +
     '<div id="stSnaps" style="display:flex;flex-direction:column;gap:7px">' + dailySnapHtml() + '</div></div>' +
     '<div class="field"><label>艾宾浩斯提醒</label><div style="font-size:13.5px;color:var(--text-2);line-height:1.85">' +
-    '在任务里开启「艾宾浩斯」后，按 准时 → 5 分钟 → 30 分钟 → 12 小时 → 1 / 2 / 4 / 7 / 15 天 共 9 个节点安排复习提醒，' +
+    '在事项里开启「艾宾浩斯」后，按 准时 → 5 分钟 → 30 分钟 → 12 小时 → 1 / 2 / 4 / 7 / 15 天 共 9 个节点安排复习提醒，' +
     '节点会显示成「第 6/9 次」。到点由 Windows 原生通知弹出（常驻到手动关闭），也出现在顶部铃铛和「今天要处理」区域。' +
     '</div></div>' +
     '<div class="field"><label>外观<span class="hint">选一套配色，立即生效，重新打开也记得</span></label>' +
@@ -306,7 +306,7 @@ function openSettings() {
       });
       root.querySelector('#stClearAll').addEventListener('click', function () {
         takeSnapshot('清空全部数据前');
-        typedConfirm('清空全部数据', '会删除所有任务、习惯、纪念日、专注记录，且无法撤销。<br>删除前已在本机留了一份快照。', '全部清空', function () {
+        typedConfirm('清空全部数据', '会删除所有事项、习惯、纪念日、专注记录，且无法撤销。<br>删除前已在本机留了一份快照。', '全部清空', function () {
           var jobs = [];
           S.tasks.forEach(function (t) { jobs.push(apiDeleteTask(t.id)); });
           S.habits.forEach(function (h) { jobs.push(apiDeleteHabit(h.id)); });
@@ -438,7 +438,7 @@ function bindGlobalEvents() {
     S.sortMode = (S.sortMode === 'manual') ? 'time' : 'manual';
     try { localStorage.setItem('wb_schedule_sort', S.sortMode); } catch (e) { }
     refreshAll();
-    toast(S.sortMode === 'manual' ? '已切换为手动排序 · 按住任务可拖动' : '已恢复按时间排序');
+    toast(S.sortMode === 'manual' ? '已切换为手动排序 · 按住事项可拖动' : '已恢复按时间排序');
   });
   var bf = document.getElementById('btnFilter');
   if (bf) bf.addEventListener('click', openFilter);
@@ -576,14 +576,13 @@ function openShortcuts() {
     '<div class="hint" style="margin-top:6px">在输入框里打字时不会触发这些快捷键。</div>' +
     '</div></div>');
 }
-/* 表盘时钟：每位一个格子，格子里叠着暗段 8，这里只改亮段那层 */
+/* 表盘时钟：每位一个格子，格子里叠着暗段 8，这里只改亮段那层。
+   只显示到分钟，秒由冒号闪烁表达，所以每分钟醒一次就够。 */
 function startClock() {
   var h1 = document.getElementById('clockH1');
   var h2 = document.getElementById('clockH2');
   var m1 = document.getElementById('clockM1');
   var m2 = document.getElementById('clockM2');
-  var s1 = document.getElementById('clockS1');
-  var s2 = document.getElementById('clockS2');
   if (!h1) return;
   // 1 只有一段竖线，靠右放才落在暗段 8 的右边竖段上
   function put(el, ch) {
@@ -594,20 +593,16 @@ function startClock() {
   }
   function tick() {
     var d = new Date();
-    var hh = pad2(d.getHours()), mm = pad2(d.getMinutes()), ss = pad2(d.getSeconds());
+    var hh = pad2(d.getHours()), mm = pad2(d.getMinutes());
     put(h1, hh.charAt(0));
     put(h2, hh.charAt(1));
     put(m1, mm.charAt(0));
     put(m2, mm.charAt(1));
-    put(s1, ss.charAt(0));
-    put(s2, ss.charAt(1));
+    // 对齐到下一整分钟再醒，跨分钟、跨小时都不用轮询
+    var wait = (60 - d.getSeconds()) * 1000 - d.getMilliseconds() + 30;
+    setTimeout(tick, Math.max(200, wait));
   }
   tick();
-  // 对齐到整秒再进 1 秒循环，秒数不跳格
-  setTimeout(function () {
-    tick();
-    setInterval(tick, 1000);
-  }, 1000 - (Date.now() % 1000));
 }
 
 function bindShortcuts() {

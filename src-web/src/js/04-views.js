@@ -73,7 +73,7 @@ function renderSidebar() {
         (c ? '<span class="cnt">' + c + '</span>' : '') +
         '<button class="side-more" data-tagmore="' + esc(g) + '" title="管理标签">' + svgIcon('more') + '</button>' +
         '</div>';
-    }).join('') : '<div style="font-size:11.5px;color:var(--text-3);padding:4px 10px">暂无标签，加任务时用 #标签</div>';
+    }).join('') : '<div style="font-size:11.5px;color:var(--text-3);padding:4px 10px">暂无标签，加事项时用 #标签</div>';
   }
 }
 function setTxt(id, v) {
@@ -87,13 +87,13 @@ function renderTopbar() {
   else if (S.selectedTag) { title = '# ' + S.selectedTag; sub = '标签 · 共 ' + countBy(function (x) { return x.tags.indexOf(S.selectedTag) > -1; }) + ' 项'; }
   else if (S.view === 'today') { title = '今天'; sub = t.getFullYear() + ' 年 ' + (t.getMonth() + 1) + ' 月 ' + t.getDate() + ' 日 · ' + weekdayName(t); }
   else if (S.view === 'next7') { title = '最近 7 天'; sub = shortDate(t) + ' — ' + shortDate(addDays(t, 6)); }
-  else if (S.view === 'inbox') { title = '收集箱'; sub = '还没安排时间的任务'; }
+  else if (S.view === 'inbox') { title = '收集箱'; sub = '还没安排时间的事项'; }
   else if (S.view === 'calendar') { title = '日历'; sub = '年 / 月 / 周 / 多周 / 日 / 多日 六种视图'; }
   else if (S.view === 'quadrant') { title = '四象限'; sub = '按重要 × 紧急划分优先级'; }
   else if (S.view === 'habit') { title = '习惯打卡'; sub = '共 ' + S.habits.length + ' 个习惯 · 今日待打卡 ' + S.habits.filter(function (h) { return h.log.indexOf(ymd(t)) === -1; }).length + ' 个'; }
   else if (S.view === 'countdown') { title = '倒数纪念日'; sub = '记住每一个重要的日子'; }
   else if (S.view === 'focus') { title = '番茄专注'; sub = '25 分钟为一个专注周期'; }
-  else if (S.view === 'stats') { title = '数据统计'; sub = '任务 · 专注 · 习惯 全景回顾'; }
+  else if (S.view === 'stats') { title = '数据统计'; sub = '事项 · 专注 · 习惯 全景回顾'; }
   setTxt('viewTitle', title);
   setTxt('viewSub', sub);
 
@@ -109,7 +109,7 @@ function renderTopbar() {
   if (srt) {
     srt.style.display = showSwitch ? '' : 'none';
     srt.className = 'tb-btn' + (S.sortMode === 'manual' ? ' on' : '');
-    srt.setAttribute('data-tip', S.sortMode === 'manual' ? '当前：手动排序，可拖动任务调整顺序。' : '当前：按时间排序，点一下切换。');
+    srt.setAttribute('data-tip', S.sortMode === 'manual' ? '当前：手动排序，可拖动事项调整顺序。' : '当前：按时间排序，点一下切换。');
     var st2 = srt.querySelector('.txt');
     if (st2) st2.textContent = S.sortMode === 'manual' ? '手动排序' : '按时间';
   }
@@ -126,6 +126,22 @@ function renderTopbar() {
 function renderBell() {
   var pend = pendingReminders();
   var b = document.getElementById('bellBadge');
+  var bell = document.getElementById('btnBell');
+  // 悬浮提示直接报数量，别再放一段功能说明——用户点之前只想知道有没有事
+  if (bell) {
+    var tip;
+    if (pend.length) {
+      tip = pend.length + ' 条提醒';
+    } else {
+      var soon = 0;
+      S.tasks.forEach(function (t) {
+        var r = nextReminder(t);
+        if (r && !r.overdue && r.at - Date.now() < 86400000) soon++;
+      });
+      tip = soon ? '24 小时内 ' + soon + ' 条提醒' : '暂无提醒';
+    }
+    bell.setAttribute('data-tip', tip);
+  }
   if (!b) return;
   if (pend.length) { b.textContent = pend.length > 99 ? '99+' : pend.length; b.classList.remove('hidden'); }
   else b.classList.add('hidden');
@@ -214,24 +230,40 @@ function renderTodayPanel() {
     return { text: '', cls: '' };
   }
 
-  /* 计划任务：今天落在某个子项区间内且未完成，就把子项列出来 */
-  function todaySubs(t) {
-    if (!t.plan || !t.subs || !t.subs.length) return '';
+  /* 计划任务：今天该做的子项 + 早就该做还没勾的子项，一起列出来。
+     子项逾期不等于父任务逾期，漏在面板外就没人看见，所以两边都收。 */
+  function daySubs(t) {
+    var out = { over: [], today: [] };
+    if (!t.plan || !t.subs || !t.subs.length) return out;
     var plan = subPlan(t);
-    var segs = plan.filter(function (g) {
-      if (g.done || !g.start || !g.end) return false;
-      return dayDiff(g.start, t0) >= 0 && dayDiff(t0, g.end) >= 0;
+    plan.forEach(function (g) {
+      if (g.done || !g.start || !g.end) return;
+      if (dayDiff(t0, g.end) < 0) out.over.push(g);
+      else if (dayDiff(g.start, t0) >= 0 && dayDiff(t0, g.end) >= 0) out.today.push(g);
     });
     // 子项都没填「天」时没有排期，就退回到「未完成的子项」，否则面板里看不到任何子项
     var anyScheduled = plan.some(function (g) { return !!g.start; });
-    if (!segs.length && !anyScheduled) {
-      segs = plan.filter(function (g) { return !g.done; }).slice(0, 2);
+    if (!out.over.length && !out.today.length && !anyScheduled) {
+      out.today = plan.filter(function (g) { return !g.done; }).slice(0, 2);
     }
+    return out;
+  }
+  function subBtn(t, g) {
+    var late = g.end ? -dayDiff(t0, g.end) : 0;
+    var over = late > 0;
+    var label = over ? '逾期 ' + late + ' 天'
+      : (g.start ? (g.days > 1 ? g.days + ' 天' : '今天') : '未排期');
+    return '<button class="today-sub' + (over ? ' over' : '') + '" data-subdone="' + esc(t.id) + '|' + g.i + '">' +
+      '<i class="sub-dot"></i><span>' + esc(g.title) + '</span>' +
+      '<em>' + label + '</em></button>';
+  }
+  function todaySubs(t) {
+    var d = daySubs(t);
+    var segs = d.over.concat(d.today);
     if (!segs.length) return '';
-    return '<div class="today-subs">' + segs.slice(0, 3).map(function (g) {
-      return '<button class="today-sub" data-subdone="' + esc(t.id) + '|' + g.i + '">' +
-        '<i class="sub-dot"></i><span>' + esc(g.title) + '</span>' +
-        '<em>' + (g.start ? (g.days > 1 ? g.days + ' 天' : '今天') : '未排期') + '</em></button>';
+    // 逾期排前面：拖得越久越该先看见
+    return '<div class="today-subs">' + segs.slice(0, 4).map(function (g) {
+      return subBtn(t, g);
     }).join('') + '</div>';
   }
 
@@ -262,7 +294,7 @@ function renderFilterBar() {
   var f = S.filters, chips = [];
   if (f.prio.length) chips.push({ k: 'prio', t: '优先级 ' + f.prio.join('/') });
   if (f.tags.length) chips.push({ k: 'tags', t: '标签 ' + f.tags.map(function (x) { return '#' + x; }).join(' ') });
-  if (f.status !== 'todo') chips.push({ k: 'status', t: f.status === 'done' ? '只看已完成' : '全部任务' });
+  if (f.status !== 'todo') chips.push({ k: 'status', t: f.status === 'done' ? '只看已完成' : '全部事项' });
   if (f.from) chips.push({ k: 'from', t: '从 ' + f.from });
   if (f.to) chips.push({ k: 'to', t: '到 ' + f.to });
   if (f.kw) chips.push({ k: 'kw', t: '搜索「' + f.kw + '」' });
@@ -445,24 +477,18 @@ function renderKanbanBody() {
           t.tags.slice(0, 2).map(function (gg) { return '<span class="tag-chip ' + tagColor(gg) + '">#' + esc(gg) + '</span>'; }).join('') +
           (t.date ? '<span class="kcard-date ' + dcls + '">' + shortDate(parseYmd(t.date)) + '</span>' : '') +
           '</div></div>';
-      }).join('') : '<div class="kempty">暂无任务</div>') +
+      }).join('') : '<div class="kempty">暂无事项</div>') +
       '</div></div>';
   }).join('');
   return head + '<div class="kanban">' + cols + '</div>';
 }
 /* ---------- 时间线：按日期的横道图 ---------- */
 var GANTT_DEFAULT_DAYS = 7;
-var GANTT_TINTS = ['#D8E6F6', '#E6DCF3', '#D8EDE4', '#F8E7CC', '#D4E9F1', '#F7DCDC', '#F1DEE8', '#E7E2DA'];
 function listColorOf(name) {
   var lists = allLists();
   var i = lists.indexOf(name);
   if (i < 0) return LIST_COLORS[0];
   return LIST_COLORS[i % LIST_COLORS.length];
-}
-function listTintOf(name) {
-  var lists = allLists();
-  var i = lists.indexOf(name);
-  return GANTT_TINTS[(i < 0 ? 0 : i) % GANTT_TINTS.length];
 }
 // 时间线主条的 HTML，泳道渲染和子项展开都要用
 function barHtmlOf(x) {
@@ -484,9 +510,10 @@ function barHtmlOf(x) {
     }).join('') + '</div>';
   }
   var meta2 = segs.length > 1 ? segs.length + ' 段 · ' + x.span + ' 天' : timeTxt;
-  return '<div class="g-bar' + (segs.length > 1 ? ' has-segs' : '') + '" data-gbar="' + esc(t.id) + '" title="' + esc(tip) + '"' +
-    ' style="left:' + left + '%;width:calc(' + width + '% - 4px);background:' + listTintOf(t.list) +
-    ';color:' + listColorOf(t.list) + ';border-left:3px solid ' + listColorOf(t.list) + '">' +
+  return '<div class="g-bar' + (segs.length > 1 ? ' has-segs' : '') + (S.detailId === t.id ? ' active' : '') +
+    '" data-gbar="' + esc(t.id) + '" title="' + esc(tip) + '"' +
+    // 左右各留 2px：贴到最左 / 最右的那条不会被容器圆角切掉
+    ' style="left:calc(' + left + '% + 2px);width:calc(' + width + '% - 4px);border-left-color:' + listColorOf(t.list) + '">' +
     segsHtml +
     '<span class="g-bar-t">' + esc(t.title) + '</span>' +
     '<span class="g-bar-m">' + esc(meta2) + '</span>' +
@@ -710,7 +737,7 @@ function toggleDone(id) {
 function askDeleteTask(id) {
   var t = findTask(id);
   if (!t) return;
-  confirmModal('删除任务', '确定删除「' + esc(t.title) + '」？删除后无法恢复。', '删除', function () {
+  confirmModal('删除事项', '确定删除「' + esc(t.title) + '」？删除后无法恢复。', '删除', function () {
     S.tasks = S.tasks.filter(function (x) { return x.id !== id; });
     cacheLocal();
     refreshAll();
