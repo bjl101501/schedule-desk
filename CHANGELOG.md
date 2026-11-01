@@ -5,6 +5,56 @@
 
 ---
 
+## v3.4.0 · 2026-11-01
+
+对比现有代码做的一轮「手写轮子 → 成熟库」。只动两处，都是纯收益：浮层定位和图标。
+其余评估过的替换（虚拟滚动、DnD 库、zod 重写备份解析、图表库、date-fns、tinykeys）都
+因为收益低于迁移成本而放弃。
+
+### 浮层定位（@floating-ui/dom）
+
+- 原来有四套手写摆位：`actions/float.ts` 的 `place()`、`store/tip.svelte.ts` 的
+  「上方优先否则左右」、`ui/MiniMenu.svelte` 的「贴点击点左侧」，
+  外加 `popover.ts` 里「滚动或 resize 就关掉面板」。三套翻法各不相同，改一处漏两处。
+  现在统一走 `computePosition` + `offset / flip / shift / size`，
+  `registerPanel / clearPanel / closeActivePanel` 三件套一行没动（Esc 剥层还靠它）。
+- **滚动改为跟随**：以前页面一滚面板就消失，现在跟着锚点走；锚点整体滚出视口才关闭
+  （且要求「先被看见过」，否则测试/快捷键在视口外盲点打开会立刻被自己关掉）。
+- **首帧不闪**：`computePosition` 是异步的，先按旧公式同步摆一次，再由 `autoUpdate` 精修。
+- **高度钳制**：`size` 中间件只写一个 `--fp-AH` 变量，由 `.float-panel` / `.pick-menu` /
+  `.mini-menu` 各自消费——视口装不下时出滚动条，而不是顶出屏幕。
+- **顺带修掉的隐蔽缺陷**：TagInput 面板宽度以前是「定位完再改宽度」，位置按天然宽度算，
+  会偏几个像素；改成 `beforePlace`，先定宽再测。
+- MiniMenu 的鼠标坐标改用 floating-ui 的虚拟元素（`getBoundingClientRect` 返回点击点）。
+
+### 图标（@lucide/svelte）
+
+- `domain/constants.ts` 里 47 条手抄 SVG path 删掉，换成 `ui/icons.ts`：
+  42 条逐路径导入 lucide（`@lucide/svelte/icons/check`，只带走用到的），
+  5 条无同形的保留自制（`split` / `card` / `kanban` / `timeline` / `trend`）。
+- `<Icon name="…">` 的 API 不变，94 处调用零改动；`size` 仍默认 `1em`
+  ——lucide 自己的默认值是 24，漏传会让图标整体变大，`ui-check` 新增 `icon.render` 专门盯这一条。
+- 补 `.ico` 基线类（`fill:none;stroke:currentColor;stroke-width:2`）：
+  页面里另有 14 条 `svg{}` 规则只写尺寸不写描边，以前靠浏览器默认值蒙混，现在显式声明。
+
+### 可见变化
+
+- `more`（…）的圆点由 r=1.5 变 r=1，`trash` / `box` 加了圆角，`edit` / `refresh` 形状重画，
+  都是 12–14px 盒子里的亚像素差异。
+- 浮层滚动改为跟随，不再消失。
+
+### 工程
+
+- 新增两个运行时依赖（都是本地包，无网络请求）：`@floating-ui/dom@1.8.0`（MIT）、
+  `@lucide/svelte@1.66.0`（ISC），许可与来源记进 `docs/第三方资源.md`。
+- 产物：JS 308.7 KB → 340.0 KB（+31 KB，gzip +6.7 KB）。
+- `ui-check` 的 `tip.noOverlap` 原来是同步读矩形，实际读到的是上一帧的空元素（等于没测）；
+  改成等两帧再量，并加「不是空元素 / 贴上方或侧边 / 在视口内」三个条件。
+  新增 `picker.inViewport`、`picker.followScroll`、`icon.render` 三条断言。
+- 门禁：单测 60 条全绿；`check` 0 error；`ui-check --strict` 0 失败；`remedy-check` 全绿。
+
+---
+
 ## v3.3.0 · 2026-11-01
 
 R9 收口时留下的三项（组件抽取、超大文件拆分、样式整理）这一轮做完。

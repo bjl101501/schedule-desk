@@ -97,7 +97,7 @@ CI 使用 `windows-latest`，同样输出无需 DLL 的 exe。
 ## 目录
 
 ```
-package.json                  前端依赖与脚本（bun）
+package.json                  前端依赖与脚本（bun）；运行时只有 floating-ui 与 lucide 两个本地包
 vite.config.ts                前端构建配置，产物直出 src-web/build
 src-web/index.html            Vite 入口骨架
 src-web/src/main.ts           挂载应用、装桥接、启动数据与时钟
@@ -108,6 +108,7 @@ src-web/src/lib/domain/       纯领域层：类型、日期、任务窗口与�
 src-web/src/lib/bridge/       与 Tauri 的通道：invoke、数据库门面、桌面能力、导出、预览内存桥
 src-web/src/lib/store/        响应式状态（runes）：数据、视图、时钟、模态、提示、主题…
 src-web/src/lib/components/   通用组件：任务行、状态胶囊、侧栏、顶栏、铃铛、时钟…
+src-web/src/lib/ui/icons.ts   图标表：42 条走 @lucide/svelte，5 条自制 path
 src-web/src/lib/views/        九个视图 + 四种布局 + 六种日历模式 + 各类编辑器
 src-web/src/lib/actions/      动作：浮层定位、传送门、拖拽控制器、value 契约
 src-web/src/lib/test/         测试门面，只给 build/ui-check.mjs 用

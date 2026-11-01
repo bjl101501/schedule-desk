@@ -215,6 +215,36 @@ async function main() {
       Object.keys(calLayout.rows || {}).length >= 5 &&
       calLayout.first.every(([w, h]) => w > 10 && h >= 24)
   );
+  // 首帧就得在视口内（不是 (0,0)）：place() 同步估算 + computePosition 精修
+  const p0 = await evaluate(
+    cdp,
+    `(function(){ var r = document.querySelector('.float-panel').getBoundingClientRect();
+      return { l: Math.round(r.left), t: Math.round(r.top), rr: Math.round(r.right), b: Math.round(r.bottom),
+               vw: innerWidth, vh: innerHeight }; })()`
+  );
+  S.pickerBox = p0;
+  c.check('picker.inViewport', !!p0 && p0.l >= 8 && p0.t >= 8 && p0.rr <= p0.vw - 7 && p0.b <= p0.vh - 7, p0);
+
+  // 滚动时跟随而不是关闭：面板顶边应跟着锚点一起上移同样的距离
+  const follow = await evaluate(
+    cdp,
+    `(async function(){
+      var p = document.querySelector('.float-panel');
+      var b = document.querySelector('#modalRoot .m-body');
+      if (!p || !b) return null;
+      var t0 = p.getBoundingClientRect().top;
+      b.scrollTop += 60;
+      await new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); });
+      var p1 = document.querySelector('.float-panel');
+      var out = { live: !!p1, dPanel: p1 ? Math.round(p1.getBoundingClientRect().top - t0) : null };
+      b.scrollTop -= 60;
+      await new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); });
+      return out;
+    })()`
+  );
+  S.pickerFollow = follow;
+  c.check('picker.followScroll', !!follow && follow.live === true && Math.abs(follow.dPanel + 60) <= 3, follow);
+
   await shot(cdp, OUT, 'date-picker.png');
   await evaluate(cdp, 'document.dispatchEvent(new MouseEvent("mousedown",{bubbles:true}))');
   await sleep(200);
@@ -268,23 +298,56 @@ async function main() {
   c.check('tpl.closed', (await evaluate(cdp, '!document.querySelector(".tpl-row")')) === true);
 
   // ---------- 9. 悬停说明不压住输入框 ----------
+  // 定位是异步的（floating-ui），必须等两帧再量；以前同步读，读到的其实是上一帧的空元素。
   const tip = await evaluate(
     cdp,
-    `(function(){
+    `(async function(){
       var el = document.querySelector('.tip-i');
       if (!el) return null;
       showTip(el);
-      var tip = document.querySelector('.tip-layer').getBoundingClientRect();
-      var field = document.querySelector('#edTitle').getBoundingClientRect();
-      var overlap = !(tip.bottom <= field.top || tip.top >= field.bottom || tip.right <= field.left || tip.left >= field.right);
+      await new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); });
+      var t = document.querySelector('.tip-layer').getBoundingClientRect();
+      var f = document.querySelector('#edTitle').getBoundingClientRect();
+      var a = el.getBoundingClientRect();
+      var overlap = !(t.bottom <= f.top || t.top >= f.bottom || t.right <= f.left || t.left >= f.right);
       hideTip();
-      return { text: (el.getAttribute('data-tip')||'').slice(0,12), overlapTitle: overlap, w: Math.round(tip.width) };
+      return { text: (el.getAttribute('data-tip')||'').slice(0,12), overlapTitle: overlap,
+               w: Math.round(t.width), h: Math.round(t.height),
+               above: t.bottom <= a.top + 1,
+               side: t.right <= a.left + 1 || t.left >= a.right - 1,
+               ax: Math.round(a.left), ay: Math.round(a.top),
+               l: Math.round(t.left), top: Math.round(t.top) };
     })()`
   );
   S.tip = tip;
-  c.check('tip.noOverlap', !!tip && tip.text.length > 0 && tip.overlapTitle === false && tip.w > 0, tip);
+  c.check(
+    'tip.noOverlap',
+    !!tip && tip.text.length > 0 && tip.overlapTitle === false && tip.w > 40 && tip.h > 10 &&
+      (tip.above === true || tip.side === true) && tip.l >= 8 && tip.top >= 8,
+    tip
+  );
 
-  // ---------- 10. 标签按钮开合不改变宽度 ----------
+  // ---------- 9b. 图标：lucide 组件渲染，尺寸仍由 CSS 接管 ----------
+  // .icon-btn svg 是 17px；若哪天忘了给 <Icon> 传 size，lucide 默认 24 会立刻在这里暴露
+  const icon = await evaluate(
+    cdp,
+    `(function(){
+      var s = document.querySelector('#btnBell svg');
+      if (!s) return null;
+      var cs = getComputedStyle(s);
+      var r = s.getBoundingClientRect();
+      return { cls: s.getAttribute('class'), fill: cs.fill, sw: cs.strokeWidth,
+               w: Math.round(r.width), kids: s.children.length };
+    })()`
+  );
+  S.icon = icon;
+  c.check(
+    'icon.render',
+    !!icon && /lucide/.test(icon.cls || '') && icon.fill === 'none' && icon.kids > 0 && icon.w >= 15 && icon.w <= 19,
+    icon
+  );
+
+
   const tagPick = await evaluate(
     cdp,
     `(function(){

@@ -57,6 +57,15 @@ a{color:inherit;text-decoration:none}
 .hidden{display:none!important}
 
 /*
+  图标基线。<Icon> 渲染出的每个 svg 都带 .ico：
+  lucide 组件自带同样的表现属性，但页面里另有 14 条 svg{} 规则只写尺寸不写描边，
+  以前靠「浏览器默认 fill:black + CSS 继承」蒙混过关，写死在这里以后不受库默认值影响。
+  刻意不设 display —— 图标还有行内使用（按钮文字旁、标签里），改成 block 会动基线对齐。
+*/
+.ico{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+
+/*
   系统开了「减少动态效果」时，所有过渡/动画压到一帧内。
   面板滑入、弹窗缩放、拖拽浮层这些都只影响观感，不该让前庭敏感的人难受。
 */

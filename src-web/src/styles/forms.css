@@ -47,6 +47,8 @@ html[data-theme="dusk"] .tip-layer,html[data-theme="ink"] .tip-layer{
 .float-panel{
   position:fixed;z-index:1000;background:var(--panel);border:1px solid var(--line);
   border-radius:12px;box-shadow:var(--shadow-lg);
+  /* 视口放不下时由 floating-ui 的 size 中间件写 --fp-AH，这里只负责消费 */
+  max-height:var(--fp-AH,none);overflow-y:auto;
 }
 .dp-panel{width:252px;padding:8px}
 .dp-head{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 8px}

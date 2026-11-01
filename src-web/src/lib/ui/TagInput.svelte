@@ -129,8 +129,9 @@
       anchor: pickBtn,
       onClose: close,
       minWidth: 180,
-      // 面板宽度跟着按钮走，但不小于 180、不超过 260
-      afterPlace: (el) => {
+      // 面板宽度跟着按钮走，但不小于 180、不超过 260。
+      // 必须放在 beforePlace：先定宽再测量，否则第一次定位按天然宽度算，位置会偏。
+      beforePlace: (el) => {
         const r = pickBtn?.getBoundingClientRect();
         const w = Math.min(260, Math.max(r?.width || 0, 180));
         el.style.width = w + 'px';

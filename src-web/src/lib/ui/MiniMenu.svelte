@@ -5,11 +5,8 @@
   import { createList, createTag, removeList, removeTag, renameList, renameTag, toggleArchive } from '$lib/store/listActions.svelte';
   import { isArchived } from '$lib/store/meta.svelte';
   import { popover } from '$lib/actions/popover';
+  import type { VirtualElement } from '@floating-ui/dom';
   import Icon from './Icon.svelte';
-
-  let menu = $state<HTMLElement | null>(null);
-  let left = $state(0);
-  let top = $state(0);
 
   interface Item {
     label: string;
@@ -43,16 +40,17 @@
     ];
   });
 
-  // 贴着锚点右下角出，放不下就往上翻
-  $effect(() => {
-    const m = uiState.miniMenu;
-    if (!m || !menu) return;
-    const w = menu.offsetWidth || 160;
-    const h = menu.offsetHeight || 120;
-    left = Math.min(window.innerWidth - w - 10, Math.max(10, m.x - w - 6));
-    top = m.y + 6;
-    if (top + h > window.innerHeight - 10) top = Math.max(10, m.y - h - 12);
-  });
+  /*
+    菜单锚在鼠标点上，没有真实元素可挂 —— 造一个零尺寸虚拟元素：
+    右边缘放在 x-6，正好等于旧公式 left = m.x - w - 6；top 同 y，
+    配 placement:bottom-end + gap 6，即「贴点击点左侧、下方不够往上翻」。
+  */
+  function pointAt(x: number, y: number): VirtualElement {
+    const left = x - 6;
+    return {
+      getBoundingClientRect: () => ({ x: left, y, width: 0, height: 0, top: y, bottom: y, right: left, left })
+    };
+  }
 
   function close(): void {
     uiState.miniMenu = null;
@@ -67,9 +65,13 @@
   <div
     id="miniMenu"
     class="mini-menu{uiState.miniMenu.kind === 'theme' ? ' theme-menu' : ''}"
-    bind:this={menu}
-    style="left:{left}px;top:{top}px"
-    use:popover={{ anchor: null, onClose: close }}
+    use:popover={{
+      anchor: pointAt(uiState.miniMenu.x, uiState.miniMenu.y),
+      onClose: close,
+      align: 'right',
+      gap: 6,
+      padding: 10
+    }}
   >
     {#if uiState.miniMenu.kind === 'theme'}
       {#each THEMES as t (t.k)}

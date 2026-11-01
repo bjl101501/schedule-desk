@@ -112,7 +112,7 @@
     bind:this={panel}
     data-for={fieldId || undefined}
     use:portal
-    use:popover={{ anchor, onClose: close, minWidth: 252, closeOnScroll: true }}
+    use:popover={{ anchor, onClose: close, minWidth: 252 }}
   >
     <div class="cal-pop">
       <div class="dp-head">
