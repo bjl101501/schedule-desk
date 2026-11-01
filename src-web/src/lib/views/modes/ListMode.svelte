@@ -5,7 +5,8 @@
   import { loadMore } from '$lib/store/nav.svelte';
   import { todayD } from '$lib/store/clock.svelte';
   import TaskRow from '$lib/components/TaskRow.svelte';
-  import { pointerDrag, hitAt } from '$lib/actions/drag';
+  import { pointerDrag } from '$lib/actions/drag';
+  import { pickDrop, snapGroups, type DropGroup } from '$lib/actions/dragSlot';
   import { beginDrag, type DragFx } from '$lib/actions/dragFx';
   import { applyVisibleOrder } from '$lib/store/dndActions.svelte';
   import { applyDateChange } from '$lib/store/taskActions.svelte';
@@ -17,6 +18,8 @@
   const today = $derived(todayD());
   // 一次只会有一个拖拽在跑，fx 放组件级即可
   let fx: DragFx | null = null;
+  // 按下那一刻的布局快照：让位会让 DOM 实时位移，实时命中会抖
+  let snaps: DropGroup[] = [];
 
   const idsOf = (list: Element | null): string[] =>
     Array.from(list?.querySelectorAll('[data-tid]') || [])
@@ -26,40 +29,43 @@
   /** 分组上挂的日期：已完成为 'done'、未安排为空串，都不能当落点日期 */
   const groupDate = (list: Element | null): string => list?.getAttribute('data-gdate') || '';
 
-  function onDragEnd(el: HTMLElement, e: PointerEvent, moved: boolean): void {
+  function onDragEnd(el: HTMLElement, _e: PointerEvent, moved: boolean): void {
     endDragSession();
     el.classList.remove('dragging');
+    // 落点以占位现在的实际位置为准：视觉停在哪就落在哪，不用再命中一次
+    const at = fx?.where() ?? null;
     fx?.end();
     fx = null;
-    if (!moved) return;
-    const list = el.closest('.task-list');
+    snaps = [];
+    if (!moved || !at?.host) return;
+
     const dragId = el.getAttribute('data-tid') || '';
     const task = rows.find((t) => t.id === dragId);
-    if (!list || !task) return;
+    const home = el.closest('.task-list');
+    if (!task || !home) return;
+
+    const ds = groupDate(at.host);
+    if (!ds || ds === 'done') {
+      toast.show('这条只能拖到有日期的分组');
+      return;
+    }
 
     // 落到别的日期分组 = 改日期（和日历里拖到另一天同一套动作，提醒基准会跟着挪）
-    const overList = hitAt<HTMLElement>(e, '.task-list');
-    if (overList && overList !== list) {
-      const ds = groupDate(overList);
-      if (!ds || ds === 'done') {
-        toast.show('这条只能拖到有日期的分组');
-        return;
-      }
+    if (at.host !== home) {
       if (ds === task.date) return;
       applyDateChange(task, { date: ds }, { toast: '已改到「' + dateLabel(parseYmd(ds), today) + '」' });
       return;
     }
 
-    // 同组内：按落点行重排
-    const hit = hitAt(e, '[data-tid]');
-    const targetId = hit?.getAttribute('data-tid') || '';
-    if (!hit || hit === el || hit.closest('.task-list') !== list || !targetId) return;
-    const ids = idsOf(list);
-    const from = ids.indexOf(dragId);
-    const to = ids.indexOf(targetId);
-    if (from < 0 || to < 0) return;
-    const next = ids.slice();
-    next.splice(from, 1);
+    // 同组内：按占位前后是哪两行重排
+    const ids = idsOf(at.host);
+    const rest = ids.filter((id) => id !== dragId);
+    const prevId = at.prev?.getAttribute('data-tid') || '';
+    const nextId = at.next?.getAttribute('data-tid') || '';
+    let to = rest.length;
+    if (nextId && rest.indexOf(nextId) >= 0) to = rest.indexOf(nextId);
+    else if (prevId && rest.indexOf(prevId) >= 0) to = rest.indexOf(prevId) + 1;
+    const next = rest.slice();
     next.splice(to, 0, dragId);
     const all = rows.map((t) => t.id);
     let k = 0;
@@ -106,6 +112,8 @@
       handle: '[data-tid]',
       onStart: (el, _e, origin) => {
         beginDragSession();
+        // 快照必须在隐藏源行之前拍，否则首行的位置已经塌了
+        snaps = snapGroups(Array.from(document.querySelectorAll<HTMLElement>('.task-list')), '[data-tid]');
         el.classList.add('dragging');
         fx = beginDrag({ source: el, at: origin, scrollEl: () => document.getElementById('content') });
       },
@@ -113,25 +121,27 @@
         if (!fx) return;
         fx.move(e);
         const home = el.closest('.task-list');
-        const over = hitAt(e, '.task-list');
-        const hit = hitAt(e, '[data-tid]');
-        // 同组：插到某行之前
-        if (over === home && hit && hit !== el) {
-          fx.mark(hit, 'insert-l', '松手放到「' + (hit.querySelector('.task-title')?.textContent || '') + '」之前');
+        const at = pickDrop(e.clientX, e.clientY, snaps, 'y');
+        if (!at) {
+          fx.slot(null, null);
+          fx.mark(null, 'box', '');
           return;
         }
-        // 别组：改日期；已完成 / 未安排不能当落点
-        if (over && over !== home) {
-          const ds = groupDate(over);
-          if (!ds || ds === 'done') {
-            fx.mark(over, 'box', '这条只能拖到有日期的分组');
-            return;
-          }
-          const label = over.previousElementSibling?.querySelector('h3')?.textContent || '另一天';
-          fx.mark(over, 'box', '松手改到「' + label + '」');
+        const ds = groupDate(at.host);
+        // 已完成 / 未安排不能当落点
+        if (!ds || ds === 'done') {
+          fx.slot(null, null);
+          fx.mark(at.host, 'box', '这条只能拖到有日期的分组');
           return;
         }
-        fx.mark(null, 'insert-l', '');
+        fx.slot(at.host, at.el, at.after ? 'after' : 'before');
+        if (at.host === home) {
+          const name = at.el?.querySelector('.task-title')?.textContent || '';
+          fx.mark(null, 'box', name ? '松手放到「' + name + '」' + (at.after ? '之后' : '之前') : '松手调到最后');
+        } else {
+          const label = at.host.previousElementSibling?.querySelector('h3')?.textContent || '另一天';
+          fx.mark(null, 'box', '松手改到「' + label + '」');
+        }
       },
       onEnd: onDragEnd
     }}

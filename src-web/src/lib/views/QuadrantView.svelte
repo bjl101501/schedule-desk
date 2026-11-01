@@ -12,7 +12,8 @@
   import Icon from '$lib/ui/Icon.svelte';
   import TagChips from '$lib/components/TagChips.svelte';
   import Flags from '$lib/components/Flags.svelte';
-  import { pointerDrag, hitAt } from '$lib/actions/drag';
+  import { pointerDrag } from '$lib/actions/drag';
+  import { pickDrop, snapGroups, type DropGroup } from '$lib/actions/dragSlot';
   import { dropQuadrant } from '$lib/store/dndActions.svelte';
   import { beginDragSession, endDragSession } from '$lib/store/dragSession.svelte';
 
@@ -55,6 +56,7 @@
 
   // 一次只有一个拖拽在跑
   let fx: DragFx | null = null;
+  let snaps: DropGroup[] = [];
 </script>
 
 <div class="banner" style="background:var(--brand-softer);border:1px solid var(--line);color:var(--text-2)">
@@ -68,23 +70,33 @@
     handle: '[data-tid]',
     onStart: (el, _e, origin) => {
       beginDragSession();
+      snaps = snapGroups(Array.from(document.querySelectorAll<HTMLElement>('.qbody')), '[data-tid]');
       el.classList.add('dragging');
       fx = beginDrag({ source: el, at: origin, scrollEl: () => document.getElementById('content') });
     },
     onMove: (_el, e) => {
       if (!fx) return;
-      const box = hitAt(e, '.qbox');
       fx.move(e);
-      fx.mark(box as HTMLElement | null, 'box', box ? '松手放到这一格' : '');
+      const at = pickDrop(e.clientX, e.clientY, snaps, 'y');
+      if (!at) {
+        fx.slot(null, null);
+        fx.mark(null, 'box', '');
+        return;
+      }
+      fx.slot(at.host, at.el, at.after ? 'after' : 'before');
+      const name = at.host.closest('.qbox')?.querySelector('.qhead h4')?.textContent || '';
+      fx.mark(null, 'box', name ? '松手放到「' + name + '」' : '松手放到这一格');
     },
-    onEnd: (el, e, moved) => {
+    onEnd: (el, _e, moved) => {
       endDragSession();
       el.classList.remove('dragging');
+      const at = fx?.where() ?? null;
       fx?.end();
       fx = null;
-      if (!moved) return;
-      const box = hitAt(e, '.qbox');
+      snaps = [];
+      if (!moved || !at?.host) return;
       const id = el.getAttribute('data-tid') || '';
+      const box = at.host.closest('.qbox');
       const cls = box ? ['q1', 'q2', 'q3', 'q4'].find((c) => box.classList.contains(c)) : '';
       if (id && cls) dropQuadrant(id, cls);
     }

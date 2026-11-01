@@ -17,7 +17,8 @@
   import Icon from '$lib/ui/Icon.svelte';
   import TagChips from '$lib/components/TagChips.svelte';
   import Flags from '$lib/components/Flags.svelte';
-  import { pointerDrag, hitAt } from '$lib/actions/drag';
+  import { pointerDrag } from '$lib/actions/drag';
+  import { pickDrop, snapGroups, type DropGroup } from '$lib/actions/dragSlot';
   import { dropKanban } from '$lib/store/dndActions.svelte';
   import { beginDragSession, endDragSession } from '$lib/store/dragSession.svelte';
 
@@ -129,6 +130,7 @@
 
   // 一次只有一个拖拽在跑
   let fx: DragFx | null = null;
+  let snaps: DropGroup[] = [];
 </script>
 
 <div class="sec-head"><h3>看板</h3><span class="meta">{groups.length} 列</span><span class="line"></span></div>
@@ -144,23 +146,34 @@
     handle: '[data-tid]',
     onStart: (el, _e, origin) => {
       beginDragSession();
+      snaps = snapGroups(Array.from(document.querySelectorAll<HTMLElement>('.kcol-body')), '[data-tid]');
       el.classList.add('dragging');
       fx = beginDrag({ source: el, at: origin, scrollEl: () => document.getElementById('content') });
     },
     onMove: (_el, e) => {
       if (!fx) return;
-      const col = hitAt(e, '[data-kkey]');
       fx.move(e);
-      fx.mark(col, 'box', col ? '松手移到「' + (col.getAttribute('data-kkey') || '') + '」' : '');
+      const at = pickDrop(e.clientX, e.clientY, snaps, 'y');
+      if (!at) {
+        fx.slot(null, null);
+        fx.mark(null, 'box', '');
+        return;
+      }
+      fx.slot(at.host, at.el, at.after ? 'after' : 'before');
+      const col = at.host.closest('[data-kkey]') as HTMLElement | null;
+      const title = col?.querySelector('.kcol-head')?.textContent?.trim() || at.host.getAttribute('data-kkey') || '';
+      fx.mark(null, 'box', col ? '松手移到「' + title + '」' : '');
     },
-    onEnd: (el, e, moved) => {
+    onEnd: (el, _e, moved) => {
       endDragSession();
       el.classList.remove('dragging');
+      const at = fx?.where() ?? null;
       fx?.end();
       fx = null;
-      if (!moved) return;
-      const col = hitAt(e, '[data-kkey]');
+      snaps = [];
+      if (!moved || !at?.host) return;
       const id = el.getAttribute('data-tid') || '';
+      const col = at.host.closest('[data-kkey]') as HTMLElement | null;
       const key = col?.getAttribute('data-kkey') || '';
       if (id && key) dropKanban(id, key, app.kanbanGroup);
     }

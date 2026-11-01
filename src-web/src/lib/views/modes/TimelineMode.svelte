@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Task } from '$lib/domain/types';
-  import { addDays, dayDiff, hmStr, parseHM, parseYmd, ymd } from '$lib/domain/date';
+  import { addDays, dayDiff, hmStr, mdShort, parseHM, parseYmd, ymd } from '$lib/domain/date';
   import { prioCls, segDateText, subPlan, subStats, taskSpan } from '$lib/domain/task';
   import { todayD } from '$lib/store/clock.svelte';
   import { toggleTaskDetail } from '$lib/store/ui.svelte';
@@ -9,7 +9,9 @@
   import Icon from '$lib/ui/Icon.svelte';
   import TaskRow from '$lib/components/TaskRow.svelte';
   import { pointerDrag } from '$lib/actions/drag';
+  import { beginDrag, type DragFx } from '$lib/actions/dragFx';
   import { dropTimeline } from '$lib/store/dndActions.svelte';
+  import { toast } from '$lib/store/toast.svelte';
   import { taskById } from '$lib/store/taskActions.svelte';
   import { beginDragSession, endDragSession } from '$lib/store/dragSession.svelte';
 
@@ -17,10 +19,17 @@
 
   const today = $derived(todayD());
 
-  // 拖拽：按住条体改开始日，按住右手柄改天数（旧版按 40px/天换算，这里按实际列宽）
-  let grabDay = 0;
+  // 拖拽：按住条体改开始日，按住右手柄改天数（按实际列宽换算）
+  /** 抓点相对色带左边界的像素：算「拖到第几天」时要用位移，不能用绝对天数 */
+  let grabPx = 0;
   let resizing = false;
   let dragStart = new Date();
+  let fx: DragFx | null = null;
+  /** 拖动中的落点预览：off = 起点偏移，span = 天数 */
+  let drop = $state<{ off: number; span: number } | null>(null);
+
+  /** 日期轴至少铺三周，否则清单里只有一条今天的任务时，整条轴只有一格，没地方可拖 */
+  const WIN_DAYS = 21;
 
   const view = $derived.by(() => {
     const t0s = ymd(today);
@@ -31,13 +40,14 @@
 
     let minD: Date | null = null;
     let maxD: Date | null = null;
-    dated.forEach((t) => {
+    // 用 for 而不是 forEach：闭包里赋值会让 TS 在循环外把变量窄化成 null
+    for (const t of dated) {
       const d = parseYmd(t.date);
-      if (!d) return;
+      if (!d) continue;
       const e = addDays(d, taskSpan(t) - 1);
       if (!minD || d < minD) minD = d;
       if (!maxD || e > maxD) maxD = e;
-    });
+    }
     if (!minD || !maxD) {
       return {
         empty: true, undated, t0s,
@@ -48,8 +58,11 @@
       };
     }
 
-    const days = dayDiff(minD, maxD) + 1;
-    const start = minD;
+    // 起点：最早的任务日与「今天前 3 天」取早者 —— 留一点历史上下文
+    const start = minD < addDays(today, -3) ? minD : addDays(today, -3);
+    const floor = addDays(start, WIN_DAYS - 1);
+    const end = maxD > floor ? maxD : floor;
+    const days = dayDiff(start, end) + 1;
     const head = Array.from({ length: days }, (_, i) => {
       const d = addDays(start, i);
       const ds = ymd(d);
@@ -82,7 +95,7 @@
     });
 
     const lanes = Array.from({ length: laneEnd.length }, (_, L) => items.filter((x) => x.lane === L));
-    return { empty: false, t0s, start, maxD, days, head, items, lanes, undated };
+    return { empty: false, t0s, start, maxD: end, days, head, items, lanes, undated };
   });
 
   function fmtRange(a: Date, b: Date): string {
@@ -150,41 +163,80 @@
       use:pointerDrag={{
         handle: '[data-gbar]',
         threshold: 6,
-        onStart: (el, e) => {
+        onStart: (el, _e, origin) => {
           beginDragSession();
-          el.classList.add('dragging');
-          resizing = !!(e.target as HTMLElement).closest('[data-gresize]');
-          const g = document.querySelector('.gantt') as HTMLElement | null;
-          if (!g) return;
           dragStart = view.start;
-          const r = g.getBoundingClientRect();
-          grabDay = Math.round(((e.clientX - r.left) / Math.max(1, r.width)) * view.days);
+          // 手柄命中要在隐藏源条之前算：beginDrag 会把源元素摘掉
+          const under = document.elementFromPoint(origin.x, origin.y) as HTMLElement | null;
+          resizing = !!under?.closest('[data-gresize]');
+          const t = taskById(el.getAttribute('data-gbar') || '');
+          grabPx = origin.x - el.getBoundingClientRect().left;
+          if (t && t.date) {
+            const off = dayDiff(dragStart, parseYmd(t.date)!);
+            drop = { off, span: taskSpan(t) };
+          }
+          el.classList.add('dragging');
+          fx = beginDrag({
+            source: el,
+            at: origin,
+            ghost: false,
+            placeholder: false,
+            scrollEl: () => document.querySelector('.gantt-wrap') as HTMLElement | null
+          });
         },
-        onEnd: (el, e, moved) => {
-          endDragSession();
-          el.classList.remove('dragging');
-          if (!moved) return;
+        onMove: (el, e) => {
+          if (!fx) return;
+          fx.move(e);
           const g = document.querySelector('.gantt') as HTMLElement | null;
-          const id = el.getAttribute('data-gbar') || '';
-          if (!g || !id) return;
-          const t = taskById(id);
-          if (!t || !t.date) return;
+          const t = taskById(el.getAttribute('data-gbar') || '');
+          if (!g || !t || !t.date) return;
           const r = g.getBoundingClientRect();
-          const day = Math.round(((e.clientX - r.left) / Math.max(1, r.width)) * view.days);
+          const dayAt = ((e.clientX - r.left) / Math.max(1, r.width)) * view.days;
+          const span = taskSpan(t);
           if (resizing) {
             const off = dayDiff(dragStart, parseYmd(t.date)!);
-            const span = Math.max(1, Math.min(90, day - off + 1));
-            dropTimeline(id, '', span);
-          } else {
-            const next = addDays(dragStart, Math.max(0, Math.min(view.days - 1, day - grabDay)));
-            dropTimeline(id, ymd(next));
+            const next = Math.max(1, Math.min(90, Math.round(dayAt) - off + 1));
+            drop = { off, span: next };
+            fx.mark(null, 'box', '松手把天数改成 ' + next + ' 天');
+            return;
           }
+          // 抓哪儿拖哪儿：新起点 = (指针 − 抓点) 所在的那一天
+          const dayW = r.width / view.days;
+          const off = Math.max(0, Math.min(view.days - span, Math.round((e.clientX - grabPx - r.left) / dayW)));
+          drop = { off, span };
+          fx.mark(null, 'box', '松手移到 ' + mdShort(addDays(dragStart, off)) + ' 起 · 共 ' + span + ' 天');
+        },
+        onEnd: (el, _e, moved) => {
+          endDragSession();
+          el.classList.remove('dragging');
+          const d = drop;
+          fx?.end();
+          fx = null;
+          drop = null;
+          if (!moved) {
+            resizing = false;
+            return;
+          }
+          const id = el.getAttribute('data-gbar') || '';
+          if (!id || !d) {
+            resizing = false;
+            return;
+          }
+          if (resizing) {
+            dropTimeline(id, '', d.span);
+            toast.show('已延长到 ' + d.span + ' 天');
+          } else {
+            const next = ymd(addDays(dragStart, d.off));
+            dropTimeline(id, next);
+            toast.show('已改到 ' + mdShort(addDays(dragStart, d.off)) + ' 起');
+          }
+          resizing = false;
         }
       }}
     >
       <div class="g-head">
-        {#each view.head as d (d.ds)}
-          <div class="g-day{d.today ? ' today' : ''}{d.we ? ' we' : ''}">
+        {#each view.head as d, i (d.ds)}
+          <div class="g-day{d.today ? ' today' : ''}{d.we ? ' we' : ''}{drop && i >= drop.off && i < drop.off + drop.span ? ' on' : ''}">
             <em>{d.month}</em><b>{d.day}</b><span>{d.wd}</span>
           </div>
         {/each}
@@ -214,6 +266,9 @@
           {/each}
         </div>
       {/each}
+      {#if drop}
+        <div class="g-drop" style={barStyle(drop.off, drop.span, view.days)}></div>
+      {/if}
     </div>
   </div>
   {#if view.undated.length}

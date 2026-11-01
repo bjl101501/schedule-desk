@@ -110,7 +110,7 @@ src-web/src/lib/store/        响应式状态（runes）：数据、视图、时
 src-web/src/lib/components/   通用组件：任务行、状态胶囊、侧栏、顶栏、铃铛、时钟…
 src-web/src/lib/ui/icons.ts   图标表：42 条走 @lucide/svelte，5 条自制 path
 src-web/src/lib/views/        九个视图 + 四种布局 + 六种日历模式 + 各类编辑器
-src-web/src/lib/actions/      动作：浮层定位、传送门、拖拽控制器、value 契约
+src-web/src/lib/actions/      动作：浮层定位、传送门、拖拽控制器与落点快照、value 契约
 src-web/src/lib/test/         测试门面，只给 build/ui-check.mjs 用
 src-web/build/                构建产物，不入库（Tauri 的 frontendDist）
 src-tauri/src/store.rs        数据模型、原子写、快照、记录级合并

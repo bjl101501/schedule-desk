@@ -9,7 +9,8 @@
   import { toggleDone } from '$lib/store/data.svelte';
   import { toggleTaskDetail } from '$lib/store/ui.svelte';
   import { isDetailOpen } from '$lib/store/overlay.svelte';
-  import { pointerDrag, hitAt, ratioX } from '$lib/actions/drag';
+  import { pointerDrag } from '$lib/actions/drag';
+  import { pickDrop, snapGroups, type DropGroup } from '$lib/actions/dragSlot';
   import { beginDrag, type DragFx } from '$lib/actions/dragFx';
   import { applyVisibleOrder } from '$lib/store/dndActions.svelte';
   import { setSortMode } from '$lib/store/app.svelte';
@@ -24,6 +25,8 @@
 
   let { rows }: { rows: Task[] } = $props();
   const today = $derived(todayD());
+  let fx: DragFx | null = null;
+  let snaps: DropGroup[] = [];
   const tick = $derived(clock.now);
   const part = $derived(rows.slice(0, app.listLimit || PAGE));
 
@@ -38,33 +41,31 @@
     return st.key === 'overdue' ? 'over' : diff === 0 ? 'today' : '';
   }
 
-  let fx: DragFx | null = null;
-
   const cardIds = (): string[] =>
     Array.from(document.querySelectorAll('.card-grid [data-tid]'))
       .map((n) => n.getAttribute('data-tid') || '')
       .filter(Boolean);
 
-  function onDragEnd(el: HTMLElement, e: PointerEvent, moved: boolean): void {
+  function onDragEnd(el: HTMLElement, _e: PointerEvent, moved: boolean): void {
     endDragSession();
     el.classList.remove('dragging');
+    // 落点以占位实际停的位置为准
+    const at = fx?.where() ?? null;
     fx?.end();
     fx = null;
-    if (!moved) return;
-    const hit = hitAt(e, '.tcard');
+    snaps = [];
+    if (!moved || !at?.host) return;
     const dragId = el.getAttribute('data-tid') || '';
-    if (!hit || hit === el || !dragId) return;
-    const targetId = hit.getAttribute('data-tid') || '';
+    if (!dragId) return;
     const ids = cardIds();
-    const from = ids.indexOf(dragId);
-    const to = ids.indexOf(targetId);
-    if (from < 0 || to < 0) return;
-    const next = ids.slice();
-    next.splice(from, 1);
-    // 落点在目标卡右半区 → 插到它后面
-    const after = ratioX(e, hit) >= 0.5;
-    const at = next.indexOf(targetId) + (after ? 1 : 0);
-    next.splice(at, 0, dragId);
+    const rest = ids.filter((id) => id !== dragId);
+    const prevId = at.prev?.getAttribute('data-tid') || '';
+    const nextId = at.next?.getAttribute('data-tid') || '';
+    let to = rest.length;
+    if (nextId && rest.indexOf(nextId) >= 0) to = rest.indexOf(nextId);
+    else if (prevId && rest.indexOf(prevId) >= 0) to = rest.indexOf(prevId) + 1;
+    const next = rest.slice();
+    next.splice(to, 0, dragId);
     const all = rows.map((t) => t.id);
     let k = 0;
     applyVisibleOrder(all.map((id) => (ids.indexOf(id) > -1 ? next[k++] : id)));
@@ -84,20 +85,22 @@
     handle: '[data-tid]',
     onStart: (el, _e, origin) => {
       beginDragSession();
+      // 先拍快照，再隐藏源卡
+      snaps = snapGroups(Array.from(document.querySelectorAll<HTMLElement>('.card-grid')), '[data-tid]');
       el.classList.add('dragging');
       fx = beginDrag({ source: el, at: origin, scrollEl: () => document.getElementById('content') });
     },
-    onMove: (el, e) => {
+    onMove: (_el, e) => {
       if (!fx) return;
-      const hit = hitAt(e, '.tcard');
-      const same = hit && hit !== el;
       fx.move(e);
-      if (same) {
-        const after = ratioX(e, hit) >= 0.5;
-        fx.mark(hit, after ? 'insert-r' : 'insert-l', after ? '松手插到这张卡后面' : '松手插到这张卡前面');
-      } else {
-        fx.mark(null, 'insert-l', '');
+      const at = pickDrop(e.clientX, e.clientY, snaps, 'x');
+      if (!at) {
+        fx.slot(null, null);
+        fx.mark(null, 'box', '');
+        return;
       }
+      fx.slot(at.host, at.el, at.after ? 'after' : 'before');
+      fx.mark(null, 'box', at.el ? (at.after ? '松手放到这张卡后面' : '松手放到这张卡前面') : '松手调到最后');
     },
     onEnd: onDragEnd
   }}

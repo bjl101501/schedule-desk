@@ -15,7 +15,7 @@
 
 import json
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, time as dtime, timedelta
 from pathlib import Path
 
 TASKS = "RBTQ4jwngkyjWiZE7VqCJZ"
@@ -142,6 +142,10 @@ def main():
     e = rel(40)    # 40 分钟后开始
     f = rel(-60)   # 1 小时前开始
     g = rel(120)   # 2 小时后结束
+    # 晚上 22 点后跑，+120 分钟会跨到明天；end_date 还是今天，
+    # 这个 00:0x 就成了「今天凌晨」→ t15 被误判逾期。压到当天 23:59。
+    if g.date() != today:
+        g = datetime.combine(today, dtime(23, 59))
 
     rows = [
         # 3 无计划 + 时间 + 用时 → 开始 + 60 分钟，已过 20 分钟

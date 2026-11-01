@@ -241,6 +241,215 @@ async function main() {
   await sleep(350);
   ck('drag.card', report.cardDrag.ok, report.cardDrag);
 
+  // ---------- 5e. 让位：占位插到目标处，其余行真的挪开 ----------
+  // 必须在同一个日期分组里拖，跨组走的是「改日期」分支
+  await evaluate(cdp, "__SD_TEST__.goView('next7')");
+  await sleep(250);
+  await evaluate(cdp, "document.querySelector('[data-vmode=\"list\"]')?.click()");
+  await sleep(400);
+  const slotCase = await evaluate(
+    cdp,
+    `(function(){
+       const list = Array.from(document.querySelectorAll('.task-list'))
+         .find((l) => l.querySelectorAll('[data-tid]').length >= 2);
+       if (!list) return null;
+       const rows = Array.from(list.querySelectorAll('[data-tid]')).slice(0, 2);
+       const a = rows[0].getBoundingClientRect(), c = rows[1].getBoundingClientRect();
+       return { ids: rows.map((r) => r.getAttribute('data-tid')),
+                ds: list.getAttribute('data-gdate'),
+                from: { x: Math.round(a.left + 120), y: Math.round(a.top + a.height / 2) },
+                to: { x: Math.round(c.left + 120), y: Math.round(c.top + c.height * 0.85) },
+                y1: Math.round(c.top) };
+     })()`
+  );
+  if (slotCase) {
+    const move = (x, y, buttons) =>
+      cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, buttons });
+    await move(slotCase.from.x, slotCase.from.y, 0);
+    await cdp.send('Input.dispatchMouseEvent', {
+      type: 'mousePressed', x: slotCase.from.x, y: slotCase.from.y, button: 'left', clickCount: 1
+    });
+    for (let i = 1; i <= 8; i++) {
+      await move(
+        Math.round(slotCase.from.x + ((slotCase.to.x - slotCase.from.x) * i) / 8),
+        Math.round(slotCase.from.y + ((slotCase.to.y - slotCase.from.y) * i) / 8),
+        1
+      );
+      await sleep(25);
+    }
+    const mid = await evaluate(
+      cdp,
+      `(function(){
+         const s = document.querySelector('.drag-slot');
+         const list = document.querySelector('.task-list[data-gdate="${slotCase.ds}"]');
+         const rows = list ? Array.from(list.querySelectorAll('[data-tid]')) : [];
+         const hidden = rows.filter((r) => r.style.display === 'none').length;
+         return { slot: !!s, slotTop: s ? Math.round(s.getBoundingClientRect().top) : null,
+                  prev: s && s.previousElementSibling ? s.previousElementSibling.getAttribute('data-tid') : null,
+                  next: s && s.nextElementSibling ? s.nextElementSibling.getAttribute('data-tid') : null,
+                  hidden, y1: rows[1] ? Math.round(rows[1].getBoundingClientRect().top) : null,
+                  ghostTrans: (function(){ const g = document.querySelector('.drag-ghost');
+                    return g ? getComputedStyle(g).transitionDuration : null; })() };
+       })()`
+    );
+    await cdp.send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased', x: slotCase.to.x, y: slotCase.to.y, button: 'left', clickCount: 1
+    });
+    await sleep(350);
+    const after = await evaluate(
+      cdp,
+      `(function(){
+         const l = document.querySelector('.task-list[data-gdate="${slotCase.ds}"]');
+         return l ? Array.from(l.querySelectorAll('[data-tid]')).map((x) => x.getAttribute('data-tid')) : [];
+       })()`
+    );
+    report.slot = {
+      ...slotCase,
+      mid,
+      after: after.slice(0, 3),
+      // 源行隐藏 1 条、第二行上移、占位落在第二行之后、松手后两条互换
+      ok:
+        mid.slot === true &&
+        mid.hidden === 1 &&
+        mid.y1 < slotCase.y1 &&
+        mid.slotTop > mid.y1 &&
+        mid.prev === slotCase.ids[1] &&
+        after[0] === slotCase.ids[1] &&
+        after[1] === slotCase.ids[0] &&
+        mid.ghostTrans === '0s'
+    };
+  } else {
+    report.slot = { ok: false, reason: 'no group with 2 rows' };
+  }
+  ck('drag.slot', report.slot.ok, report.slot);
+
+  // ---------- 5f. 时间线：日期轴至少三周，拖动有落点预览且能落库 ----------
+  await evaluate(
+    cdp,
+    "(() => { __SD_TEST__.goView('next7'); document.querySelector('[data-vmode=\"timeline\"]')?.click(); })()"
+  );
+  await sleep(600);
+  const tlCase = await evaluate(
+    cdp,
+    `(function(){
+       const g = document.querySelector('.gantt');
+       const b = document.querySelector('.g-bar[data-gbar]');
+       if (!g || !b) return null;
+       const gr = g.getBoundingClientRect();
+       const r = b.getBoundingClientRect();
+       const id = b.getAttribute('data-gbar');
+       const t = __SD_TEST__.tasks.find((x) => x.id === id);
+       return { days: Number(getComputedStyle(g).getPropertyValue('--gdays')),
+                heads: document.querySelectorAll('.g-day').length,
+                id, was: t && t.date,
+                from: { x: Math.round(r.left + 16), y: Math.round(r.top + r.height / 2) },
+                to: { x: Math.round(r.left + 16 + (gr.width / 21) * 4), y: Math.round(r.top + r.height / 2) } };
+     })()`
+  );
+  if (tlCase) {
+    const move = (x, y, buttons) =>
+      cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, buttons });
+    await move(tlCase.from.x, tlCase.from.y, 0);
+    await cdp.send('Input.dispatchMouseEvent', {
+      type: 'mousePressed', x: tlCase.from.x, y: tlCase.from.y, button: 'left', clickCount: 1
+    });
+    for (let i = 1; i <= 6; i++) {
+      await move(Math.round(tlCase.from.x + ((tlCase.to.x - tlCase.from.x) * i) / 6), tlCase.from.y, 1);
+      await sleep(30);
+    }
+    const mid = await evaluate(
+      cdp,
+      `(function(){
+         const d = document.querySelector('.g-drop');
+         return { drop: !!d, on: document.querySelectorAll('.g-day.on').length,
+                  tip: (document.querySelector('.drag-tip') || {}).textContent || '' };
+       })()`
+    );
+    await cdp.send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased', x: tlCase.to.x, y: tlCase.to.y, button: 'left', clickCount: 1
+    });
+    await sleep(400);
+    const got = await evaluate(
+      cdp,
+      `(function(){ const t = __SD_TEST__.tasks.find((x) => x.id === ${JSON.stringify(tlCase.id)});
+         return { date: t && t.date, toast: (document.querySelector('.toast') || {}).textContent || '' }; })()`
+    );
+    report.timeline = {
+      ...tlCase,
+      mid,
+      got,
+      ok:
+        tlCase.days >= 21 &&
+        tlCase.heads === tlCase.days &&
+        mid.drop === true &&
+        mid.on >= 1 &&
+        /松手移到/.test(mid.tip) &&
+        got.date !== tlCase.was &&
+        /已改到/.test(got.toast)
+    };
+  } else {
+    report.timeline = { ok: false, reason: 'no gantt bar' };
+  }
+  ck('timeline.drop', report.timeline.ok, report.timeline);
+  await evaluate(cdp, "document.querySelector('[data-vmode=\"list\"]')?.click()");
+  await sleep(300);
+
+  // ---------- 5g. 周视图拖动只改日期，提示里不该出现时刻 ----------
+  const wkReady = await evaluate(
+    cdp,
+    `(function(){
+       const t = __SD_TEST__.tasks.find((x) => x.date && !x.done);
+       if (!t) return null;
+       __SD_TEST__.goView('calendar');
+       __SD_TEST__.setCal({ calMode: 'week', cursor: t.date });
+       return { date: t.date };
+     })()`
+  );
+  await sleep(650);
+  const wkCase = await evaluate(
+    cdp,
+    `(function(){
+       const ev = document.querySelector('.wev[data-tid]');
+       const cols = Array.from(document.querySelectorAll('.wcol-body[data-cdate]'));
+       if (!ev || cols.length < 4) return null;
+       const home = ev.closest('.wcol-body');
+       const idx = cols.indexOf(home);
+       const target = cols[idx + 2] || cols[idx + 1];
+       if (!target) return null;
+       const a = ev.getBoundingClientRect(), b = target.getBoundingClientRect();
+       return { from: { x: Math.round(a.left + a.width / 2), y: Math.round(a.top + a.height / 2) },
+                to: { x: Math.round(b.left + b.width / 2), y: Math.round(b.top + 90) },
+                want: target.getAttribute('data-cdate') };
+     })()`
+  );
+  if (wkCase) {
+    const move = (x, y, buttons) =>
+      cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, buttons });
+    await move(wkCase.from.x, wkCase.from.y, 0);
+    await cdp.send('Input.dispatchMouseEvent', {
+      type: 'mousePressed', x: wkCase.from.x, y: wkCase.from.y, button: 'left', clickCount: 1
+    });
+    for (let i = 1; i <= 6; i++) {
+      await move(
+        Math.round(wkCase.from.x + ((wkCase.to.x - wkCase.from.x) * i) / 6),
+        Math.round(wkCase.from.y + ((wkCase.to.y - wkCase.from.y) * i) / 6),
+        1
+      );
+      await sleep(30);
+    }
+    const tip = await evaluate(cdp, "(document.querySelector('.drag-tip') || {}).textContent || ''");
+    await cdp.send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased', x: wkCase.to.x, y: wkCase.to.y, button: 'left', clickCount: 1
+    });
+    await sleep(300);
+    report.weekTip = { ...wkCase, tip, hasTime: /\d{1,2}:\d{2}/.test(tip), ok: !/\d{1,2}:\d{2}/.test(tip) && /改到/.test(tip) };
+  } else {
+    report.weekTip = { ok: false, reason: 'no week event/column' };
+  }
+  ck('week.tipNoTime', report.weekTip.ok, report.weekTip);
+  await evaluate(cdp, "document.querySelector('[data-calmode=\"month\"]')?.click()");
+  await sleep(300);
+
   // ---------- 6. 日历改时刻 ----------
   await evaluate(cdp, "__SD_TEST__.goView('calendar')");
   await evaluate(

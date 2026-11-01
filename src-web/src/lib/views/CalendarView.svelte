@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Task } from '$lib/domain/types';
-  import { addDays, hmStr, parseYmd, sameDay, startOfWeek, weekdayName, ymd } from '$lib/domain/date';
+  import { addDays, hmStr, mdShort, parseYmd, sameDay, startOfWeek, weekdayName, ymd } from '$lib/domain/date';
   import { prioCls } from '$lib/domain/task';
   import { app } from '$lib/store/app.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
@@ -127,9 +127,15 @@
         fx.mark(day, 'box', '松手改为全天');
         return;
       }
+      // 周视图的列没有时刻粒度：只改日期，别摆出时间游标和「11/5 14:30」这种提示
+      if (day.classList.contains('wcol-body')) {
+        hideTimeCursor();
+        fx.mark(day, 'box', ds ? '松手改到 ' + mdShort(parseYmd(ds)) : '');
+        return;
+      }
       const min = minuteAt(day, e.clientY);
       showTimeCursor(day, min);
-      fx.mark(day, 'box', '松手改到 ' + ds.slice(5) + ' ' + hmStr(min));
+      fx.mark(day, 'box', '松手改到 ' + mdShort(parseYmd(ds)) + ' ' + hmStr(min));
     },
     onEnd: (el: HTMLElement, e: PointerEvent, moved: boolean) => {
       endDragSession();
@@ -305,7 +311,7 @@
           const cell = hitAt(e, '[data-cdate]');
           const ds = cell?.getAttribute('data-cdate') || '';
           fx.move(e);
-          fx.mark(cell, 'box', ds ? '松手改到 ' + ds.slice(5) : '');
+          fx.mark(cell, 'box', ds ? '松手改到 ' + mdShort(parseYmd(ds)) : '');
         },
         onEnd: (el, e, moved) => {
           endDragSession();
