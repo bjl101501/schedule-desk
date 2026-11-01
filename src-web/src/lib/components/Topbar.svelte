@@ -2,7 +2,7 @@
   import type { VMode } from '$lib/domain/types';
   import { addDays, shortDate, weekdayName, ymd } from '$lib/domain/date';
   import { activeFilterCount } from '$lib/domain/selectors';
-  import { app, setFilters } from '$lib/store/app.svelte';
+  import { app, setSortMode, setFilters } from '$lib/store/app.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
   import { data } from '$lib/store/data.svelte';
   import { openDrawer } from '$lib/store/nav.svelte';
@@ -76,7 +76,7 @@
   }
 
   function toggleSort(): void {
-    app.sortMode = app.sortMode === 'manual' ? 'time' : 'manual';
+    setSortMode(app.sortMode === 'manual' ? 'time' : 'manual');
     toast.show(app.sortMode === 'manual' ? '已切换为手动排序，拖动事项调整顺序' : '已切换为按时间排序');
   }
 

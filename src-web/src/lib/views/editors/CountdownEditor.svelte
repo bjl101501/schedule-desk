@@ -6,9 +6,12 @@
   import { toast } from '$lib/store/toast.svelte';
   import DateField from '$lib/ui/DateField.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import { prepareForm } from '$lib/actions/prepare-form';
 
   const id = uiState.cdEditor?.id || '';
   const src = data.countdowns.find((c) => c.id === id);
+  // 系统假期项由接口维护，只允许改颜色与备注
+  const sysLocked = !!src?.sys;
 
   let name = $state(src?.name ?? '');
   let type = $state(src?.type ?? '倒数日');
@@ -32,11 +35,13 @@
       return;
     }
     if (src) {
-      src.name = n;
-      src.type = type;
-      src.date = date;
+      if (!sysLocked) {
+        src.name = n;
+        src.type = type;
+        src.date = date;
+        src.group = group;
+      }
       src.note = note;
-      src.group = group;
       src.color = color;
       apiSaveCountdown(src);
       cacheLocal();
@@ -75,26 +80,36 @@
 <div class="m-body">
   <div class="field">
     <label>名称</label>
-    <input class="inp inp-title" id="cdName" bind:value={name} placeholder="比如：项目上线日" autofocus />
+    <input class="inp inp-title" id="cdName" bind:value={name} placeholder="比如：项目上线日" autofocus disabled={sysLocked} use:prepareForm />
   </div>
   <div class="field">
     <label>类型<span class="hint">纪念日每年重复</span></label>
     <div class="seg" id="cdType">
-      <button class={type === '倒数日' ? 'on' : ''} onclick={() => (type = '倒数日')}>倒数日</button>
-      <button class={type !== '倒数日' ? 'on' : ''} onclick={() => (type = '纪念日')}>纪念日</button>
+      <button class={type === '倒数日' ? 'on' : ''} onclick={() => (type = '倒数日')} disabled={sysLocked}>倒数日</button>
+      <button class={type === '纪念日' ? 'on' : ''} onclick={() => (type = '纪念日')} disabled={sysLocked}>纪念日</button>
+      <button class={type === '生日' ? 'on' : ''} onclick={() => (type = '生日')} disabled={sysLocked}>生日</button>
     </div>
   </div>
   <div class="field">
     <label>日期</label>
-    <DateField fieldId="cdDate" bind:value={date} />
+    {#if sysLocked}
+      <div class="anchor-ro" id="cdDateRo">{date} · 由假期接口维护</div>
+    {:else}
+      <DateField fieldId="cdDate" bind:value={date} />
+    {/if}
   </div>
   <div class="field">
     <label>分组<span class="hint">留空按类型归组</span></label>
-    <input class="inp" id="cdGroup" bind:value={group} placeholder="比如：家人 / 假期" />
+    <input class="inp" id="cdGroup" bind:value={group} placeholder="比如：家人 / 假期" disabled={sysLocked} use:prepareForm />
+    <div class="chip-pick" style="margin-top:6px">
+      {#each ['家人', '朋友', '工作', '假期'] as g (g)}
+        <button class="chip-p{group === g ? ' on' : ''}" data-cdgroupchip={g} onclick={() => (group = g)} disabled={sysLocked}>{g}</button>
+      {/each}
+    </div>
   </div>
   <div class="field">
     <label>备注</label>
-    <input class="inp" id="cdNote" bind:value={note} placeholder="可选" />
+    <input class="inp" id="cdNote" bind:value={note} placeholder="可选" use:prepareForm />
   </div>
   <div class="field">
     <label>颜色</label>

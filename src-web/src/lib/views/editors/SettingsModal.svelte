@@ -1,17 +1,17 @@
 <script lang="ts">
   import { THEMES } from '$lib/domain/constants';
   import { todayD } from '$lib/store/clock.svelte';
-  import { data, readDailySnaps, restoreDailySnap, cacheLocal, seedDemo } from '$lib/store/data.svelte';
+  import { clearTables, dataJob, readDailySnaps, restoreDailySnap, seedDemo, writeSafetySnapshot } from '$lib/store/data.svelte';
   import { sync } from '$lib/store/sync.svelte';
   import { setTheme, theme } from '$lib/store/theme.svelte';
   import { uiState } from '$lib/store/ui.svelte';
   import { toast } from '$lib/store/toast.svelte';
-  import { closeAllModals } from '$lib/store/modal.svelte';
   import { dbConfig, dbIsFirstRun, dbVersion } from '$lib/bridge/db';
   import {
     chooseDataDir, defaultDataDir, openDataDir, restartApp, updateCheck, updateInstall, webdavSave, webdavTest
   } from '$lib/bridge/desktop';
   import Icon from '$lib/ui/Icon.svelte';
+  import { prepareForm } from '$lib/actions/prepare-form';
 
   const cfg = $derived(dbConfig());
   const snaps = $derived(readDailySnaps());
@@ -70,22 +70,29 @@
   function clearAll(): void {
     uiState.typed = {
       title: '清空全部数据',
-      desc: '会删除所有事项、习惯、纪念日与专注记录，且无法撤销。<br>建议先在「备份」里导出 JSON。',
+      desc: '会删除所有事项、习惯、纪念日与专注记录，且无法撤销。<br>删除前会自动存一份快照，可在「备份」里恢复。',
       word: '清空',
       onOk: () => {
-        data.tasks = [];
-        data.habits = [];
-        data.countdowns = [];
-        data.pomodoros = [];
-        cacheLocal();
-        toast.show('已清空全部数据');
-        close();
+        writeSafetySnapshot('清空全部数据前');
+        void clearTables(['tasks', 'habits', 'countdowns', 'pomodoros'], '正在清空全部数据').then(() => {
+          toast.show('已清空，重启后会自动恢复「下一个假期」条目');
+          close();
+        });
       }
     };
   }
 
   function restore(day: string): void {
-    if (restoreDailySnap(day)) close();
+    uiState.typed = {
+      title: '恢复每日快照',
+      desc: '会用 ' + day + ' 的快照覆盖当前事项、习惯与纪念日。恢复前会自动再存一份当前快照。',
+      word: '恢复',
+      onOk: () => {
+        void restoreDailySnap(day).then((ok) => {
+          if (ok) close();
+        });
+      }
+    };
   }
 
   function regenSeed(): void {
@@ -119,10 +126,10 @@
   <div class="field" data-sd-block="desktop">
     <label>WebDAV 同步<span class="hint">可选，留空就是纯本地</span></label>
     <div style="display:flex;flex-direction:column;gap:7px">
-      <input class="inp" id="sdDavUrl" bind:value={davUrl} placeholder="https://dav.example.com/remote.php/dav/files/me/" />
+      <input class="inp" id="sdDavUrl" bind:value={davUrl} placeholder="https://dav.example.com/remote.php/dav/files/me/" use:prepareForm />
       <div class="row2">
-        <input class="inp" id="sdDavUser" bind:value={davUser} placeholder="用户名" />
-        <input class="inp" id="sdDavPass" type="password" bind:value={davPass} placeholder="密码" />
+        <input class="inp" id="sdDavUser" bind:value={davUser} placeholder="用户名" use:prepareForm />
+        <input class="inp" id="sdDavPass" type="password" bind:value={davPass} placeholder="密码" use:prepareForm />
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-sec btn-sm" id="sdDavTest" onclick={testDav}>测试连接</button>
@@ -185,8 +192,13 @@
     <label>危险操作</label>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-sec btn-sm" onclick={regenSeed}>重新生成示例数据</button>
-      <button class="btn btn-danger btn-sm" id="stClearAll" onclick={clearAll}>清空全部数据</button>
+      <button class="btn btn-danger btn-sm" id="stClearAll" onclick={clearAll} disabled={dataJob.on}>清空全部数据</button>
     </div>
+    {#if dataJob.on}
+      <div style="margin-top:8px;font-size:12px;color:var(--text-3)" data-job>
+        {dataJob.label} {dataJob.done} / {dataJob.total}
+      </div>
+    {/if}
   </div>
 </div>
 <div class="m-foot">

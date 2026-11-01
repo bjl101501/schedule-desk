@@ -6,11 +6,14 @@ import { flushSync } from 'svelte';
 import { taskState, taskWindow, reminderState } from '$lib/domain/window';
 import { subStats } from '$lib/domain/task';
 import { today0, ymd } from '$lib/domain/date';
-import { sortTasks, visibleTasks } from '$lib/domain/selectors';
+import { alertSummary, sortTasks, visibleTasks } from '$lib/domain/selectors';
 import { app, refreshAll } from '$lib/store/app.svelte';
 import { clock, clockRunning, todayD } from '$lib/store/clock.svelte';
 import { data } from '$lib/store/data.svelte';
 import { closeTaskDetail, openQuickAdd, openTaskDetail, openTaskEditor, uiState } from '$lib/store/ui.svelte';
+import { clearTables, dataJob, importBundle } from '$lib/store/data.svelte';
+import { completeFromReminder, markRemindRead } from '$lib/store/remind.svelte';
+import { parseBundleText } from '$lib/domain/backup';
 import { setTheme } from '$lib/store/theme.svelte';
 import { goView } from '$lib/store/nav.svelte';
 import { showTip, hideTip } from '$lib/store/tip.svelte';
@@ -90,7 +93,16 @@ export function installTestFacade(): void {
         app.sortMode,
         todayD()
       ),
-    todayStr: () => ymd(todayD())
+    todayStr: () => ymd(todayD()),
+    /* 收口轮新增：危险操作与提醒闭环的验收入口（只给 build/remedy-check.mjs 用） */
+    uiState,
+    dataJob,
+    clearAll: () => clearTables(['tasks', 'habits', 'countdowns', 'pomodoros'], '正在清空全部数据'),
+    importText: (text: string, mode: 'append' | 'replace' = 'append') =>
+      importBundle(parseBundleText(text), mode),
+    markRead: (id: string, idx: number) => markRemindRead(id, idx),
+    completeRemind: (id: string) => completeFromReminder(id),
+    alertCount: () => alertSummary(data.tasks, clock.now).total
   };
   (window as unknown as Record<string, unknown>).__SD_TEST__ = api;
 }

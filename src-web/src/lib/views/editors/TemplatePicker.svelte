@@ -4,6 +4,7 @@
   import { data } from '$lib/store/data.svelte';
   import { todayD } from '$lib/store/clock.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import { prepareForm } from '$lib/actions/prepare-form';
 
   let { onpick, onclose }: { onpick: (t: Task) => void; onclose: () => void } = $props();
 
@@ -25,7 +26,7 @@
     </div>
     <div class="m-body">
       <div class="field">
-        <input class="inp" id="tplKw" bind:value={kw} placeholder="搜索已有日程的标题或备注" />
+        <input class="inp" id="tplKw" bind:value={kw} placeholder="搜索已有日程的标题或备注" use:prepareForm />
       </div>
       {#if rows.length}
         {#each rows as t (t.id)}

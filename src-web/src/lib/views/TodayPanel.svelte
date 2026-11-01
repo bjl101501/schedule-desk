@@ -7,7 +7,7 @@
   import { app } from '$lib/store/app.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
   import { data, toggleDone, toggleSubAt } from '$lib/store/data.svelte';
-  import { openTaskDetail } from '$lib/store/ui.svelte';
+  import { toggleTaskDetail } from '$lib/store/ui.svelte';
   import { isSuppressed } from '$lib/actions/suppress';
   import Icon from '$lib/ui/Icon.svelte';
 
@@ -109,7 +109,7 @@
 
   function rowClick(id: string): void {
     if (isSuppressed()) return;
-    openTaskDetail(id);
+    toggleTaskDetail(id);
   }
 
   function subLabel(g: ReturnType<typeof subPlan>[number]): { text: string; over: boolean } {

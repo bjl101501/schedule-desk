@@ -12,7 +12,8 @@ import { calcStreak } from '$lib/domain/selectors';
 import { cdToProps, habitToProps, pomoToProps, taskToProps } from '$lib/domain/props';
 import { buildSeed } from '$lib/domain/seed';
 import { cleanHolidayName, fallbackHoliday, HOLIDAY_API, type HolidayInfo } from '$lib/domain/holiday';
-import { db, dbAvailable } from '$lib/bridge/db';
+import { db, dbAvailable, flushNow } from '$lib/bridge/db';
+import type { Bundle } from '$lib/domain/backup';
 import { app } from './app.svelte';
 import { markOffline, markSynced, markSyncing } from './sync.svelte';
 import { toast } from './toast.svelte';
@@ -92,6 +93,153 @@ export async function loadAll(): Promise<void> {
     loadLocalCache();
     app.loaded = true;
   }
+}
+
+/* ---------- 长任务（清空 / 导入）进度 ---------- */
+export const dataJob = $state({ on: false, label: '', done: 0, total: 0 });
+
+const SNAP_KEY = 'wb_schedule_snapshot';
+
+/** 删除前的安全快照：与备份弹窗的「恢复上次快照」共用同一个键 */
+export function writeSafetySnapshot(reason: string): boolean {
+  try {
+    localStorage.setItem(
+      SNAP_KEY,
+      JSON.stringify({
+        at: Date.now(),
+        reason,
+        tasks: $state.snapshot(data.tasks),
+        habits: $state.snapshot(data.habits),
+        countdowns: $state.snapshot(data.countdowns),
+        pomodoros: $state.snapshot(data.pomodoros)
+      })
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export { SNAP_KEY };
+
+type TableKey = 'tasks' | 'habits' | 'countdowns' | 'pomodoros';
+
+const TABLE_DELETE: Record<TableKey, (id: string) => Promise<void>> = {
+  tasks: apiDeleteTask,
+  habits: apiDeleteHabit,
+  countdowns: apiDeleteCountdown,
+  pomodoros: apiDeletePomo
+};
+
+/*
+  真清空：必须按「库里有的行」逐条删，只清内存会让 loadAll 下次把数据读回来。
+  顺序不能反：deleteRecord 会把行标成 deleted，边删边翻页会漏行，所以先收集再删。
+*/
+export async function clearTables(which: TableKey[], label = '正在清空'): Promise<void> {
+  const online = dbAvailable();
+  const ids: Partial<Record<TableKey, string[]>> = {};
+  let total = 0;
+  for (const w of which) {
+    const rows = online ? await loadAllRows(w) : [];
+    const list = rows.map((r) => String(r.id || '')).filter(Boolean);
+    ids[w] = list;
+    total += list.length;
+  }
+
+  dataJob.on = true;
+  dataJob.label = label;
+  dataJob.done = 0;
+  dataJob.total = total;
+  try {
+    if (online) {
+      for (const w of which) {
+        const list = ids[w] || [];
+        for (let i = 0; i < list.length; i += 40) {
+          const chunk = list.slice(i, i + 40);
+          await Promise.all(chunk.map((id) => TABLE_DELETE[w](id)));
+          flushNow();
+          dataJob.done += chunk.length;
+          await new Promise((r) => setTimeout(r, 0));
+        }
+      }
+    }
+    data.tasks = [];
+    data.habits = [];
+    data.countdowns = [];
+    data.pomodoros = [];
+    // 不标记的话，下次 loadAll 会把示例数据重新种回来
+    markSeeded();
+    flushCache();
+  } finally {
+    dataJob.on = false;
+  }
+}
+
+/*
+  导入：追加是真追加（现有数据一条不动），replace 是先清空再导入。
+  两条路径共用同一段写入逻辑，保证字段清洗完全一致。
+  id 必须全部重映射：沿用备份里的旧 id 会与现有记录撞 keyed each，直接白屏。
+*/
+export async function importBundle(
+  b: Bundle,
+  mode: 'append' | 'replace' = 'append',
+  clearWhich: TableKey[] = ['tasks', 'habits', 'countdowns', 'pomodoros']
+): Promise<number> {
+  const habits = b.habits;
+  // 假期条目由 ensureHolidayCountdown 自己维护，导入会让「下一个假期」出现两条
+  const countdowns = b.countdowns.filter((c) => c.sys !== 'holiday');
+  const total = b.tasks.length + habits.length + countdowns.length + b.pomodoros.length;
+
+  if (mode === 'replace') {
+    writeSafetySnapshot('先清空再导入前');
+    await clearTables(clearWhich, '正在清空');
+  }
+
+  dataJob.on = true;
+  dataJob.label = mode === 'replace' ? '正在替换' : '正在导入';
+  dataJob.done = 0;
+  dataJob.total = total;
+  let step = 0;
+  const bump = async (): Promise<void> => {
+    dataJob.done++;
+    if (++step % 20 === 0) await new Promise((r) => setTimeout(r, 0));
+  };
+
+  try {
+    for (const t of b.tasks) {
+      t.id = '';
+      await apiAddTask(t);
+      if (!t.id) t.id = uid();
+      pushProxied(data.tasks, t);
+      await bump();
+    }
+    for (const h of habits) {
+      h.id = '';
+      await apiSaveHabit(h);
+      if (!h.id) h.id = uid();
+      pushProxied(data.habits, h);
+      await bump();
+    }
+    for (const c of countdowns) {
+      c.id = '';
+      await apiSaveCountdown(c);
+      if (!c.id) c.id = uid();
+      pushProxied(data.countdowns, c);
+      await bump();
+    }
+    for (const p of b.pomodoros) {
+      p.id = '';
+      await apiAddPomo(p);
+      if (!p.id) p.id = uid();
+      pushProxied(data.pomodoros, p);
+      await bump();
+    }
+    markSeeded();
+    flushCache();
+  } finally {
+    dataJob.on = false;
+  }
+  return total;
 }
 
 /* ---------- 本地缓存（260ms 合并写入） ---------- */
@@ -229,6 +377,12 @@ export function apiDeleteCountdown(id: string): Promise<void> {
   return db.deleteRecord({ databaseId: 'gVxrxS4S2Zb2xddhphNdjT', recordId: id }).then(() => {}).catch((e) => console.error(e));
 }
 
+/** 删一条专注记录；旧版只清内存，导致「清空」后重启又冒出来 */
+export function apiDeletePomo(id: string): Promise<void> {
+  if (!id) return Promise.resolve();
+  return db.deleteRecord({ databaseId: DB_IDS.pomodoros, recordId: id }).then(() => {}).catch((e) => console.error(e));
+}
+
 export function apiAddPomo(p: Pomodoro): Promise<void> {
   return db
     .addRecord({ databaseId: DB_IDS.pomodoros, properties: pomoToProps(p) })
@@ -273,7 +427,10 @@ export function toggleSubAt(t: Task, idx: number): boolean {
   const fields = ['拆分'];
   if (flipped) fields.push('已完成', '完成时间');
   apiUpdateTask(t, fields);
-  if (flipped && t.done) spawnNextRepeat(t);
+  if (flipped && t.done) {
+    spawnNextRepeat(t);
+    toast.show('子项全部完成，日程已标记完成');
+  }
   return flipped;
 }
 
@@ -484,13 +641,20 @@ export function autoSnapshotDaily(): void {
   }
 }
 
-export function restoreDailySnap(day: string): boolean {
+/** 恢复每日快照：必须真写库，否则重载后被库里的旧数据盖回去 */
+export async function restoreDailySnap(day: string): Promise<boolean> {
   const hit = readDailySnaps().filter((x) => x.day === day)[0];
   if (!hit) return false;
-  data.tasks = hit.tasks || [];
-  data.habits = hit.habits || [];
-  data.countdowns = hit.countdowns || [];
-  cacheLocal();
+  await importBundle(
+    {
+      tasks: hit.tasks || [],
+      habits: hit.habits || [],
+      countdowns: hit.countdowns || [],
+      pomodoros: []
+    },
+    'replace',
+    ['tasks', 'habits', 'countdowns']
+  );
   toast.show('已恢复到 ' + day + ' 的快照');
   return true;
 }

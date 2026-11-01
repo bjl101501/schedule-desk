@@ -9,7 +9,8 @@
   import { isSuppressed } from '$lib/actions/suppress';
   import Icon from '$lib/ui/Icon.svelte';
   import { pointerDrag, hitAt } from '$lib/actions/drag';
-  import { dropToDate } from '$lib/store/dndActions.svelte';
+  import { beginDrag, type DragFx } from '$lib/actions/dragFx';
+  import { dropToAllDay, dropToDate, dropToDateTime } from '$lib/store/dndActions.svelte';
 
   const HOUR_H = 36;
   const DAY_MIN = 1440;
@@ -96,6 +97,101 @@
 
   function goToday(): void {
     app.cursor = today0();
+  }
+
+  let fx: DragFx | null = null;
+  let lineEl: HTMLElement | null = null;
+  let bubEl: HTMLElement | null = null;
+
+  function showTimeCursor(day: HTMLElement, min: number): void {
+    if (!lineEl) {
+      lineEl = document.createElement('div');
+      lineEl.className = 'cal-drag-line';
+      document.getElementById('float-root')?.appendChild(lineEl) ?? document.body.appendChild(lineEl);
+    }
+    if (!bubEl) {
+      bubEl = document.createElement('div');
+      bubEl.className = 'cal-drag-tip';
+      document.getElementById('float-root')?.appendChild(bubEl) ?? document.body.appendChild(bubEl);
+    }
+    const r = day.getBoundingClientRect();
+    const top = r.top + (min / 60) * HOUR_H;
+    lineEl.style.display = 'block';
+    lineEl.style.left = r.left + 6 + 'px';
+    lineEl.style.width = Math.max(24, r.width - 12) + 'px';
+    lineEl.style.top = top + 'px';
+    bubEl.style.display = 'block';
+    bubEl.style.left = r.left + 8 + 'px';
+    bubEl.style.top = Math.max(4, top - 26) + 'px';
+    bubEl.textContent = hmStr(min);
+  }
+
+  function hideTimeCursor(): void {
+    if (lineEl) lineEl.style.display = 'none';
+    if (bubEl) bubEl.style.display = 'none';
+  }
+
+  /** 指针在某天列里的分钟数（按 5 分钟吸附） */
+  function minuteAt(day: HTMLElement, clientY: number): number {
+    const r = day.getBoundingClientRect();
+    const ratio = (clientY - r.top) / Math.max(1, r.height);
+    const raw = Math.round((ratio * 24 * 60) / 5) * 5;
+    return Math.max(0, Math.min(23 * 60 + 55, raw));
+  }
+
+  const mdDrag = {
+    handle: '.md-ev2, .md-adchip, .wev',
+    onStart: (el: HTMLElement) => {
+      app.dragging = true;
+      el.classList.add('dragging');
+      fx = beginDrag({ source: el, scrollEl: () => el.closest('.md-wrap') as HTMLElement | null });
+    },
+    onMove: (el: HTMLElement, e: PointerEvent) => {
+      if (!fx) return;
+      const day = hitAt(e, '.md-day, .md-allday, .wcol-body');
+      fx.move(e);
+      if (!day) {
+        fx.mark(null, 'box', '');
+        hideTimeCursor();
+        return;
+      }
+      const ds = day.getAttribute('data-cdate') || '';
+      if (day.classList.contains('md-allday')) {
+        hideTimeCursor();
+        fx.mark(day, 'box', '松手改为全天');
+        return;
+      }
+      const min = minuteAt(day, e.clientY);
+      showTimeCursor(day, min);
+      fx.mark(day, 'box', '松手改到 ' + ds.slice(5) + ' ' + hmStr(min));
+    },
+    onEnd: (el: HTMLElement, e: PointerEvent, moved: boolean) => {
+      app.dragging = false;
+      el.classList.remove('dragging');
+      hideTimeCursor();
+      fx?.end();
+      fx = null;
+      if (!moved) return;
+      const day = hitAt(e, '.md-day, .md-allday, .wcol-body');
+      const ds = day?.getAttribute('data-cdate') || '';
+      const id = el.getAttribute('data-tid') || '';
+      if (!id || !ds) return;
+      if (day!.classList.contains('md-allday')) {
+        dropToAllDay(id, ds);
+        return;
+      }
+      if (day!.classList.contains('wcol-body')) {
+        dropToDate(id, ds);
+        return;
+      }
+      dropToDateTime(id, ds, hmStr(minuteAt(day as HTMLElement, e.clientY)));
+    }
+  };
+
+  function openMonth(m: number): void {
+    app.calReturn = { mode: 'year', cursor: new Date(cursor) };
+    app.cursor = new Date(cursor.getFullYear(), m, 1);
+    app.calMode = 'month';
   }
 
   function openDay(ds: string): void {
@@ -266,7 +362,7 @@
   }
 
   $effect(() => {
-    if (app.calMode === 'day' || app.calMode === 'multiday' || app.calMode === 'week') {
+    if (app.calMode === 'day' || app.calMode === 'multiday') {
       const id = setTimeout(scrollGrid, 60);
       return () => clearTimeout(id);
     }
@@ -319,14 +415,14 @@
   {#if app.calMode === 'year'}
     <div class="year-grid">
       {#each yearGrid as mo (mo.m)}
-        <div class="ymini{mo.m === cursor.getMonth() ? ' on' : ''}" data-ymonth={mo.m}>
+        <div class="ymini{mo.m === cursor.getMonth() ? ' on' : ''}" data-ymonth={mo.m} onclick={() => openMonth(mo.m)}>
           <h4>{mo.m + 1} 月{#if mo.count}<em>{mo.count} 项</em>{/if}</h4>
           <div class="yweek">
             {#each mo.weeks as c (c.ds)}
               <div
                 class="yday{c.out ? ' out' : ''}{c.today ? ' today' : ''}{c.has ? ' has' : ''}{c.has > 1 ? ' multi' : ''}{c.has ? ' ' + c.prio : ''}"
                 data-cdate={c.ds}
-                onclick={() => openDay(c.ds)}
+                onclick={(e) => { e.stopPropagation(); openDay(c.ds); }}
               >
                 <span class="ynum" data-ynum={c.ds} title="点这里看这一天">{c.day}</span>
               </div>
@@ -344,6 +440,14 @@
         onStart: (el) => {
           app.dragging = true;
           el.classList.add('dragging');
+          fx = beginDrag({ source: el, scrollEl: () => document.getElementById('content') });
+        },
+        onMove: (el, e) => {
+          if (!fx) return;
+          const cell = hitAt(e, '[data-cdate]');
+          const ds = cell?.getAttribute('data-cdate') || '';
+          fx.move(e);
+          fx.mark(cell, 'box', ds ? '松手改到 ' + ds.slice(5) : '');
         },
         onEnd: (el, e, moved) => {
           app.dragging = false;
@@ -353,6 +457,8 @@
           const ds = cell?.getAttribute('data-cdate') || '';
           const id = el.getAttribute('data-tid') || '';
           if (id && ds) dropToDate(id, ds);
+          fx?.end();
+          fx = null;
         }
       }}
     >
@@ -371,11 +477,36 @@
         </div>
       {/each}
     </div>
+  {:else if app.calMode === 'week'}
+    {@const ws = startOfWeek(cursor)}
+    {@const wdays = Array.from({ length: 7 }, (_, i) => addDays(ws, i))}
+    <div class="week-grid" use:pointerDrag={mdDrag}>
+      {#each wdays as d (ymd(d))}
+        <div class="wcol{sameDay(d, today) ? ' today' : ''}">
+          <div class="wcol-head">
+            <div class="wd">{weekdayName(d)}</div>
+            <div class="dn">{d.getDate()}</div>
+          </div>
+          <div
+            class="wcol-body"
+            data-cdate={ymd(d)}
+            onclick={(e) => { if ((e.target as HTMLElement).closest('[data-tid]')) return; openDay(ymd(d)); }}
+          >
+            {#each tasksOn(ymd(d)) as t (t.id)}
+              <div class="wev {prioCls(t)}{t.done ? ' done' : ''}" data-tid={t.id} onclick={() => openTask(t.id)}>
+                <div class="wt">{t.time || '全天'}</div>
+                {t.title}
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/each}
+    </div>
   {:else if app.calMode === 'multiweek'}
     {#each Array.from({ length: app.calWeeks }, (_, i) => i) as w (w)}
       {@const days = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(cursor), w * 7 + i))}
       <div class="md-wrap" style="--hour-h:{HOUR_H}px;height:auto">
-        <div class="md-grid" data-n="7">
+        <div class="md-grid" data-n="7" use:pointerDrag={mdDrag}>
           <div class="md-corner"></div>
           {#each days as d (ymd(d))}
             <div class="md-colhead{sameDay(d, today) ? ' today' : ''}">
@@ -384,14 +515,14 @@
             </div>
           {/each}
           {#each days as d (ymd(d) + 'a')}
-            <div class="md-allday" data-cdate={ymd(d)}>
+            <div class="md-allday" data-cdate={ymd(d)} onclick={(e) => { if ((e.target as HTMLElement).closest('[data-tid]')) return; openDay(ymd(d)); }}>
               {#each tasksOn(ymd(d)).filter((t) => !t.time) as t (t.id)}
                 <span class="md-adchip {prioCls(t)}" data-tid={t.id} onclick={() => openTask(t.id)}>{t.title}</span>
               {/each}
             </div>
           {/each}
           {#each days as d (ymd(d) + 'b')}
-            <div class="md-day" data-cdate={ymd(d)}>
+            <div class="md-day" data-cdate={ymd(d)} onclick={(e) => { if ((e.target as HTMLElement).closest('[data-tid]')) return; openDay(ymd(d)); }}>
               {#each blocksOf(tasksOn(ymd(d)), ymd(d)) as b (b.t.id)}
                 <div
                   class="md-ev2 {prioCls(b.t)}{b.t.done ? ' done' : ''}{b.hgt < 34 ? ' tiny' : ''}{b.hgt < 46 ? ' short' : ''}"
@@ -411,7 +542,7 @@
     {/each}
   {:else}
     <div class="md-wrap" style="--hour-h:{HOUR_H}px">
-      <div class="md-grid" data-n={gridCols.length}>
+      <div class="md-grid" data-n={gridCols.length} use:pointerDrag={mdDrag}>
         <div class="md-corner"></div>
         {#each gridCols as c (c.ds + 'h')}
           <div class="md-colhead{c.isToday ? ' today' : ''}">

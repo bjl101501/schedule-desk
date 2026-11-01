@@ -119,6 +119,44 @@ export function dropToDate(taskId: string, ds: string): void {
   toast.show('已改到 ' + ds);
 }
 
+/** 日/多日视图：拖到某列某个时刻，日期与时间一起改 */
+export function dropToDateTime(taskId: string, ds: string, hm: string): void {
+  const t = data.tasks.find((x) => x.id === taskId);
+  if (!t || !ds || !hm) return;
+  if (t.date === ds && t.time === hm) return;
+  const oldDate = t.date;
+  const oldTime = t.time;
+  if (t.plan && t.endDate && t.date && ds !== t.date) {
+    const delta = dayDiff(parseYmd(t.date)!, parseYmd(ds)!);
+    t.endDate = ymd(addDays(parseYmd(t.endDate)!, delta));
+  }
+  t.date = ds;
+  t.time = hm;
+  syncRemindAnchor(t, oldDate, oldTime);
+  cacheLocal();
+  apiUpdateTask(t, ['日期', '时间', '结束日期', '提醒设置']);
+  toast.show('已改到 ' + ds.slice(5) + ' ' + hm);
+}
+
+/** 拖到「全天」行：清掉时间，任务变全天 */
+export function dropToAllDay(taskId: string, ds: string): void {
+  const t = data.tasks.find((x) => x.id === taskId);
+  if (!t || !ds) return;
+  if (t.date === ds && !t.time) return;
+  const oldDate = t.date;
+  const oldTime = t.time;
+  if (t.plan && t.endDate && t.date && ds !== t.date) {
+    const delta = dayDiff(parseYmd(t.date)!, parseYmd(ds)!);
+    t.endDate = ymd(addDays(parseYmd(t.endDate)!, delta));
+  }
+  t.date = ds;
+  t.time = '';
+  syncRemindAnchor(t, oldDate, oldTime);
+  cacheLocal();
+  apiUpdateTask(t, ['日期', '时间', '结束日期', '提醒设置']);
+  toast.show('已改为全天');
+}
+
 /** 时间线：移动条改开始日，拖右手柄改天数 */
 export function dropTimeline(taskId: string, newStart: string, newSpan?: number): void {
   const t = data.tasks.find((x) => x.id === taskId);

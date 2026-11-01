@@ -6,6 +6,7 @@
   import { uiState } from '$lib/store/ui.svelte';
   import { toast } from '$lib/store/toast.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import { prepareForm } from '$lib/actions/prepare-form';
 
   const id = uiState.habitEditor?.id || '';
   const src = data.habits.find((h) => h.id === id);
@@ -71,7 +72,7 @@
 <div class="m-body">
   <div class="field">
     <label>名称</label>
-    <input class="inp inp-title" id="hdName" bind:value={name} placeholder="比如：早起 6:30" autofocus />
+    <input class="inp inp-title" id="hdName" bind:value={name} placeholder="比如：早起 6:30" autofocus use:prepareForm />
   </div>
   <div class="field">
     <label>图标</label>
@@ -95,7 +96,7 @@
   </div>
   <div class="field">
     <label>每周目标<span class="hint">1–7 天</span></label>
-    <input class="inp" id="hdTarget" type="number" min="1" max="7" bind:value={target} />
+    <input class="inp" id="hdTarget" type="number" min="1" max="7" bind:value={target} use:prepareForm />
   </div>
 </div>
 <div class="m-foot">

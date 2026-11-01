@@ -8,6 +8,10 @@
   import { meta } from '$lib/store/meta.svelte';
   import { uiState } from '$lib/store/ui.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import { pointerDrag, hitAt } from '$lib/actions/drag';
+  import { beginDrag, type DragFx } from '$lib/actions/dragFx';
+  import { setCdGroupOrder } from '$lib/store/meta.svelte';
+  import { app } from '$lib/store/app.svelte';
 
   const tick = $derived(clock.now);
 
@@ -19,6 +23,27 @@
     let cand = new Date(now.getFullYear(), d.getMonth(), d.getDate());
     if (cand < now) cand = new Date(now.getFullYear() + 1, d.getMonth(), d.getDate());
     return cand;
+  }
+
+  let fx: DragFx | null = null;
+
+  function onGroupEnd(el: HTMLElement, e: PointerEvent, moved: boolean): void {
+    app.dragging = false;
+    el.closest('.cdgroup')?.classList.remove('dragging');
+    fx?.end();
+    fx = null;
+    if (!moved) return;
+    const hit = hitAt(e, '[data-cdgh]');
+    const from = el.getAttribute('data-cdgh') || '';
+    const to = hit?.getAttribute('data-cdgh') || '';
+    if (!hit || !from || !to || from === to) return;
+    const order = groups.groups.map((g) => g.name);
+    const a = order.indexOf(from);
+    const b = order.indexOf(to);
+    if (a < 0 || b < 0) return;
+    order.splice(a, 1);
+    order.splice(b, 0, from);
+    setCdGroupOrder(order);
   }
 
   function darken(hex: string): string {
@@ -83,7 +108,27 @@
     <button class="btn btn-pri view-add" data-cdadd onclick={() => edit('')}><Icon name="plus" />添加纪念日</button>
     <div class="view-note">{@html groups.note} · 拖动分组标题可调整顺序</div>
   </div>
-  <div class="cd-grid cd-flat">
+  <div
+  class="cd-grid cd-flat"
+  use:pointerDrag={{
+    handle: '[data-cdgh]',
+    threshold: 6,
+    onStart: (el) => {
+      app.dragging = true;
+      el.closest('.cdgroup')?.classList.add('dragging');
+      fx = beginDrag({ source: el.closest('.cdgroup') as HTMLElement, scrollEl: () => document.getElementById('content') });
+    },
+    onMove: (el, e) => {
+      if (!fx) return;
+      const hit = hitAt(e, '[data-cdgh]');
+      const same = hit && hit !== el;
+      fx.move(e);
+      fx.mark(same ? (hit.closest('.cdgroup') as HTMLElement) : null, 'insert-l', same ? '松手放到「' + (hit.textContent || '').trim().slice(0, 8) + '」之前' : '');
+      if (same) hit.closest('.cdgroup')?.classList.add('drop-before');
+    },
+    onEnd: onGroupEnd
+  }}
+>
     {#each groups.groups as g (g.name)}
       <div class="cdgroup" data-cdgroup={g.name}>
         <div class="cdgroup-head" data-cdgh={g.name}>

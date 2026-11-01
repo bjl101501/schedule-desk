@@ -237,6 +237,22 @@ export function dbSnapshot(): Record<string, DbRow[]> {
   return JSON.parse(JSON.stringify(state.tables));
 }
 
+/* 外部变更通知：Rust 侧没有事件广播，这里只做前端内的「拉到了新数据」信号。
+   WebDAV 同步成功、或 tick 发现 lastSync 变化时发出，main.ts 决定要不要重载。 */
+type UpdatedFn = () => void;
+const updateFns = new Set<UpdatedFn>();
+
+export function onUpdated(fn: UpdatedFn): () => void {
+  updateFns.add(fn);
+  return () => {
+    updateFns.delete(fn);
+  };
+}
+
+export function emitUpdated(): void {
+  updateFns.forEach((fn) => fn());
+}
+
 export function flushNow(): void {
   if (flushTimer) {
     clearTimeout(flushTimer);

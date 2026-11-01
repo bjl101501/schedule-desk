@@ -6,6 +6,7 @@
   import { toast } from '$lib/store/toast.svelte';
   import { openTaskEditor, uiState } from '$lib/store/ui.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import { prepareForm } from '$lib/actions/prepare-form';
 
   let raw = $state(uiState.quickDraft || '');
   let input: HTMLInputElement;
@@ -80,7 +81,7 @@
 </div>
 <div class="m-body">
   <div class="field">
-    <input class="inp" id="qaInput" bind:this={input} bind:value={raw} onkeydown={onKey} placeholder="例：明天下午 3 点开会 #工作 !p1" style="height:46px;font-size:16px" autofocus />
+    <input class="inp" id="qaInput" bind:this={input} bind:value={raw} onkeydown={onKey} placeholder="例：明天下午 3 点开会 #工作 !p1" style="height:46px;font-size:16px" autofocus use:prepareForm />
   </div>
   <div id="qaPreview" style="min-height:52px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px">
     {#if !raw.trim()}

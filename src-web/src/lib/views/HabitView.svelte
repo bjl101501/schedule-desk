@@ -4,6 +4,7 @@
   import { calcStreak } from '$lib/domain/selectors';
   import { app } from '$lib/store/app.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
+  import { toast } from '$lib/store/toast.svelte';
   import { apiSaveHabit, cacheLocal, data } from '$lib/store/data.svelte';
   import { uiState } from '$lib/store/ui.svelte';
   import Icon from '$lib/ui/Icon.svelte';
@@ -22,6 +23,11 @@
   }
 
   function toggle(h: Habit, ds: string): void {
+    // 还没到的日子不给打卡，否则「连续天数」会被未来的勾预先占掉
+    if (ds > t0s) {
+      toast.show('还没到那天');
+      return;
+    }
     const i = h.log.indexOf(ds);
     if (i > -1) h.log.splice(i, 1);
     else h.log.push(ds);
@@ -30,6 +36,7 @@
     h.streak = calcStreak(h, today);
     cacheLocal();
     apiSaveHabit(h);
+    toast.show(i > -1 ? '已取消打卡' : '已打卡 ' + ds.slice(5));
   }
 
   const doneToday = $derived.by(() => {

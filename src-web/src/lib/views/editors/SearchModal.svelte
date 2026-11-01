@@ -4,6 +4,7 @@
   import { app, setFilters } from '$lib/store/app.svelte';
   import { uiState, openTaskDetail } from '$lib/store/ui.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import { prepareForm } from '$lib/actions/prepare-form';
 
   let kw = $state(app.filters.kw);
   const today = todayD();
@@ -47,7 +48,7 @@
 </div>
 <div class="m-body">
   <div class="field">
-    <input class="inp" id="searchKw" bind:value={kw} onkeydown={onKey} placeholder="搜标题、备注、标签、清单、子项" autofocus />
+    <input class="inp" id="searchKw" bind:value={kw} onkeydown={onKey} placeholder="搜标题、备注、标签、清单、子项" autofocus use:prepareForm />
   </div>
   {#if kw.trim()}
     <div style="display:flex;gap:8px;align-items:center">

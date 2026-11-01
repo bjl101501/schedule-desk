@@ -5,6 +5,7 @@
   import { clock } from '$lib/store/clock.svelte';
   import { data } from '$lib/store/data.svelte';
   import { openTaskDetail, uiState } from '$lib/store/ui.svelte';
+  import { completeFromReminder, markRemindRead, remindStage } from '$lib/store/remind.svelte';
   import Icon from '$lib/ui/Icon.svelte';
 
   const pend = $derived(pendingReminders(data.tasks, clock.now));
@@ -28,6 +29,16 @@
     close();
     openTaskDetail(id);
   }
+
+  function ack(p: { task: { id: string; remindMode: string }; r: { idx: number } }, e: MouseEvent): void {
+    e.stopPropagation();
+    markRemindRead(p.task.id, p.r.idx);
+  }
+
+  function done(id: string, e: MouseEvent): void {
+    e.stopPropagation();
+    completeFromReminder(id);
+  }
 </script>
 
 <div class="m-head">
@@ -39,10 +50,21 @@
     <label>已到点<span class="hint">{pend.length} 条</span></label>
     {#if pend.length}
       {#each pend as p (p.task.id + p.r.idx)}
-        <button class="tpl-row" data-remind-open={p.task.id} onclick={() => open(p.task.id)}>
+        <div class="tpl-row" data-remind-open={p.task.id} onclick={() => open(p.task.id)} role="button" tabindex="0" onkeydown={(e) => { if (e.key === 'Enter') open(p.task.id); }}>
           <span class="tpl-t"><Icon name="bell" /> {p.task.title}</span>
-          <span class="tpl-m">{ebStageName(p.r.offset)} · {relTime(p.r.at, clock.now)}</span>
-        </button>
+          <span class="tpl-m">
+            {#if p.task.remindMode === '艾宾浩斯'}
+              {remindStage(p.task, p.r.idx)} · {ebStageName(p.r.offset)}
+            {:else}
+              {ebStageName(p.r.offset)}
+            {/if}
+            · {relTime(p.r.at, clock.now)}
+          </span>
+          <span style="display:flex;gap:6px;margin-left:auto;flex:0 0 auto">
+            <button class="btn btn-sec btn-sm" data-rack={p.task.id + ':' + p.r.idx} onclick={(e) => ack(p, e)}>知道了</button>
+            <button class="btn btn-pri btn-sm" data-rdone={p.task.id} onclick={(e) => done(p.task.id, e)}>完成</button>
+          </span>
+        </div>
       {/each}
     {:else}
       <div style="font-size:12.5px;color:var(--text-3)">现在没有到点的提醒。</div>

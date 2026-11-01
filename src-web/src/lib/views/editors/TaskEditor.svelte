@@ -18,6 +18,7 @@
   import TagInput from '$lib/ui/TagInput.svelte';
   import Icon from '$lib/ui/Icon.svelte';
   import TemplatePicker from './TemplatePicker.svelte';
+  import { prepareForm } from '$lib/actions/prepare-form';
 
   const SUB_TPLS = [
     { k: 'homework', t: '作业分科', items: [['语文作业', 30], ['数学作业', 40], ['英语作业', 30], ['其他科目', 20]] },
@@ -163,6 +164,28 @@
     setEstMin(subSum);
   }
 
+  function onStartDate(v: string): void {
+    const prev = date;
+    date = v;
+    if (!planOn) return;
+    if (!v) {
+      endDate = '';
+      return;
+    }
+    // 改开始日期时计划区间整体平移，跨度不变
+    if (prev && endDate && prev !== v) {
+      const a = parseYmd(prev);
+      const b = parseYmd(v);
+      const e = parseYmd(endDate);
+      if (a && b && e) endDate = ymd(addDays(e, dayDiff(a, b)));
+    }
+    if (endDate && endDate < v) endDate = v;
+  }
+
+  function onEndDate(v: string): void {
+    endDate = v && date && v < date ? date : v;
+  }
+
   function close(): void {
     closeTaskEditor();
   }
@@ -173,7 +196,10 @@
     if (id && id !== '__new__') setTimeout(() => openTaskDetail(id), 160);
   }
 
+  let saving = $state(false);
+
   function save(): void {
+    if (saving) return;
     const ttl = title.trim();
     if (!ttl) {
       toast.show('先写一个事项标题');
@@ -185,6 +211,14 @@
       return;
     }
     let cfg: Task['remindCfg'] = null;
+    // 基准时间与节点都没变时沿用已读标记：只改标题保存不该把已确认的提醒重新点亮
+    const keepRead = (next: NonNullable<Task['remindCfg']>): NonNullable<Task['remindCfg']> => {
+      const prev = src?.remindCfg;
+      if (!prev) return next;
+      const sameAnchor = prev.anchor === next.anchor;
+      const sameOffsets = JSON.stringify(prev.offsets || []) === JSON.stringify(next.offsets || []);
+      return sameAnchor && sameOffsets ? { ...next, read: [...(prev.read || [])] } : next;
+    };
     if (remindMode === '艾宾浩斯') {
       if (!offsets.length) {
         toast.show('至少选一个复习节点');
@@ -195,15 +229,15 @@
         toast.show('选一个开始日期，或手动填基准时间');
         return;
       }
-      cfg = { anchor: fromDtLocal(base), offsets: [...offsets], read: [] };
+      cfg = keepRead({ anchor: fromDtLocal(base), offsets: [...offsets], read: [] });
     } else if (remindMode === '单次提醒') {
-      cfg = {
+      cfg = keepRead({
         anchor: fromDtLocal(date + 'T' + (time || '09:00')),
         offsets: [onceOffset],
         read: [],
         snooze: snooze ? 5 : 0,
         end: endRemind && hasExplicitEnd ? 1 : 0
-      } as Task['remindCfg'];
+      } as NonNullable<Task['remindCfg']>);
     }
 
     syncEstFromInput();
@@ -243,11 +277,16 @@
     });
 
     if (src) {
+      saving = true;
       Object.assign(src, patch);
       src.span = taskSpan(src);
       cacheLocal();
-      apiUpdateTask(src);
+      const backId = fromDetail ? src.id : '';
+      apiUpdateTask(src).finally(() => {
+        saving = false;
+      });
       close();
+      if (backId) setTimeout(() => openTaskDetail(backId), 160);
       toast.show('已保存');
       return;
     }
@@ -279,7 +318,10 @@
     };
     nt.span = taskSpan(nt);
     nt.id = uid();
-    saveTask(nt);
+    saving = true;
+    saveTask(nt).finally(() => {
+      saving = false;
+    });
     close();
     toast.show('已添加');
   }
@@ -300,8 +342,7 @@
   }
 
   function pickFromTemplate(t: Task): void {
-    title = t.title || '';
-    note = t.note || '';
+    // 标题、备注、开始日期、开始时间都保持当前输入值，只搬「怎么排、怎么提醒」
     list = t.list || '收集箱';
     setEstMin(t.estimate || 0);
     subs = (t.subs || []).map((x, i) => ({ id: 's' + i, title: x.title, min: Number(x.min) || 0, days: Math.max(0, Number(x.days) || 0), done: false, doneAt: '' }));
@@ -371,10 +412,10 @@
 
 <div class="m-body">
   <div class="field">
-    <input class="inp inp-title" id="edTitle" bind:this={titleEl} bind:value={title} placeholder="要做什么？" autofocus />
+    <input class="inp inp-title" id="edTitle" bind:this={titleEl} bind:value={title} placeholder="要做什么？" autofocus use:prepareForm />
   </div>
   <div class="field">
-    <textarea class="inp" id="edNote" bind:this={noteEl} bind:value={note} rows="1" placeholder="补充说明（可选）"></textarea>
+    <textarea class="inp" id="edNote" bind:this={noteEl} bind:value={note} rows="1" placeholder="补充说明（可选）" use:prepareForm></textarea>
   </div>
 
   <section class="ed-sec">
@@ -382,7 +423,7 @@
     <div class="row2">
       <div class="field">
         <label>开始日期<span class="tip-i" tabindex="0" role="note" data-tip="日程从哪一天开始。跨多天用下面的「计划」。">?</span></label>
-        <DateField fieldId="edDate" bind:value={date} />
+        <DateField fieldId="edDate" bind:value={date} onchange={onStartDate} />
       </div>
       <div class="field">
         <label>开始时间<span class="tip-i" tabindex="0" role="note" data-tip="留空就是全天日程：当天一直显示「进行中」，过了这一天才会逾期。">?</span></label>
@@ -392,7 +433,7 @@
     <div class="field">
       <label>预计用时<span class="tip-i" tabindex="0" role="note" data-tip="填了时长：超过「开始 + 时长」还没完成才算逾期；留空按全天处理。">?</span></label>
       <div class="est-line">
-        <input class="inp" type="number" id="edEst" min="0" step={estUnit === 'hour' ? 0.5 : 5} bind:value={estValue} placeholder="留空" oninput={syncEstFromInput} />
+        <input class="inp" type="number" id="edEst" min="0" step={estUnit === 'hour' ? 0.5 : 5} bind:value={estValue} placeholder="留空" oninput={syncEstFromInput} use:prepareForm />
         <div class="seg est-unit" id="edEstUnit">
           <button type="button" class={estUnit === 'min' ? 'on' : ''} data-estunit="min" onclick={() => setUnit('min')}>分钟</button>
           <button type="button" class={estUnit === 'hour' ? 'on' : ''} data-estunit="hour" onclick={() => setUnit('hour')}>小时</button>
@@ -403,7 +444,7 @@
 
     <div class="plan-block">
       <div class="plan-head">
-        <label class="check-line" style="margin:0"><input type="checkbox" id="edPlanOn" bind:checked={planOn} onchange={onPlanToggle} /><span>计划</span></label>
+        <label class="check-line" style="margin:0"><input type="checkbox" id="edPlanOn" bind:checked={planOn} onchange={onPlanToggle} use:prepareForm /><span>计划</span></label>
         <span class="tip-i" tabindex="0" role="note" data-tip="跨多天完成的事项。勾选后选结束日期；结束时间可留空，表示到结束日 24:00。">?</span>
         <span class="hint">
           {planOn ? '跨多天：到结束日之后才算逾期' : '不勾就是当天的日程'}
@@ -412,7 +453,7 @@
       <div class="row2 plan-dates{planOn ? '' : ' is-off'}" id="edPlanWrap">
         <div class="field">
           <label>结束日期</label>
-          <DateField fieldId="edEndDate" bind:value={endDate} placeholder="结束日期" />
+          <DateField fieldId="edEndDate" bind:value={endDate} placeholder="结束日期" onchange={onEndDate} />
         </div>
         <div class="field">
           <label>结束时间<span class="hint">可留空</span></label>
@@ -452,11 +493,11 @@
             {/each}
           </div>
           <label class="check-line">
-            <input type="checkbox" id="edSnooze" bind:checked={snooze} />
+            <input type="checkbox" id="edSnooze" bind:checked={snooze} use:prepareForm />
             <span>稍后提醒<span class="hint">5 分钟后再提醒一次</span></span>
           </label>
           <label class="check-line{hasExplicitEnd ? '' : ' is-off'}">
-            <input type="checkbox" id="edEndRemind" bind:checked={endRemind} disabled={!hasExplicitEnd} />
+            <input type="checkbox" id="edEndRemind" bind:checked={endRemind} disabled={!hasExplicitEnd} use:prepareForm />
             <span>结束提醒<span class="hint">
               {hasExplicitEnd ? (onceOffset < 0 ? '结束前 ' + ebStageName(-onceOffset) + '再提醒一次' : '结束时再提醒一次') : '需要结束时间，或开始时间 + 预计用时'}
             </span></span>
@@ -501,9 +542,9 @@
       <div class="sub-edit{planOn ? ' has-span' : ''}" id="edSubs">
         {#each subs as x, i (i)}
           <div class="sub-edit-row">
-            <input class="inp sub-name" data-subt={i} bind:value={x.title} placeholder="子项名称，如 调研" />
-            <input class="inp sub-minin" type="number" min="0" step="5" data-subm={i} bind:value={x.min} placeholder="分钟" />
-            <input class="inp sub-dayin" type="number" min="0" max="365" step="1" data-subd={i} bind:value={x.days} placeholder="天" />
+            <input class="inp sub-name" data-subt={i} bind:value={x.title} placeholder="子项名称，如 调研" use:prepareForm />
+            <input class="inp sub-minin" type="number" min="0" step="5" data-subm={i} bind:value={x.min} placeholder="分钟" use:prepareForm />
+            <input class="inp sub-dayin" type="number" min="0" max="365" step="1" data-subd={i} bind:value={x.days} placeholder="天" use:prepareForm />
             <button class="sub-del" data-subdel={i} title="删除这个子项" onclick={() => delSub(i)}><Icon name="close" /></button>
           </div>
         {/each}
@@ -535,7 +576,7 @@
     <div class="field">
       <label>清单<span class="tip-i" tabindex="0" role="note" data-tip="给日程归类。左侧清单栏可以按清单查看。">?</span></label>
       <div class="pick-row list-row">
-        <input class="inp" id="edList" bind:value={list} placeholder="收集箱" />
+        <input class="inp" id="edList" bind:value={list} placeholder="收集箱" use:prepareForm />
         <button type="button" class="inp pick-multi pick-compact{listMenu ? ' open' : ''}" id="edListPick" onclick={() => (listMenu = !listMenu)}>
           <span>选已有</span><i class="pm-c"><Icon name="chevD" /></i>
         </button>
@@ -587,7 +628,7 @@
   {#if !isNew}<button class="btn btn-danger btn-sm" id="edDel" onclick={del}><Icon name="trash" />删除</button>{/if}
   <div class="spacer"></div>
   <button class="btn btn-sec" id="edCancel" onclick={close}>取消</button>
-  <button class="btn btn-pri" id="edSave" onclick={save}>{isNew ? '添加事项' : '保存修改'}</button>
+  <button class="btn btn-pri" id="edSave" onclick={save} disabled={saving}>{saving ? '保存中…' : isNew ? '添加事项' : '保存修改'}</button>
 </div>
 
 {#if showTpl}

@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { app } from '$lib/store/app.svelte';
   import { closeTopLayer, openQuickAdd, uiState } from '$lib/store/ui.svelte';
+  import { hydratePrefs } from '$lib/store/app.svelte';
+  import { loadAll } from '$lib/store/data.svelte';
   import { toastState } from '$lib/store/toast.svelte';
   import { bindTips } from '$lib/store/tip.svelte';
   import { goView } from '$lib/store/nav.svelte';
@@ -35,12 +37,16 @@
   import MiniMenu from '$lib/ui/MiniMenu.svelte';
   import TipLayer from '$lib/ui/TipLayer.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import { panelResize } from '$lib/actions/panelResize';
+  import { modalShell } from '$lib/actions/modalShell';
 
   let mainEl: HTMLElement;
   let width = $state(1200);
   // 面板模式必须按窗口宽度判断：用 .main 的宽度会形成反馈环
   // （开面板 → main 变窄 → 判定不再需要面板 → 关面板 → main 变宽 …）
   let vw = $state(typeof window === 'undefined' ? 1200 : window.innerWidth);
+  // 读不到数据时别一直转圈：9 秒后给一个「重新加载」
+  let slow = $state(false);
 
   const condensed = $derived(width < 860);
   const tight = $derived(width < 700);
@@ -58,13 +64,31 @@
     const onResize = () => (vw = window.innerWidth);
     window.addEventListener('resize', onResize);
     bindTips();
+    hydratePrefs();
+    const slowTimer = setTimeout(() => {
+      if (!app.loaded) slow = true;
+    }, 9000);
 
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       const tag = String(el?.tagName || '').toLowerCase();
       const typing = tag === 'input' || tag === 'textarea' || tag === 'select' || !!el?.isContentEditable;
+      const mod = e.ctrlKey || e.metaKey;
       if (e.key === 'Escape') {
         if (closeTopLayer()) e.preventDefault();
+        return;
+      }
+      // 下面三条必须在 typing 判断之前：输入框里也要生效
+      if (mod && (e.key === 'k' || e.key === 'K' || e.key === 'n' || e.key === 'N')) {
+        e.preventDefault();
+        openQuickAdd();
+        return;
+      }
+      if (mod && (e.key === 's' || e.key === 'S')) {
+        if (uiState.editorId) {
+          e.preventDefault();
+          (document.getElementById('edSave') as HTMLButtonElement | null)?.click();
+        }
         return;
       }
       if (typing) return;
@@ -78,9 +102,15 @@
         openQuickAdd();
         return;
       }
-      if (e.key === '/' || ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K'))) {
+      if (e.key === '/') {
         e.preventDefault();
         uiState.search = true;
+        return;
+      }
+      if (e.key >= '1' && e.key <= '7') {
+        const map = ['today', 'calendar', 'quadrant', 'habit', 'countdown', 'focus', 'stats'] as const;
+        e.preventDefault();
+        goView(map[Number(e.key) - 1]);
         return;
       }
       if (e.key === 't' || e.key === 'T') {
@@ -102,6 +132,7 @@
     document.addEventListener('keydown', onKey);
 
     return () => {
+      clearTimeout(slowTimer);
       ro.disconnect();
       window.removeEventListener('resize', onResize);
       document.removeEventListener('keydown', onKey);
@@ -126,8 +157,11 @@
       {#if !app.loaded}
         <div class="empty">
           <div class="empty-ico"><Icon name="clock" /></div>
-          <h4>正在加载你的日程…</h4>
-          <p>本地数据文件读取中，通常一秒内完成</p>
+          <h4>{slow ? '暂时读不到数据' : '正在加载你的日程…'}</h4>
+          <p>{slow ? '数据目录可能被占用或文件损坏。可以重试，或检查设置里的数据目录。' : '本地数据文件读取中，通常一秒内完成'}</p>
+          {#if slow}
+            <button data-reload onclick={() => { slow = false; void loadAll(); }}>重新加载</button>
+          {/if}
         </div>
       {:else if isTaskView}
         <TasksView />
@@ -150,87 +184,92 @@
   <Tabbar />
 </div>
 
-<div class="modal-root" id="modalRoot"></div>
+<div class="modal-root" id="modalRoot" use:modalShell>
+  {#if uiState.detailId && !uiState.editorId}
+    <div class="modal-mask in{panelOpen ? ' panel' : ''}" data-task={uiState.detailId}>
+      <div class="modal wide">{#if panelOpen}<div class="panel-grip" data-panelgrip use:panelResize></div>{/if}<TaskDetail /></div>
+    </div>
+  {/if}
 
-{#if uiState.detailId && !uiState.editorId}
-  <div class="modal-mask in{panelOpen ? ' panel' : ''}" data-task={uiState.detailId}>
-    <div class="modal wide"><TaskDetail /></div>
-  </div>
-{/if}
+  {#if uiState.editorId}
+    <div class="modal-mask in{panelOpen ? ' panel' : ''}">
+      <div class="modal wide">{#if panelOpen}<div class="panel-grip" data-panelgrip use:panelResize></div>{/if}<TaskEditor /></div>
+    </div>
+  {/if}
 
-{#if uiState.editorId}
-  <div class="modal-mask in{panelOpen ? ' panel' : ''}">
-    <div class="modal wide"><TaskEditor /></div>
-  </div>
-{/if}
+  {#if uiState.quickAdd}
+    <div class="modal-mask in">
+      <div class="modal"><QuickAdd /></div>
+    </div>
+  {/if}
 
-{#if uiState.quickAdd}
-  <div class="modal-mask in">
-    <div class="modal"><QuickAdd /></div>
-  </div>
-{/if}
+  {#if uiState.search}
+    <div class="modal-mask in">
+      <div class="modal"><SearchModal /></div>
+    </div>
+  {/if}
 
-{#if uiState.search}
-  <div class="modal-mask in">
-    <div class="modal"><SearchModal /></div>
-  </div>
-{/if}
+  {#if uiState.filter}
+    <div class="modal-mask in">
+      <div class="modal"><FilterPanel /></div>
+    </div>
+  {/if}
 
-{#if uiState.filter}
-  <div class="modal-mask in">
-    <div class="modal"><FilterPanel /></div>
-  </div>
-{/if}
+  {#if uiState.reminder}
+    <div class="modal-mask in">
+      <div class="modal"><ReminderCenter /></div>
+    </div>
+  {/if}
 
-{#if uiState.reminder}
-  <div class="modal-mask in">
-    <div class="modal"><ReminderCenter /></div>
-  </div>
-{/if}
+  {#if uiState.settings}
+    <div class="modal-mask in">
+      <div class="modal settings"><SettingsModal /></div>
+    </div>
+  {/if}
 
-{#if uiState.settings}
-  <div class="modal-mask in">
-    <div class="modal settings"><SettingsModal /></div>
-  </div>
-{/if}
+  {#if uiState.backup}
+    <div class="modal-mask in">
+      <div class="modal"><BackupModal /></div>
+    </div>
+  {/if}
 
-{#if uiState.backup}
-  <div class="modal-mask in">
-    <div class="modal"><BackupModal /></div>
-  </div>
-{/if}
+  {#if uiState.help}
+    <div class="modal-mask in">
+      <div class="modal"><HelpModal /></div>
+    </div>
+  {/if}
 
-{#if uiState.help}
-  <div class="modal-mask in">
-    <div class="modal"><HelpModal /></div>
-  </div>
-{/if}
+  {#if uiState.shortcuts}
+    <div class="modal-mask in">
+      <div class="modal shortcuts"><ShortcutsModal /></div>
+    </div>
+  {/if}
 
-{#if uiState.shortcuts}
-  <div class="modal-mask in">
-    <div class="modal shortcuts"><ShortcutsModal /></div>
-  </div>
-{/if}
+  {#if uiState.habitEditor}
+    <div class="modal-mask in">
+      <div class="modal"><HabitEditor /></div>
+    </div>
+  {/if}
 
-{#if uiState.habitEditor}
-  <div class="modal-mask in">
-    <div class="modal"><HabitEditor /></div>
-  </div>
-{/if}
+  {#if uiState.cdEditor}
+    <div class="modal-mask in">
+      <div class="modal"><CountdownEditor /></div>
+    </div>
+  {/if}
 
-{#if uiState.cdEditor}
-  <div class="modal-mask in">
-    <div class="modal"><CountdownEditor /></div>
-  </div>
-{/if}
+  <Confirm />
+  <Prompt />
+  <TypedConfirm />
+
+  <Confirm />
+  <Prompt />
+  <TypedConfirm />
+</div>
 
 {#if firstRun && app.loaded}
   <Onboarding />
 {/if}
 
-<Confirm />
-<Prompt />
-<TypedConfirm />
 <MiniMenu />
 <TipLayer />
 

@@ -2,7 +2,7 @@
 import type { Filters, Habit, Task, ViewKey } from './types';
 import { addDays, dayDiff, parseAnchor, parseHM, parseYmd, stampDay, today0, ymd } from './date';
 import { EB_OFFSETS, PRIOS } from './constants';
-import { reminderState } from './window';
+import { reminderState, taskState } from './window';
 
 export interface ScopeCtx {
   view: ViewKey;
@@ -206,4 +206,33 @@ export function todayStr(now: number = Date.now()): string {
 
 export function defaultToday(): Date {
   return today0();
+}
+
+/*
+  铃铛角标口径（功能表 §1.1 / CHANGELOG v2.2.0）：
+  = 已到点未确认的提醒 + 已逾期任务，同一条任务只算一次。
+  两个都命中的任务（既逾期又有待复习）只贡献 1。
+*/
+export function alertSummary(
+  tasks: Task[],
+  now: number
+): { total: number; remind: number; overdue: number; ids: string[] } {
+  const ids = new Set<string>();
+  let remind = 0;
+  let overdue = 0;
+  tasks.forEach((t) => {
+    if (!t || t.done) return;
+    let hit = false;
+    const r = reminderState(t, now);
+    if (r && r.overdue) {
+      remind++;
+      hit = true;
+    }
+    if (taskState(t, now).key === 'overdue') {
+      overdue++;
+      hit = true;
+    }
+    if (hit) ids.add(t.id);
+  });
+  return { total: ids.size, remind, overdue, ids: Array.from(ids) };
 }

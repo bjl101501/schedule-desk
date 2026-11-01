@@ -3,11 +3,13 @@ import { mount } from 'svelte';
 import App from './App.svelte';
 import { hasHost } from '$lib/bridge/invoke';
 import { installMockBridge } from '$lib/bridge/mock';
-import { dbReady } from '$lib/bridge/db';
+import { dbReady, emitUpdated, onUpdated } from '$lib/bridge/db';
 import { hydrateMeta } from '$lib/store/meta.svelte';
 import { loadAll } from '$lib/store/data.svelte';
 import { startClock } from '$lib/store/clock.svelte';
 import { applyStatus } from '$lib/store/sync.svelte';
+import { uiState } from '$lib/store/ui.svelte';
+import { app } from '$lib/store/app.svelte';
 import { syncStatus } from '$lib/bridge/desktop';
 import { installTestFacade } from '$lib/test/facade.svelte';
 
@@ -46,8 +48,27 @@ dbReady()
   .catch((e) => console.error('[boot] 初始化失败', e));
 
 
+let lastSync = '';
 startClock(() => {
-  syncStatus().then(applyStatus);
+  syncStatus().then((st) => {
+    applyStatus(st);
+    // 远端有新版本 → 通知一次，让界面在安全时机重载
+    const mark = String(st?.lastSync || '');
+    if (mark && lastSync && mark !== lastSync) emitUpdated();
+    if (mark) lastSync = mark;
+  });
+});
+
+/* 外部变更（WebDAV 拉取 / 托盘「立即同步」）后重载。
+   320ms 去抖与旧版一致；正在编辑或拖拽时跳过，避免把输入冲掉。 */
+let reloadTimer: ReturnType<typeof setTimeout> | null = null;
+onUpdated(() => {
+  if (reloadTimer) clearTimeout(reloadTimer);
+  reloadTimer = setTimeout(() => {
+    reloadTimer = null;
+    if (uiState.editorId || app.dragging) return;
+    void loadAll();
+  }, 320);
 });
 
 installTestFacade();

@@ -4,7 +4,7 @@
   import { prioCls, segDateText, subPlan, subStats, taskSpan } from '$lib/domain/task';
   import { app } from '$lib/store/app.svelte';
   import { todayD } from '$lib/store/clock.svelte';
-  import { openTaskDetail } from '$lib/store/ui.svelte';
+  import { toggleTaskDetail } from '$lib/store/ui.svelte';
   import { isSuppressed } from '$lib/actions/suppress';
   import Icon from '$lib/ui/Icon.svelte';
   import TaskRow from '$lib/components/TaskRow.svelte';
@@ -108,7 +108,7 @@
 
   function open(id: string): void {
     if (isSuppressed()) return;
-    openTaskDetail(id);
+    toggleTaskDetail(id);
   }
 
   function barStyle(off: number, span: number, days: number) {

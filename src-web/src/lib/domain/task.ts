@@ -345,5 +345,7 @@ export function normPomo(r: DbRow): Pomodoro {
 export function cdGroupOf(cd: Countdown): string {
   const g = String((cd && cd.group) || '').trim();
   if (g) return g;
-  return (cd && cd.type) || '其他';
+  const type = (cd && cd.type) || '';
+  // 生日每年循环，与纪念日同一类
+  return type === '生日' ? '纪念日' : type || '其他';
 }

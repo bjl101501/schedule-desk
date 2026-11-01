@@ -7,7 +7,7 @@
   import { clock, todayD } from '$lib/store/clock.svelte';
   import { app } from '$lib/store/app.svelte';
   import { deleteTask, toggleDone } from '$lib/store/data.svelte';
-  import { askDeleteTask, openTaskDetail, openTaskEditor } from '$lib/store/ui.svelte';
+  import { askDeleteTask, toggleTaskDetail, openTaskEditor } from '$lib/store/ui.svelte';
   import { isSuppressed } from '$lib/actions/suppress';
   import Icon from '$lib/ui/Icon.svelte';
   import Flags from './Flags.svelte';
@@ -34,7 +34,7 @@
 
   function onRowClick(): void {
     if (isSuppressed()) return;
-    openTaskDetail(t.id);
+    toggleTaskDetail(t.id);
   }
 
   function onDone(e: MouseEvent): void {

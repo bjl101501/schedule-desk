@@ -8,7 +8,12 @@
   import { loadMore } from '$lib/store/nav.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
   import { toggleDone } from '$lib/store/data.svelte';
-  import { openTaskDetail } from '$lib/store/ui.svelte';
+  import { toggleTaskDetail } from '$lib/store/ui.svelte';
+  import { pointerDrag, hitAt, ratioX } from '$lib/actions/drag';
+  import { beginDrag, type DragFx } from '$lib/actions/dragFx';
+  import { applyVisibleOrder } from '$lib/store/dndActions.svelte';
+  import { setSortMode } from '$lib/store/app.svelte';
+  import { toast } from '$lib/store/toast.svelte';
   import { isSuppressed } from '$lib/actions/suppress';
   import Icon from '$lib/ui/Icon.svelte';
   import Flags from '$lib/components/Flags.svelte';
@@ -31,13 +36,70 @@
     return st.key === 'overdue' ? 'over' : diff === 0 ? 'today' : '';
   }
 
+  let fx: DragFx | null = null;
+
+  const cardIds = (): string[] =>
+    Array.from(document.querySelectorAll('.card-grid [data-tid]'))
+      .map((n) => n.getAttribute('data-tid') || '')
+      .filter(Boolean);
+
+  function onDragEnd(el: HTMLElement, e: PointerEvent, moved: boolean): void {
+    app.dragging = false;
+    el.classList.remove('dragging');
+    fx?.end();
+    fx = null;
+    if (!moved) return;
+    const hit = hitAt(e, '.tcard');
+    const dragId = el.getAttribute('data-tid') || '';
+    if (!hit || hit === el || !dragId) return;
+    const targetId = hit.getAttribute('data-tid') || '';
+    const ids = cardIds();
+    const from = ids.indexOf(dragId);
+    const to = ids.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    const next = ids.slice();
+    next.splice(from, 1);
+    // 落点在目标卡右半区 → 插到它后面
+    const after = ratioX(e, hit) >= 0.5;
+    const at = next.indexOf(targetId) + (after ? 1 : 0);
+    next.splice(at, 0, dragId);
+    const all = rows.map((t) => t.id);
+    let k = 0;
+    applyVisibleOrder(all.map((id) => (ids.indexOf(id) > -1 ? next[k++] : id)));
+    setSortMode('manual');
+    toast.show('已调整顺序');
+  }
+
   function open(t: Task): void {
     if (isSuppressed()) return;
-    openTaskDetail(t.id);
+    toggleTaskDetail(t.id);
   }
 </script>
 
-<div class="card-grid">
+<div
+  class="card-grid"
+  use:pointerDrag={{
+    handle: '[data-tid]',
+    onStart: (el) => {
+      app.dragging = true;
+      el.classList.add('dragging');
+      fx = beginDrag({ source: el, scrollEl: () => document.getElementById('content') });
+    },
+    onMove: (el, e) => {
+      if (!fx) return;
+      const hit = hitAt(e, '.tcard');
+      const same = hit && hit !== el;
+      fx.move(e);
+      if (same) {
+        const after = ratioX(e, hit) >= 0.5;
+        fx.mark(hit, after ? 'insert-r' : 'insert-l', after ? '松手插到这张卡后面' : '松手插到这张卡前面');
+      } else {
+        fx.mark(null, 'insert-l', '');
+      }
+    },
+    onEnd: onDragEnd
+  }}
+>
   {#each part as t (t.id)}
     {@const st = subStats(t)}
     <div class={cls(t)} data-tid={t.id} onclick={() => open(t)}>

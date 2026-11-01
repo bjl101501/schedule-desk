@@ -7,12 +7,14 @@
   import { uiState } from '$lib/store/ui.svelte';
   import DateField from '$lib/ui/DateField.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import { prepareForm } from '$lib/actions/prepare-form';
 
   let prio = $state<string[]>([...app.filters.prio]);
   let tags = $state<string[]>([...app.filters.tags]);
   let status = $state(app.filters.status);
   let from = $state(app.filters.from);
   let to = $state(app.filters.to);
+  let kw = $state(app.filters.kw);
 
   const all = $derived(allTags(data.tasks, meta.customTags, meta.tagOrder));
 
@@ -29,7 +31,7 @@
   }
 
   function apply(): void {
-    setFilters({ prio, tags, status, from, to });
+    setFilters({ prio, tags, status, from, to, kw });
     close();
   }
 
@@ -39,6 +41,7 @@
     status = 'todo';
     from = '';
     to = '';
+    kw = '';
   }
 </script>
 
@@ -75,6 +78,10 @@
       <button class={status === 'done' ? 'on' : ''} onclick={() => (status = 'done')}>已完成</button>
       <button class={status === 'all' ? 'on' : ''} onclick={() => (status = 'all')}>全部</button>
     </div>
+  </div>
+  <div class="field">
+    <label>关键词<span class="hint">标题 / 备注 / 标签 / 子项</span></label>
+    <input class="inp" id="ftKw" bind:value={kw} placeholder="输入关键词" use:prepareForm />
   </div>
   <div class="row2">
     <div class="field"><label>起始日期</label><DateField fieldId="fFrom" bind:value={from} placeholder="不限" /></div>

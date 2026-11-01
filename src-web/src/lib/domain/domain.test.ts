@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import { taskState, taskWindow, reminderState } from './window';
 import { cdGroupOf, nextRepeatDate, normTask, shiftPlanTo, subPlan, taskSpan } from './task';
-import { applyFilters, inScope, sortTasks } from './selectors';
+import { alertSummary, applyFilters, inScope, sortTasks } from './selectors';
 import { parseQuick } from './quickparse';
+import { parseBundleText, bundleCount } from './backup';
 import { addDays, ymd } from './date';
 import type { Filters, Task, TaskStateKey } from './types';
 
@@ -226,5 +227,63 @@ describe('纪念日分组', () => {
       group: '', sys: '', createdAt: T
     };
     expect(cdGroupOf(cd)).toBe('纪念日');
+  });
+});
+
+describe('铃铛角标：提醒 + 逾期，按 id 去重', () => {
+  test('同一条既逾期又有待复习，只算一次', () => {
+    const t = mk({
+      date: T, time: hm(rel(-90)), estimate: 60,
+      remindMode: '单次提醒',
+      remindCfg: { anchor: T + ' ' + hm(rel(-120)), offsets: [0], read: [] }
+    });
+    const r = alertSummary([t], NOW);
+    expect(r.total).toBe(1);
+    expect(r.remind).toBe(1);
+    expect(r.overdue).toBe(1);
+  });
+  test('已完成不计入', () => {
+    const t = mk({ date: Y1, time: '09:00', done: true });
+    expect(alertSummary([t], NOW).total).toBe(0);
+  });
+  test('两条不同任务各算一次', () => {
+    const a = mk({ id: 'a', date: T, time: hm(rel(-90)), estimate: 60 });
+    const b = mk({ id: 'b', date: Y1, time: '09:00' });
+    expect(alertSummary([a, b], NOW).total).toBe(2);
+  });
+});
+
+describe('备份解析', () => {
+  test('自家导出的 camelCase', () => {
+    const b = parseBundleText(
+      JSON.stringify({ app: '日程台', tasks: [{ title: '写周报', date: '2026-11-02', time: '09:30', estimate: 45 }] })
+    );
+    expect(bundleCount(b)).toBe(1);
+    expect(b.tasks[0].title).toBe('写周报');
+    expect(b.tasks[0].time).toBe('09:30');
+    expect(b.tasks[0].estimate).toBe(45);
+  });
+  test('中文列名（包在 properties 里）', () => {
+    const b = parseBundleText(
+      JSON.stringify({ tasks: [{ properties: { 标题: { text: '交房租' }, 日期: { date: '2026-11-05' } } }] })
+    );
+    expect(b.tasks[0].title).toBe('交房租');
+    expect(b.tasks[0].date).toBe('2026-11-05');
+  });
+  test('data 文件形态 tables', () => {
+    const b = parseBundleText(
+      JSON.stringify({ tables: { RBTQ4jwngkyjWiZE7VqCJZ: [{ properties: { 标题: { text: 'A' } } }] } })
+    );
+    expect(b.tasks.length).toBe(1);
+  });
+  test('坏 JSON 与空文件都要报错', () => {
+    expect(() => parseBundleText('{oops')).toThrow();
+    expect(() => parseBundleText('{"tasks":[]}')).toThrow();
+  });
+  test('坏提醒配置被丢弃，不写脏 anchor', () => {
+    const b = parseBundleText(
+      JSON.stringify({ tasks: [{ title: 'x', remindCfg: { anchor: '不是时间', offsets: [0] } }] })
+    );
+    expect(b.tasks[0].remindCfg).toBeNull();
   });
 });

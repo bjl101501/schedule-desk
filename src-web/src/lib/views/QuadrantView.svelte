@@ -7,7 +7,7 @@
   import { app } from '$lib/store/app.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
   import { data } from '$lib/store/data.svelte';
-  import { openTaskDetail } from '$lib/store/ui.svelte';
+  import { toggleTaskDetail } from '$lib/store/ui.svelte';
   import { isSuppressed } from '$lib/actions/suppress';
   import Icon from '$lib/ui/Icon.svelte';
   import Flags from '$lib/components/Flags.svelte';
@@ -48,7 +48,7 @@
 
   function open(t: Task): void {
     if (isSuppressed()) return;
-    openTaskDetail(t.id);
+    toggleTaskDetail(t.id);
   }
 </script>
 

@@ -32,6 +32,27 @@ export const app = $state({
   rev: 0
 });
 
+/** 排序方式存本机：旧版 boot 读 / 顶栏写 wb_schedule_sort，重写时漏了 */
+const SORT_KEY = 'wb_schedule_sort';
+
+export function hydratePrefs(): void {
+  try {
+    const v = localStorage.getItem(SORT_KEY);
+    if (v === 'time' || v === 'manual') app.sortMode = v;
+  } catch {
+    /* ignore */
+  }
+}
+
+export function setSortMode(v: SortMode): void {
+  app.sortMode = v;
+  try {
+    localStorage.setItem(SORT_KEY, v);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function refreshAll(): void {
   app.rev++;
 }

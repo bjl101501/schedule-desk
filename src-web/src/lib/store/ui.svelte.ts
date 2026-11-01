@@ -55,6 +55,13 @@ export function openTaskDetail(id: string): void {
   uiState.detailId = id;
 }
 
+/** 再点一次同一条就收起（旧版 toggleDetailFromClick 的语义） */
+export function toggleTaskDetail(id: string): void {
+  if (!id) return;
+  if (uiState.detailId === id && !uiState.editorId) closeTaskDetail();
+  else openTaskDetail(id);
+}
+
 export function closeTaskDetail(): void {
   app.detailId = '';
   uiState.detailId = '';

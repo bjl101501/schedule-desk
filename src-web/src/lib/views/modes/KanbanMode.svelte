@@ -9,7 +9,7 @@
   import { clock, todayD } from '$lib/store/clock.svelte';
   import { data } from '$lib/store/data.svelte';
   import { meta } from '$lib/store/meta.svelte';
-  import { openTaskDetail, openTaskEditor } from '$lib/store/ui.svelte';
+  import { toggleTaskDetail, openTaskEditor } from '$lib/store/ui.svelte';
   import { isSuppressed } from '$lib/actions/suppress';
   import Icon from '$lib/ui/Icon.svelte';
   import Flags from '$lib/components/Flags.svelte';
@@ -115,7 +115,7 @@
 
   function open(t: Task): void {
     if (isSuppressed()) return;
-    openTaskDetail(t.id);
+    toggleTaskDetail(t.id);
   }
 
   function addIn(key: string): void {

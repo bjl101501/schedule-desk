@@ -1,13 +1,15 @@
 <script lang="ts">
-  import { stampNow, today0, uid, ymd } from '$lib/domain/date';
-  import { data, cacheLocal, readDailySnaps, replaceAll, seedDemo } from '$lib/store/data.svelte';
-  import { apiAddTask, apiSaveHabit, apiSaveCountdown } from '$lib/store/data.svelte';
+  import { today0, ymd } from '$lib/domain/date';
+  import {
+    SNAP_KEY, clearTables, data, dataJob, importBundle, readDailySnaps, seedDemo, writeSafetySnapshot
+  } from '$lib/store/data.svelte';
+  import { bundleCount, parseBundleText } from '$lib/domain/backup';
   import { downloadBlob } from '$lib/bridge/export';
   import { uiState } from '$lib/store/ui.svelte';
   import { toast } from '$lib/store/toast.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import { prepareForm } from '$lib/actions/prepare-form';
 
-  const SNAP_KEY = 'wb_schedule_snapshot';
 
   const snaps = $derived(readDailySnaps());
 
@@ -43,58 +45,96 @@
   }
 
   function snapshotNow(): void {
+    toast.show(writeSafetySnapshot('手动备份') ? '已生成本地快照' : '快照失败，存储空间可能不足');
+  }
+
+  let pendingText = $state('');
+  let pasteText = $state('');
+  let over = $state(false);
+
+  const canImport = $derived(!!(pendingText.trim() || pasteText.trim()));
+
+  function currentText(): string {
+    return pendingText.trim() || pasteText.trim();
+  }
+
+  async function doImport(text: string, mode: 'append' | 'replace'): Promise<void> {
     try {
-      localStorage.setItem(
-        SNAP_KEY,
-        JSON.stringify({ at: Date.now(), reason: '手动备份', tasks: $state.snapshot(data.tasks), habits: $state.snapshot(data.habits), countdowns: $state.snapshot(data.countdowns) })
-      );
-      toast.show('已生成本地快照');
-    } catch {
-      toast.show('快照失败，存储空间可能不足');
+      const bundle = parseBundleText(text);
+      const n = await importBundle(bundle, mode);
+      toast.show((mode === 'replace' ? '已替换为 ' : '已导入 ') + n + ' 条数据');
+      pendingText = '';
+      pasteText = '';
+      close();
+    } catch (err) {
+      toast.show('导入失败：' + (err instanceof Error ? err.message : String(err)));
     }
   }
 
+  function importAppend(): void {
+    void doImport(currentText(), 'append');
+  }
+
+  function importReplace(): void {
+    const text = currentText();
+    uiState.typed = {
+      title: '先清空再导入',
+      desc: '会先删除现有全部数据，再用备份内容替换。删除前会自动存一份快照。',
+      word: '替换',
+      onOk: () => void doImport(text, 'replace')
+    };
+  }
+
   function restoreSnapshot(): void {
+    let raw = '';
     try {
-      const o = JSON.parse(localStorage.getItem(SNAP_KEY) || 'null');
-      if (!o || !o.tasks) {
-        toast.show('还没有可恢复的快照');
-        return;
-      }
-      data.tasks = o.tasks;
-      data.habits = o.habits || [];
-      data.countdowns = o.countdowns || [];
-      cacheLocal();
-      toast.show('已恢复 ' + stampNow(new Date(o.at)) + ' 的快照');
-      close();
+      raw = localStorage.getItem(SNAP_KEY) || '';
+    } catch {
+      raw = '';
+    }
+    if (!raw) {
+      toast.show('还没有可恢复的快照');
+      return;
+    }
+    let at = 0;
+    try {
+      at = Number(JSON.parse(raw).at) || 0;
     } catch {
       toast.show('快照已损坏');
+      return;
+    }
+    uiState.typed = {
+      title: '恢复上次快照',
+      desc:
+        '会用 ' + new Date(at).toLocaleString() +
+        ' 的快照覆盖当前数据。恢复前会自动再存一份当前快照。',
+      word: '恢复',
+      onOk: () => void doImport(raw, 'replace')
+    };
+  }
+
+  async function readFile(f: File): Promise<void> {
+    pendingText = await f.text();
+    try {
+      toast.show('已读取 ' + bundleCount(parseBundleText(pendingText)) + ' 条，点下面的按钮确认导入');
+    } catch (err) {
+      pendingText = '';
+      toast.show('读取失败：' + (err instanceof Error ? err.message : String(err)));
     }
   }
 
   async function importFile(e: Event): Promise<void> {
     const input = e.currentTarget as HTMLInputElement;
     const f = input.files?.[0];
-    if (!f) return;
-    try {
-      const text = await f.text();
-      const o = JSON.parse(text);
-      const tasks = Array.isArray(o.tasks) ? o.tasks : Array.isArray(o) ? o : [];
-      if (!tasks.length && !o.habits) {
-        toast.show('这个文件里没有可导入的事项');
-        return;
-      }
-      replaceAll({ tasks, habits: o.habits || [], countdowns: o.countdowns || [], pomodoros: o.pomodoros || [] });
-      for (const t of data.tasks) await apiAddTask(t);
-      for (const h of data.habits) await apiSaveHabit(h);
-      for (const c of data.countdowns) await apiSaveCountdown(c);
-      toast.show('已导入 ' + tasks.length + ' 条事项');
-      close();
-    } catch (err) {
-      toast.show('导入失败：' + String(err));
-    } finally {
-      input.value = '';
-    }
+    input.value = '';
+    if (f) await readFile(f);
+  }
+
+  async function onDrop(e: DragEvent): Promise<void> {
+    e.preventDefault();
+    over = false;
+    const f = e.dataTransfer?.files?.[0];
+    if (f) await readFile(f);
   }
 
   function clearTasks(): void {
@@ -103,10 +143,11 @@
       desc: '只删除全部事项，习惯与纪念日保留。',
       word: '清空',
       onOk: () => {
-        data.tasks = [];
-        cacheLocal();
-        toast.show('已清空事项');
-        close();
+        writeSafetySnapshot('清空事项前');
+        void clearTables(['tasks'], '正在清空事项').then(() => {
+          toast.show('已清空事项');
+          close();
+        });
       }
     };
   }
@@ -116,8 +157,6 @@
     close();
   }
 
-  void snaps;
-  void uid;
 </script>
 
 <div class="m-head">
@@ -134,8 +173,42 @@
   </div>
 
   <div class="field">
-    <label>导入<span class="hint">会追加到现有数据</span></label>
-    <input class="inp" type="file" accept="application/json,.json" id="bkImport" onchange={importFile} />
+    <label>导入<span class="hint">追加到现有数据；也可以先清空再导入</span></label>
+    <div
+      data-bkdrop
+      ondragover={(e) => { e.preventDefault(); over = true; }}
+      ondragleave={() => (over = false)}
+      ondrop={onDrop}
+      style="border:1.5px dashed {over ? 'var(--brand)' : 'var(--line-2)'};border-radius:12px;padding:16px;text-align:center;font-size:13px;color:var(--text-3);background:{over ? 'var(--brand-softer)' : 'transparent'}"
+    >
+      把备份 JSON 拖到这里，或
+      <label class="btn btn-sec btn-sm" style="margin-left:6px;display:inline-flex">
+        选文件
+        <input type="file" accept="application/json,.json" id="bkImport" onchange={importFile} style="display:none" use:prepareForm />
+      </label>
+    </div>
+    <textarea
+      class="inp"
+      id="bkPaste"
+      rows="3"
+      bind:value={pasteText}
+      placeholder="也可以把备份 JSON 直接粘贴到这里"
+      style="margin-top:8px;height:auto;padding:8px 10px;line-height:1.5"
+      use:prepareForm
+    ></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn btn-pri btn-sm" data-bkimport="append" onclick={importAppend} disabled={!canImport || dataJob.on}>
+        追加导入
+      </button>
+      <button class="btn btn-danger btn-sm" data-bkimport="replace" onclick={importReplace} disabled={!canImport || dataJob.on}>
+        先清空再导入
+      </button>
+    </div>
+    {#if dataJob.on}
+      <div style="margin-top:8px;font-size:12px;color:var(--text-3)" data-job>
+        {dataJob.label} {dataJob.done} / {dataJob.total}
+      </div>
+    {/if}
   </div>
 
   <div class="field">
