@@ -117,6 +117,38 @@ async function main() {
   S.clockFont = clockFont;
   c.check('clock.font', !!clockFont && clockFont.ok === true && /Digital-7/.test(clockFont.family || ''), clockFont);
 
+  // 换肤后时钟要跟着主题走：五套主题的管色必须互不相同（曾经只有宣纸 + 深色两套，celadon / moon 是裸灰）
+  const clockThemes = await evaluate(
+    cdp,
+    `(async function(){
+       var el = document.documentElement;
+       var keys = ['celadon','moon','dusk','ink'];
+       var out = {};
+       for (var i = 0; i < keys.length; i++) {
+         el.setAttribute('data-theme', keys[i]);
+         await new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); });
+         var c = document.querySelector('.clock');
+         var on = c.querySelector('.dg .on');
+         out[keys[i]] = { bg: getComputedStyle(c).backgroundColor,
+                          on: on ? getComputedStyle(on).color : '' };
+       }
+       el.removeAttribute('data-theme');
+       await new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); });
+       out.paper = { bg: getComputedStyle(document.querySelector('.clock')).backgroundColor };
+       return out;
+     })()`
+  );
+  S.clockThemes = clockThemes;
+  const clockBgs = new Set(Object.keys(clockThemes || {}).map((k) => clockThemes[k].bg));
+  c.check(
+    'clock.theme',
+    !!clockThemes &&
+      clockBgs.size === 5 &&
+      clockThemes.celadon.on !== clockThemes.ink.on &&
+      !Object.keys(clockThemes).every((k) => clockThemes[k].bg === 'rgb(233, 233, 233)'),
+    clockThemes
+  );
+
   const count = await evaluate(cdp, 'S.tasks.length');
   c.atLeast('tasks.count', count, 10, { detail: '测试数据应至少 10 条' });
 
