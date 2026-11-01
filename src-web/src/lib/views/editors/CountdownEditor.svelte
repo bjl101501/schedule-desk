@@ -1,7 +1,7 @@
 <script lang="ts">
   import { LIST_COLORS } from '$lib/domain/constants';
-  import { today0, uid, ymd } from '$lib/domain/date';
-  import { apiDeleteCountdown, apiSaveCountdown, cacheLocal, data } from '$lib/store/data.svelte';
+  import { today0, ymd } from '$lib/domain/date';
+  import { apiDeleteCountdown, cacheLocal, data, saveCountdown } from '$lib/store/data.svelte';
   import { uiState } from '$lib/store/ui.svelte';
   import { toast } from '$lib/store/toast.svelte';
   import DateField from '$lib/ui/DateField.svelte';
@@ -45,13 +45,11 @@
       }
       src.note = note;
       src.color = color;
-      apiSaveCountdown(src);
-      cacheLocal();
+      saveCountdown(src);
     } else {
-      const c = { id: uid(), name: n, type, date, note, color, group, sys: '', createdAt: ymd(today0()) };
-      data.countdowns.push(c);
-      apiSaveCountdown(c);
-      cacheLocal();
+      // 同上：不自己 push，交给 saveCountdown 判断新建
+      const c = { id: '', name: n, type, date, note, color, group, sys: '', createdAt: ymd(today0()) };
+      saveCountdown(c);
     }
     close();
     toast.show('已保存');

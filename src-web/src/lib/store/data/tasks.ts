@@ -67,12 +67,13 @@ export function deleteTask(id: string): void {
 }
 
 export function saveTask(t: Task): Promise<void> {
+  // 「新建还是更新」看这条在不在内存列表里，不看调用方传没传 id：
+  // QuickAdd 会先给一个本地 uid()（好让列表 keyed each 有键），
+  // 只凭 id 非空就判更新，会写到不存在的 recordId 上 —— 界面加了、重启就没了。
+  const known = !!t.id && data.tasks.some((x) => x.id === t.id);
   cacheLocal();
-  if (!t.id) {
-    // 先给一个本地 id 占位：列表是 keyed each，空键会直接报错
-    t.id = uid();
-    const stored = pushProxied(data.tasks, t);
-    return apiAddTask(stored);
-  }
-  return apiUpdateTask(t);
+  if (known) return apiUpdateTask(t);
+  // 先给一个本地 id 占位：列表是 keyed each，空键会直接报错
+  if (!t.id) t.id = uid();
+  return apiAddTask(pushProxied(data.tasks, t));
 }

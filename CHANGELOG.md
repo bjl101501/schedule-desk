@@ -5,6 +5,37 @@
 
 ---
 
+## v3.4.7 · 2026-11-02
+
+「无法添加日程」。根因从 v3.0.0 起就在，只是最近才被注意到。
+
+### 修复
+
+- **快速添加点「添加」后什么都没发生**。`saveTask()` 判「新建还是更新」看的是 `t.id` 是否为空，
+  而 QuickAdd 为了列表 keyed each 有键，先给了个本地 `uid()` —— 于是被判成更新，
+  `updateRecord` 打到不存在的 recordId 上，后端报错被 catch 吞掉，界面只弹了一句「已添加」。
+- **新建习惯 / 新建纪念日更糟：能看见、重启就没**。这两个编辑器是「自己 push 进数组 + `apiSaveHabit(h)`」，
+  同一个 `if (!h.id)` 判据，同一个结果 —— 内存里多一条，磁盘上从没写过，重开就消失。
+- 改法：判据换成「这条记录在不在内存列表里」，不看调用方传没传 id。
+  - `saveTask()` 按 `data.tasks` 判断，自己负责 push；
+  - 新增 `store/data/records.ts` 的 `saveHabit()` / `saveCountdown()`，同样自己判断、自己 push；
+    两个编辑器不再自己 push；
+  - 写库层补 `apiAddHabit` / `apiUpdateHabit` / `apiAddCountdown` / `apiUpdateCountdown`，
+    原来的 `apiSaveHabit` / `apiSaveCountdown` 保留给导入、种子、假期条目这些「id 为空 = 新增」的调用。
+
+### 修复（测试数据）
+
+- **t08「计划 · 结束时间已过」写死 `01:00`**：凌晨 0 点生成时 01:00 还没到，被判成「进行中 · 剩余 56 分钟」，
+  `state.matrix` 误红。改成「1 小时前」的相对时刻，日期也跟着走。
+
+### 门禁
+
+- 新增 `create.persist`：快速添加一条日程、新建一个习惯、新建一个纪念日 → **reload** →
+  三类都要还在且名字对得上。以前只比内存条数，正好抓不到这一类。
+- 测试门面补 `habits` / `countdowns` 两个 getter（原来只有 `tasks`），否则断言只能看到条数看不到名字。
+
+---
+
 ## v3.4.6 · 2026-11-01
 
 ### 修复

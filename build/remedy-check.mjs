@@ -51,6 +51,83 @@ async function main() {
   }
   ck('remind.read', report.remind.ok, report.remind);
 
+  // ---------- 1b. 新建必须落库：快速添加 / 新建习惯 / 新建纪念日，reload 后仍在 ----------
+  // 这一类曾经全坏：新建时对象带着本地 uid()，写库层「有 id 就更新」→ 写到不存在的 recordId，
+  // 界面上多一条、重启就没了。只比内存条数抓不到，必须 reload。
+  const created = await evaluate(
+    cdp,
+    `(async function(){
+       function type(el, v){
+         var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+         setter.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true }));
+       }
+       function save(){ var b = document.querySelector('.m-foot .btn-pri'); if (b) b.click(); }
+       var out = {};
+
+       // 1) 快速添加
+       __SD_TEST__.openQuickAdd();
+       await new Promise(function(r){ setTimeout(r, 420); });
+       type(document.getElementById('qaInput'), '落库校验 · 新增日程');
+       await new Promise(function(r){ setTimeout(r, 200); });
+       document.getElementById('qaSave').click();
+       await new Promise(function(r){ setTimeout(r, 700); });
+       out.quick = { hit: __SD_TEST__.tasks.filter(function(t){ return t.title === '落库校验 · 新增日程'; }).length,
+                     toast: (document.querySelector('.toast') || {}).textContent || '' };
+
+       // 2) 新建习惯
+       __SD_TEST__.goView('habit');
+       await new Promise(function(r){ setTimeout(r, 550); });
+       var hb = document.querySelector('[data-habitadd]');
+       if (hb) hb.click();
+       await new Promise(function(r){ setTimeout(r, 480); });
+       var hInp = document.getElementById('hdName');
+       if (hInp) {
+         type(hInp, '落库校验 · 新习惯');
+         await new Promise(function(r){ setTimeout(r, 160); });
+         save();
+         await new Promise(function(r){ setTimeout(r, 700); });
+       }
+       out.habit = { opened: !!hInp,
+                     hit: __SD_TEST__.habits.filter(function(h){ return h.name === '落库校验 · 新习惯'; }).length };
+
+       // 3) 新建纪念日
+       __SD_TEST__.goView('countdown');
+       await new Promise(function(r){ setTimeout(r, 550); });
+       var cd = document.querySelector('[data-cdadd]');
+       if (cd) cd.click();
+       await new Promise(function(r){ setTimeout(r, 480); });
+       var cInp = document.getElementById('cdName');
+       if (cInp) {
+         type(cInp, '落库校验 · 新纪念日');
+         await new Promise(function(r){ setTimeout(r, 160); });
+         save();
+         await new Promise(function(r){ setTimeout(r, 700); });
+       }
+       out.countdown = { opened: !!cInp,
+                         hit: __SD_TEST__.countdowns.filter(function(c){ return c.name === '落库校验 · 新纪念日'; }).length };
+
+       __SD_TEST__.goView('today');
+       await new Promise(function(r){ setTimeout(r, 300); });
+       return out;
+     })()`
+  );
+  await cdp.send('Page.reload');
+  await sleep(2800);
+  const survived = await evaluate(
+    cdp,
+    `({ task: __SD_TEST__.tasks.filter(function(t){ return t.title === '落库校验 · 新增日程'; }).length,
+        habit: __SD_TEST__.habits.filter(function(h){ return h.name === '落库校验 · 新习惯'; }).length,
+        countdown: __SD_TEST__.countdowns.filter(function(c){ return c.name === '落库校验 · 新纪念日'; }).length })`
+  );
+  report.create = { created, survived };
+  report.create.ok =
+    !!created &&
+    created.quick.hit === 1 &&
+    created.habit.opened === true && created.habit.hit === 1 &&
+    created.countdown.opened === true && created.countdown.hit === 1 &&
+    survived.task === 1 && survived.habit === 1 && survived.countdown === 1;
+  ck('create.persist', report.create.ok, report.create);
+
   // ---------- 2. 真清空：清完 + reload 仍为空 ----------
   report.clear = {};
   report.clear.before = await evaluate(cdp, '__SD_TEST__.counts.tasks');

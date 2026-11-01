@@ -48,6 +48,13 @@ export function installTestFacade(): void {
     get tasks() {
       return $state.snapshot(data.tasks);
     },
+    // 验收脚本要看「新建的东西名字对不对、还在不在」，只给条数不够
+    get habits() {
+      return $state.snapshot(data.habits);
+    },
+    get countdowns() {
+      return $state.snapshot(data.countdowns);
+    },
     get states() {
       return data.tasks.map((t) => ({ id: t.id, title: t.title, ...taskState(t, clock.now) }));
     },

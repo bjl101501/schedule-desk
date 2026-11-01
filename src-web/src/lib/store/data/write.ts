@@ -47,18 +47,20 @@ export function apiDeleteTask(id: string): Promise<void> {
   });
 }
 
-export function apiSaveHabit(h: Habit): Promise<void> {
-  if (!h.id) {
-    return db
-      .addRecord({ databaseId: DB_IDS.habits, properties: habitToProps(h) })
-      .then((r) => {
-        if (r && r.id) h.id = r.id;
-      })
-      .catch((e) => {
-        console.error('[database] 习惯保存失败:', e);
-        toast.show('习惯未同步');
-      });
-  }
+export function apiAddHabit(h: Habit): Promise<void> {
+  return db
+    .addRecord({ databaseId: DB_IDS.habits, properties: habitToProps(h) })
+    .then((r) => {
+      if (r && r.id) h.id = r.id;
+    })
+    .catch((e) => {
+      console.error('[database] 习惯新增失败:', e);
+      toast.show('习惯未同步');
+    });
+}
+
+export function apiUpdateHabit(h: Habit): Promise<void> {
+  if (!h.id) return Promise.resolve();
   return db
     .updateRecord({ databaseId: DB_IDS.habits, recordId: h.id, properties: habitToProps(h) })
     .then(() => {})
@@ -68,22 +70,29 @@ export function apiSaveHabit(h: Habit): Promise<void> {
     });
 }
 
+/** 兼容旧调用：id 为空 = 新增，否则更新。新建请走数据层的 saveHabit（按是否存在判断） */
+export function apiSaveHabit(h: Habit): Promise<void> {
+  return h.id ? apiUpdateHabit(h) : apiAddHabit(h);
+}
+
 export function apiDeleteHabit(id: string): Promise<void> {
   return db.deleteRecord({ databaseId: DB_IDS.habits, recordId: id }).then(() => {}).catch((e) => console.error(e));
 }
 
-export function apiSaveCountdown(c: Countdown): Promise<void> {
-  if (!c.id) {
-    return db
-      .addRecord({ databaseId: CD_DB, properties: cdToProps(c) })
-      .then((r) => {
-        if (r && r.id) c.id = r.id;
-      })
-      .catch((e) => {
-        console.error('[database] 纪念日保存失败:', e);
-        toast.show('纪念日未同步');
-      });
-  }
+export function apiAddCountdown(c: Countdown): Promise<void> {
+  return db
+    .addRecord({ databaseId: CD_DB, properties: cdToProps(c) })
+    .then((r) => {
+      if (r && r.id) c.id = r.id;
+    })
+    .catch((e) => {
+      console.error('[database] 纪念日新增失败:', e);
+      toast.show('纪念日未同步');
+    });
+}
+
+export function apiUpdateCountdown(c: Countdown): Promise<void> {
+  if (!c.id) return Promise.resolve();
   return db
     .updateRecord({ databaseId: CD_DB, recordId: c.id, properties: cdToProps(c) })
     .then(() => {})
@@ -91,6 +100,11 @@ export function apiSaveCountdown(c: Countdown): Promise<void> {
       console.error(e);
       toast.show('纪念日未同步');
     });
+}
+
+/** 兼容旧调用：id 为空 = 新增，否则更新。新建请走数据层的 saveCountdown */
+export function apiSaveCountdown(c: Countdown): Promise<void> {
+  return c.id ? apiUpdateCountdown(c) : apiAddCountdown(c);
 }
 
 export function apiDeleteCountdown(id: string): Promise<void> {

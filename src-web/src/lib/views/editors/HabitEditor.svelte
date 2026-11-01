@@ -1,8 +1,8 @@
 <script lang="ts">
   import { HABIT_ICONS, LIST_COLORS } from '$lib/domain/constants';
-  import { today0, uid, ymd } from '$lib/domain/date';
+  import { today0, ymd } from '$lib/domain/date';
   import { calcStreak } from '$lib/domain/selectors';
-  import { apiDeleteHabit, apiSaveHabit, cacheLocal, data } from '$lib/store/data.svelte';
+  import { apiDeleteHabit, cacheLocal, data, saveHabit } from '$lib/store/data.svelte';
   import { uiState } from '$lib/store/ui.svelte';
   import { toast } from '$lib/store/toast.svelte';
   import Icon from '$lib/ui/Icon.svelte';
@@ -34,16 +34,14 @@
       src.color = color;
       src.target = Math.max(1, Math.min(7, Number(target) || 7));
       src.streak = calcStreak(src, today0());
-      apiSaveHabit(src);
-      cacheLocal();
+      saveHabit(src);
     } else {
+      // 不自己 push：交给 saveHabit 判断新建，id 由它占位 / 由后端回填
       const h = {
-        id: uid(), name: n, icon, color, target: Math.max(1, Math.min(7, Number(target) || 7)),
+        id: '', name: n, icon, color, target: Math.max(1, Math.min(7, Number(target) || 7)),
         streak: 0, total: 0, log: [], createdAt: ymd(today0())
       };
-      data.habits.push(h);
-      apiSaveHabit(h);
-      cacheLocal();
+      saveHabit(h);
     }
     close();
     toast.show('已保存习惯');
