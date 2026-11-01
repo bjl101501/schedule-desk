@@ -1,0 +1,184 @@
+/* ---------- 表单层次：分组卡片，输入 / 胶囊 / 按钮三种形态一眼可分 ---------- */
+.inp-title{height:46px;font-size:16px;font-weight:600;letter-spacing:.2px}
+.ed-sec{
+  border:1px solid var(--line);border-radius:12px;background:var(--panel-2);
+  padding:12px 13px 13px;display:flex;flex-direction:column;gap:11px;
+}
+.ed-sec-t{
+  font-size:11px;font-weight:700;letter-spacing:.6px;color:var(--text-3);
+  text-transform:uppercase;margin-bottom:-2px;
+}
+.ed-sec .field>label{color:var(--text-2)}
+.ed-sec .inp{background:var(--field-bg)}
+
+/* 悬浮说明：小问号 + 单例浮层，默认在触发点上方，不压住输入框 */
+.tip-i{
+  width:14px;height:14px;border-radius:50%;border:1px solid var(--line);
+  display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+  font-size:9.5px;font-weight:700;color:var(--text-3);cursor:help;line-height:1;
+  transition:.13s;
+}
+.tip-i:hover,.tip-i:focus{border-color:var(--brand);color:var(--brand);outline:0}
+.tip-layer{
+  position:fixed;z-index:950;max-width:248px;padding:7px 10px;border-radius:8px;
+  background:rgba(30,33,38,.94);color:#fff;font-size:11.5px;line-height:1.62;
+  box-shadow:0 10px 26px rgba(20,22,26,.28);pointer-events:none;
+  opacity:0;transform:translateY(3px);transition:opacity .12s,transform .12s;
+}
+html[data-theme="dusk"] .tip-layer,html[data-theme="ink"] .tip-layer{
+  background:#E9E3D8;color:#1E2126;box-shadow:0 12px 28px rgba(0,0,0,.5);
+}
+.tip-layer.in{opacity:1;transform:translateY(0)}
+
+/* 日期 / 时间字段：长得像输入框，点开是自己的面板 */
+.pick-field{
+  display:flex;align-items:center;justify-content:space-between;gap:6px;padding-left:9px;padding-right:9px;
+  text-align:left;cursor:pointer;color:var(--text);
+}
+.pick-field:hover{border-color:var(--text-3)}
+.pick-field.open{border-color:var(--brand);background:var(--panel);box-shadow:0 0 0 3px rgba(47,107,255,.11)}
+.pick-field.is-empty .pf-txt{color:var(--text-3)}
+.pick-field .pf-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick-field .pf-c{display:inline-flex;flex:0 0 auto;color:var(--text-3)}
+.pick-field .pf-c svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;transition:.13s}
+.pick-field.open .pf-c svg{transform:rotate(180deg)}
+
+/* 浮层外壳（日历 / 时间共用） */
+.float-panel{
+  position:fixed;z-index:1000;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;box-shadow:var(--shadow-lg);
+}
+.dp-panel{width:252px;padding:8px}
+.dp-head{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 8px}
+.dp-head b{font-size:12.5px;font-weight:700;color:var(--text)}
+.dp-nav{
+  width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+  color:var(--text-2);transition:.12s;
+}
+.dp-nav:hover{background:var(--line-2);color:var(--brand)}
+.dp-nav svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px 2px}
+.cal-dow span{font-size:10px;color:var(--text-3);text-align:center;padding:3px 0;font-weight:600}
+.cal-cell{
+  width:100%;height:30px;min-width:0;border-radius:7px;font-size:12px;color:var(--text-2);
+  display:flex;align-items:center;justify-content:center;transition:.1s;font-variant-numeric:tabular-nums;
+}
+.cal-cell:hover{background:var(--line-2);color:var(--text)}
+.cal-cell.weekend{color:var(--text-3)}
+.cal-cell.today{box-shadow:inset 0 0 0 1px var(--brand-2);color:var(--brand);font-weight:700}
+.cal-cell.on{background:var(--brand);color:#fff;font-weight:700;box-shadow:none}
+.cal-cell.cal-blank{visibility:hidden;pointer-events:none}
+.cal-foot{display:flex;align-items:center;gap:4px;padding-top:7px;margin-top:5px;border-top:1px solid var(--line-2)}
+.cal-foot .sp{flex:1}
+.cal-quick{
+  height:25px;padding:0 8px;border-radius:6px;font-size:11.5px;color:var(--brand);
+  background:var(--brand-softer);transition:.12s;
+}
+.cal-quick:hover{background:var(--brand-soft)}
+.cal-quick.on{background:var(--brand);color:#fff}
+.cal-quick.muted{color:var(--text-3);background:transparent}
+.cal-quick.muted:hover{background:var(--line-2);color:var(--text-2)}
+
+/* 时间面板：与日历同一套外壳，两列连成一块，不画分隔线、不出滚动条 */
+.tm-panel{width:206px;padding:9px}
+.tm-head{display:flex;align-items:baseline;gap:7px;padding:2px 2px 8px}
+.tm-head b{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+.tm-head span{font-size:10.5px;color:var(--text-3)}
+.tm-body{
+  display:flex;height:176px;border:1px solid var(--line-2);border-radius:9px;
+  overflow:hidden;background:var(--panel-2);
+}
+.tm-col{flex:1 1 50%;overflow-y:auto;padding:4px;scrollbar-width:none;-ms-overflow-style:none}
+.tm-col::-webkit-scrollbar{display:none}
+.tm-cell{
+  width:100%;height:27px;border-radius:6px;font-size:12.5px;color:var(--text-2);
+  font-variant-numeric:tabular-nums;transition:.1s;
+}
+.tm-cell:hover{background:var(--panel);color:var(--text)}
+.tm-cell.on{background:var(--brand);color:#fff;font-weight:700}
+.tm-quick{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;padding:8px 1px 2px}
+.pick-field.is-empty .pf-txt{font-size:12px;color:var(--text-3)}
+
+/* 标签行：输入框占满，选已有只占内容宽度 */
+.pick-row .tag-inp{flex:1 1 auto;min-width:0}
+.pick-row .pick-compact{
+  flex:0 0 auto;width:auto;min-width:0;padding:0 9px;gap:6px;
+  font-size:12px;color:var(--text-2);
+}
+.pick-row .pick-compact .pm-c{color:var(--text-3)}
+
+/* 状态胶囊：正在进行 / 即将开始 / 已逾期 */
+.state-chip{
+  border-radius:6px;padding:1px 6px;font-size:11px;font-weight:600;white-space:nowrap;
+}
+.state-chip.state-brand{background:var(--brand-soft);color:var(--brand)}
+.state-chip.state-cyan{background:var(--cyan-soft);color:var(--cyan)}
+.state-chip.state-orange{background:var(--orange-soft);color:var(--orange)}
+.state-chip.state-red{background:var(--red-soft);color:var(--red)}
+.due-remind.hit{color:var(--red)}
+.due-remind.soon{color:var(--text-3)}
+
+/* 模板选择器 */
+.m-tpl{
+  margin-left:auto;height:27px;padding:0 9px;border-radius:7px;font-size:11.5px;font-weight:600;
+  color:var(--brand);background:var(--brand-softer);display:inline-flex;align-items:center;gap:4px;
+  transition:.12s;
+}
+.m-tpl:hover{background:var(--brand-soft)}
+.m-tpl svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.m-head .m-tpl+.m-close{margin-left:8px}
+.tpl-list{display:flex;flex-direction:column;gap:4px;max-height:340px;overflow-y:auto;margin-top:2px}
+.tpl-row{
+  display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;
+  border:1px solid var(--line-2);background:var(--panel-2);text-align:left;transition:.12s;
+}
+.tpl-row:hover{border-color:var(--brand-2);background:var(--brand-softer)}
+.tpl-t{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto;min-width:0}
+.tpl-m{font-size:11px;color:var(--text-3);white-space:nowrap;flex:0 0 auto}
+.tpl-n{font-size:10.5px;color:var(--brand);background:var(--brand-soft);padding:1px 6px;border-radius:5px;flex:0 0 auto}
+.tpl-empty{font-size:12px;color:var(--text-3);line-height:1.8;text-align:center;padding:26px 10px}
+
+/* 勾选行：稍后提醒等开关 */
+.check-line{
+  display:flex;align-items:center;gap:7px;margin-top:9px;
+  font-size:12.5px;color:var(--text-2);cursor:pointer;user-select:none;
+}
+.check-line input{
+  width:15px;height:15px;margin:0;flex:0 0 auto;cursor:pointer;
+  accent-color:var(--brand);
+}
+.check-line .hint{font-size:11px;color:var(--text-3);margin-left:6px;font-weight:500}
+
+/* 子项完成时间：绿色小字，跟在子项后面 */
+.sub-done{
+  font-size:9.5px;font-weight:600;color:var(--green);background:var(--green-soft);
+  padding:1px 5px;border-radius:4px;flex:0 0 auto;margin-left:5px;white-space:nowrap;
+}
+/* 子项逾期标记：只标子项，不把父任务一起判逾期 */
+.sub-late{
+  font-size:9.5px;font-weight:700;color:var(--red);background:var(--red-soft);
+  padding:1px 5px;border-radius:4px;flex:0 0 auto;margin-left:6px;
+}
+/* 勾选子项是就地更新、不重绘列表，标签会留到下次重绘；
+   完成后一律压成灰色，别再用红底抢注意力 */
+.sub-row.done .sub-late,
+.sub-item.done .sub-late{
+  color:var(--text-3);background:var(--panel-2);font-weight:600;
+}
+
+/* 默认禁止拖动选中：空白处按住左键滑动不再拉出一片蓝 */
+body{user-select:none;-webkit-user-select:none}
+input,textarea,select,[contenteditable="true"],
+.task-note,.tcard-note,.dt-note,.dt-title,.dt-v,.tpl-t,
+.hcard .hn,.cdcard .cdn,.cdcard .cdfoot,.today-row .tt,
+.modal .m-body p,.modal .m-body li,.help p,.help li{
+  user-select:text;-webkit-user-select:text;
+}
+
+/* 艾宾浩斯的基准时间：有日期时只读展示，跟随日程 */
+.anchor-ro{
+  height:40px;display:flex;align-items:center;padding:0 11px;border-radius:9px;
+  border:1px dashed var(--line);background:var(--panel-2);
+  font-size:13px;color:var(--text-2);font-variant-numeric:tabular-nums;
+}
+

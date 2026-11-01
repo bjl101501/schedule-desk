@@ -6,6 +6,8 @@
   import { uiState } from '$lib/store/ui.svelte';
   import { toast } from '$lib/store/toast.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import ModalHead from '$lib/ui/ModalHead.svelte';
+  import ColorPicker from '$lib/ui/ColorPicker.svelte';
   import { prepareForm } from '$lib/actions/prepare-form';
 
   const id = uiState.habitEditor?.id || '';
@@ -65,10 +67,7 @@
   }
 </script>
 
-<div class="m-head">
-  <h3>{src ? '编辑习惯' : '新建习惯'}</h3>
-  <button class="m-close" onclick={close}><Icon name="close" /></button>
-</div>
+<ModalHead title={src ? '编辑习惯' : '新建习惯'} onclose={close} />
 <div class="m-body">
   <div class="field">
     <label>名称</label>
@@ -84,15 +83,7 @@
   </div>
   <div class="field">
     <label>颜色</label>
-    <div class="chip-pick">
-      {#each LIST_COLORS as c (c)}
-        <button
-          data-hcolor={c}
-          style="width:28px;height:28px;border-radius:50%;background:{c};border:3px solid {color === c ? 'var(--panel)' : 'transparent'};box-shadow:0 0 0 {color === c ? '2px ' + c : '0 transparent'}"
-          onclick={() => (color = c)}
-        ></button>
-      {/each}
-    </div>
+    <ColorPicker bind:value={color} attr="hcolor" />
   </div>
   <div class="field">
     <label>每周目标<span class="hint">1–7 天</span></label>

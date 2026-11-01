@@ -102,7 +102,8 @@ vite.config.ts                前端构建配置，产物直出 src-web/build
 src-web/index.html            Vite 入口骨架
 src-web/src/main.ts           挂载应用、装桥接、启动数据与时钟
 src-web/src/App.svelte        应用外壳：侧栏 / 顶栏 / 内容 / 各种浮层
-src-web/src/styles.css        样式，原样沿用；5 套主题靠 html[data-theme]
+src-web/src/styles.css        样式入口，只留 @import；实现按层拆在 styles/ 下
+src-web/src/styles/            变量与重置 / 骨架 / 视图 / 弹窗 / 表单 / 换肤（5 套主题靠 html[data-theme]）
 src-web/src/lib/domain/       纯领域层：类型、日期、任务窗口与状态机、选择器、示例数据
 src-web/src/lib/bridge/       与 Tauri 的通道：invoke、数据库门面、桌面能力、导出、预览内存桥
 src-web/src/lib/store/        响应式状态（runes）：数据、视图、时钟、模态、提示、主题…

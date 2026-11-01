@@ -1,34 +1,24 @@
 <script lang="ts">
-  import type { Task, CalMode } from '$lib/domain/types';
-  import { addDays, hmStr, parseHM, parseYmd, sameDay, startOfWeek, weekdayName, ymd } from '$lib/domain/date';
-  import { prioCls, subPlan, subStats, taskSpan } from '$lib/domain/task';
+  import type { Task } from '$lib/domain/types';
+  import { addDays, hmStr, parseYmd, sameDay, startOfWeek, weekdayName, ymd } from '$lib/domain/date';
+  import { prioCls } from '$lib/domain/task';
   import { app } from '$lib/store/app.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
   import { data } from '$lib/store/data.svelte';
   import { openTaskDetail } from '$lib/store/ui.svelte';
   import { isSuppressed } from '$lib/actions/suppress';
-  import Icon from '$lib/ui/Icon.svelte';
   import { pointerDrag, hitAt } from '$lib/actions/drag';
   import { beginDrag, type DragFx } from '$lib/actions/dragFx';
   import { dropToAllDay, dropToDate, dropToDateTime } from '$lib/store/dndActions.svelte';
-  import { calBack, calNav, calToday, cursorOf, openDayView, openMonthView, setCalDays, setCalMode, setCalWeeks } from '$lib/store/calendarActions.svelte';
+  import { cursorOf, openDayView, openMonthView } from '$lib/store/calendarActions.svelte';
   import { beginDragSession, endDragSession } from '$lib/store/dragSession.svelte';
-
-  const HOUR_H = 36;
-  const DAY_MIN = 1440;
+  import { HOUR_H, blocksOf } from '$lib/domain/calendar';
+  import CalHead from './calendar/CalHead.svelte';
+  import TimeGrid from './calendar/TimeGrid.svelte';
 
   const tick = $derived(clock.now);
   const today = $derived(todayD());
   const cursor = $derived(app.cursor instanceof Date ? app.cursor : new Date(app.cursor));
-
-  const modes: { k: CalMode; t: string }[] = [
-    { k: 'year', t: '年' },
-    { k: 'month', t: '月' },
-    { k: 'week', t: '周' },
-    { k: 'multiweek', t: '多周' },
-    { k: 'day', t: '日' },
-    { k: 'multiday', t: '多日' }
-  ];
 
   function tasksOn(ds: string): Task[] {
     void tick;
@@ -47,18 +37,6 @@
       if (!a || !b) return false;
       return d > a && d <= b;
     });
-  }
-
-  function segOn(t: Task, ds: string) {
-    const d = parseYmd(ds);
-    if (!t || !t.date || !d) return null;
-    const off = Math.round((d.getTime() - parseYmd(t.date)!.getTime()) / 86400000);
-    if (off < 0) return null;
-    let hit = null;
-    for (const g of subPlan(t)) {
-      if (g.days > 0 && off >= g.dayFrom && off < g.dayFrom + g.days) hit = g;
-    }
-    return hit;
   }
 
   const title = $derived.by(() => {
@@ -185,10 +163,6 @@
     openDayView(ds);
   }
 
-  function backTo(): void {
-    calBack();
-  }
-
   function openTask(id: string): void {
     if (isSuppressed()) return;
     openTaskDetail(id);
@@ -247,64 +221,6 @@
     return cells;
   });
 
-  // ---------- 时间栅格 ----------
-  function blocksOf(list: Task[], ds: string) {
-    const items = list
-      .filter((t) => !!t.time)
-      .map((t) => {
-        const st = parseHM(t.time) || 0;
-        let dur = Number(t.estimate) > 0 ? Number(t.estimate) : 30;
-        if (dur > DAY_MIN) dur = DAY_MIN;
-        let top = (st / 60) * HOUR_H;
-        let hgt = (dur / 60) * HOUR_H;
-        if (hgt < 22) hgt = 22;
-        if (top + hgt > DAY_MIN) top = Math.max(0, DAY_MIN - hgt);
-        return { t, st, dur, top, hgt, lane: 0, laneCount: 1 };
-      })
-      .sort((a, b) => a.top - b.top);
-
-    const clusters: typeof items[] = [];
-    let cur: typeof items = [];
-    let curEnd = -1;
-    items.forEach((it) => {
-      if (cur.length && it.top >= curEnd - 1) {
-        clusters.push(cur);
-        cur = [];
-        curEnd = -1;
-      }
-      cur.push(it);
-      if (it.top + it.hgt > curEnd) curEnd = it.top + it.hgt;
-    });
-    if (cur.length) clusters.push(cur);
-    clusters.forEach((group) => {
-      const lanes: number[] = [];
-      group.forEach((it) => {
-        let lane = 0;
-        while (lanes[lane] !== undefined && lanes[lane] > it.top + 1) lane++;
-        lanes[lane] = it.top + it.hgt;
-        it.lane = lane;
-      });
-      const cnt = Math.max(1, lanes.length);
-      group.forEach((it) => (it.laneCount = cnt));
-    });
-
-    return items.map((it) => {
-      const st2 = subStats(it.t);
-      const seg = it.hgt >= 44 ? segOn(it.t, ds) : null;
-      return {
-        ...it,
-        endT: hmStr(it.st + it.dur),
-        leftPct: (it.lane * 100) / it.laneCount,
-        wPct: 100 / it.laneCount,
-        subTxt: st2.n ? ' · ' + st2.done + '/' + st2.n : '',
-        subPct: st2.pct,
-        hasSubs: st2.n > 0,
-        segTitle: seg ? seg.title : '',
-        segDays: seg ? seg.days : 0
-      };
-    });
-  }
-
   const gridCols = $derived.by(() => {
     void tick;
     let days: Date[] = [];
@@ -352,43 +268,7 @@
 </script>
 
 <div class="cal-shell">
-  <div class="cal-head">
-    {#if app.calReturn && (app.calMode === 'day' || app.calMode === 'month')}
-      <button class="cal-back" data-calback onclick={backTo}><Icon name="chevL" />返回{app.calReturn.mode === 'year' ? '年' : '月'}视图</button>
-    {/if}
-    <span class="cal-title">{title}</span>
-    <div class="cal-nav">
-      <button data-calnav="-1" onclick={() => calNav(-1)}><Icon name="chevL" /></button>
-      <button data-calnav="1" onclick={() => calNav(1)}><Icon name="chevR" /></button>
-    </div>
-    <button class="cal-today-btn" data-caltoday onclick={calToday}>今天</button>
-    <div style="margin-left:auto;display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end;max-width:100%;min-width:0">
-      <div class="cal-legend" title="日历里日程块的底色只由优先级决定，和清单、标签无关">
-        <b><i style="background:var(--red)"></i>P0</b>
-        <b><i style="background:var(--orange)"></i>P1</b>
-        <b><i style="background:var(--brand)"></i>P2</b>
-        <b><i style="background:var(--text-3)"></i>P3</b>
-      </div>
-      {#if app.calMode === 'multiweek'}
-        <div class="cal-views">
-          {#each [2, 3, 4] as n (n)}
-            <button data-calweeks={n} class={app.calWeeks === n ? 'on' : ''} onclick={() => setCalWeeks(n)}>{n} 周</button>
-          {/each}
-        </div>
-      {:else if app.calMode === 'multiday'}
-        <div class="cal-views">
-          {#each [3, 5, 7] as n (n)}
-            <button data-caldays={n} class={app.calDays === n ? 'on' : ''} onclick={() => setCalDays(n)}>{n} 天</button>
-          {/each}
-        </div>
-      {/if}
-      <div class="cal-views" style="margin-left:0">
-        {#each modes as m (m.k)}
-          <button data-calmode={m.k} class={app.calMode === m.k ? 'on' : ''} onclick={() => setCalMode(m.k)}>{m.t}</button>
-        {/each}
-      </div>
-    </div>
-  </div>
+  <CalHead {title} />
 
   {#if app.calMode === 'year'}
     <div class="year-grid">
@@ -519,54 +399,6 @@
       </div>
     {/each}
   {:else}
-    <div class="md-wrap" style="--hour-h:{HOUR_H}px">
-      <div class="md-grid" data-n={gridCols.length} use:pointerDrag={mdDrag}>
-        <div class="md-corner"></div>
-        {#each gridCols as c (c.ds + 'h')}
-          <div class="md-colhead{c.isToday ? ' today' : ''}">
-            <div class="md-wd">{weekdayName(c.d)}</div>
-            <div class="md-dn">{c.d.getDate()}</div>
-          </div>
-        {/each}
-        {#if hasAllDay}
-          <div class="md-allday-lbl">全天</div>
-          {#each gridCols as c (c.ds + 'a')}
-            <div class="md-allday" data-cdate={c.ds}>
-              {#each c.allday as x (x.t.id)}
-                <span class="md-adchip {prioCls(x.t)}{x.dayN ? ' cont' : ''}" data-tid={x.t.id} title="{x.t.title}{x.dayN ? ' · 第 ' + x.dayN + '/' + taskSpan(x.t) + ' 天' : ''}" onclick={() => openTask(x.t.id)}>
-                  {#if x.dayN}<i class="sub-br">├</i><i class="ad-day">第{x.dayN}天</i>{/if}{x.t.title}
-                </span>
-              {/each}
-            </div>
-          {/each}
-        {/if}
-        <div class="md-axis">
-          <div class="md-axis-in">
-            {#each Array.from({ length: 24 }, (_, h) => h) as h (h)}
-              <div class="md-tick" style="top:{h * HOUR_H}px">{String(h).padStart(2, '0')}:00</div>
-            {/each}
-          </div>
-        </div>
-        {#each gridCols as c (c.ds + 'd')}
-          <div class="md-day" data-cdate={c.ds}>
-            {#each c.blocks as b (b.t.id)}
-              <div
-                class="md-ev2 {prioCls(b.t)}{b.t.done ? ' done' : ''}{b.hgt < 34 ? ' tiny' : ''}{b.hgt < 46 ? ' short' : ''}"
-                style="top:{b.top.toFixed(1)}px;height:{b.hgt.toFixed(1)}px;left:calc({b.leftPct.toFixed(3)}% + 3px);width:calc({b.wPct.toFixed(3)}% - 6px)"
-                data-tid={b.t.id}
-                title="{b.t.title} · {b.t.time}-{b.endT}"
-                onclick={() => openTask(b.t.id)}
-              >
-                {#if b.hgt >= 34}<div class="md-ev2-t">{b.t.time} – {b.endT}{b.subTxt}</div>{/if}
-                <div class="md-ev2-n">{b.t.title}</div>
-                {#if b.segTitle}<div class="md-ev2-s"><i class="md-ev2-br">{b.segDays > 1 ? '├' : '└'}</i>{b.segTitle}</div>{/if}
-                {#if b.hasSubs}<span class="md-ev2-p"><i style="width:{b.subPct}%"></i></span>{/if}
-              </div>
-            {/each}
-            {#if c.isToday}<div class="md-now" style="top:{c.nowTop.toFixed(1)}px"></div>{/if}
-          </div>
-        {/each}
-      </div>
-    </div>
+    <TimeGrid cols={gridCols} {hasAllDay} hourH={HOUR_H} drag={mdDrag} />
   {/if}
 </div>

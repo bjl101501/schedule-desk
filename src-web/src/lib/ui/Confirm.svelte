@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { ConfirmReq } from '$lib/store/overlay.svelte';
   import { pop } from '$lib/store/overlay.svelte';
-  import Icon from './Icon.svelte';
+  import ModalHead from './ModalHead.svelte';
 
   let { req }: { req: ConfirmReq } = $props();
 
@@ -12,10 +12,7 @@
   }
 </script>
 
-<div class="m-head">
-  <h3>{req.title}</h3>
-  <button class="m-close" onclick={() => pop()}><Icon name="close" /></button>
-</div>
+<ModalHead title={req.title} onclose={() => pop()} />
 <div class="m-body">
   <div style="font-size:13px;color:var(--text-2);line-height:1.75">{@html req.desc}</div>
 </div>

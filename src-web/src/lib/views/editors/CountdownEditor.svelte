@@ -6,6 +6,8 @@
   import { toast } from '$lib/store/toast.svelte';
   import DateField from '$lib/ui/DateField.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import ModalHead from '$lib/ui/ModalHead.svelte';
+  import ColorPicker from '$lib/ui/ColorPicker.svelte';
   import { prepareForm } from '$lib/actions/prepare-form';
 
   const id = uiState.cdEditor?.id || '';
@@ -73,10 +75,7 @@
   }
 </script>
 
-<div class="m-head">
-  <h3>{src ? '编辑纪念日' : '新建纪念日'}</h3>
-  <button class="m-close" onclick={close}><Icon name="close" /></button>
-</div>
+<ModalHead title={src ? '编辑纪念日' : '新建纪念日'} onclose={close} />
 <div class="m-body">
   <div class="field">
     <label>名称</label>
@@ -113,15 +112,7 @@
   </div>
   <div class="field">
     <label>颜色</label>
-    <div class="chip-pick">
-      {#each LIST_COLORS as c (c)}
-        <button
-          data-cdcolor={c}
-          style="width:28px;height:28px;border-radius:50%;background:{c};border:3px solid {color === c ? 'var(--panel)' : 'transparent'};box-shadow:0 0 0 {color === c ? '2px ' + c : '0 transparent'}"
-          onclick={() => (color = c)}
-        ></button>
-      {/each}
-    </div>
+    <ColorPicker bind:value={color} attr="cdcolor" />
   </div>
 </div>
 <div class="m-foot">

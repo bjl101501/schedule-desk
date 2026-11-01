@@ -108,17 +108,17 @@
 
 {#if open}
   <div
-    class="float-panel cal-panel"
+    class="float-panel dp-panel"
     bind:this={panel}
     data-for={fieldId || undefined}
     use:portal
     use:popover={{ anchor, onClose: close, minWidth: 252, closeOnScroll: true }}
   >
     <div class="cal-pop">
-      <div class="cal-head">
-        <button type="button" class="cal-nav" aria-label="上个月" onclick={() => nav(-1)}><Icon name="chevL" /></button>
+      <div class="dp-head">
+        <button type="button" class="dp-nav" aria-label="上个月" onclick={() => nav(-1)}><Icon name="chevL" /></button>
         <b>{view.getFullYear()} 年 {view.getMonth() + 1} 月</b>
-        <button type="button" class="cal-nav" aria-label="下个月" onclick={() => nav(1)}><Icon name="chevR" /></button>
+        <button type="button" class="dp-nav" aria-label="下个月" onclick={() => nav(1)}><Icon name="chevR" /></button>
       </div>
       <div class="cal-grid cal-dow">
         {#each ['一', '二', '三', '四', '五', '六', '日'] as x (x)}<span>{x}</span>{/each}

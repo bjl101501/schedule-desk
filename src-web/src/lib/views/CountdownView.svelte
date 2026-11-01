@@ -8,6 +8,7 @@
   import { meta } from '$lib/store/meta.svelte';
   import { uiState } from '$lib/store/ui.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import EmptyState from '$lib/components/EmptyState.svelte';
   import { pointerDrag, hitAt } from '$lib/actions/drag';
   import { beginDrag, type DragFx } from '$lib/actions/dragFx';
   import { setCdGroupOrder } from '$lib/store/meta.svelte';
@@ -97,12 +98,11 @@
 </script>
 
 {#if !data.countdowns.length}
-  <div class="empty">
-    <div class="empty-ico"><Icon name="heart" /></div>
-    <h4>还没有纪念日</h4>
-    <p>生日、纪念日、旅行出发日… 把重要的日子放进来，不再错过。</p>
-    <button data-cdadd onclick={() => edit('')}>+ 添加纪念日</button>
-  </div>
+  <EmptyState icon="heart" title="还没有纪念日" text="生日、纪念日、旅行出发日… 把重要的日子放进来，不再错过。">
+    {#snippet action()}
+      <button data-cdadd onclick={() => edit('')}>+ 添加纪念日</button>
+    {/snippet}
+  </EmptyState>
 {:else}
   <div class="view-bar">
     <button class="btn btn-pri view-add" data-cdadd onclick={() => edit('')}><Icon name="plus" />添加纪念日</button>

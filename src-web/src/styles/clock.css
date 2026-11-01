@@ -1,0 +1,66 @@
+/* ---------- 顶栏数字时钟 ---------- */
+/* Digital-7 非等宽版。数码管的关键是「暗段」：每一位底下压一个 8，
+   亮段是当前数字，未点亮的段用接近底色的浅灰——这样才像一块真的段显表盘。 */
+@font-face{
+  font-family:'Digital-7';
+  src:url('fonts/digital-7.ttf') format('truetype');
+  font-weight:400;font-style:normal;font-display:swap;
+}
+.clock{
+  --clk-bg:#E9E9E9;
+  --clk-on:#141414;
+  --clk-off:#D9D9D9;
+  display:inline-flex;align-items:center;height:36px;padding:0 6px;
+  border-radius:8px;border:1px solid #BFBFBF;background:var(--clk-bg);
+  background-clip:padding-box;overflow:hidden;
+  flex:0 0 auto;line-height:1;box-shadow:none;
+}
+html[data-theme="dusk"] .clock,
+html[data-theme="ink"] .clock{
+  --clk-bg:#181818;--clk-on:#EDEDED;--clk-off:#242424;
+  border-color:#3C3C3C;
+}
+/* 一位数字 = 一个格子；数字字形宽 .4727em，右边 .075em 是管与管的缝 */
+.clock .tm{
+  display:inline-flex;align-items:center;
+  font-family:'Digital-7',ui-monospace,monospace;
+  font-weight:400;letter-spacing:0;line-height:1;font-variant-numeric:normal;
+  font-size:34px;
+}
+/* 亮段与暗段叠在同一格。数字居中，唯独 1 靠右——
+   这样 1 正好落在暗段 8 的右边竖段上，和真数码管一致 */
+.clock .dg{display:grid;width:.4727em;margin-right:.075em}
+.clock .dg:last-child{margin-right:0}
+/* 同一组里的两位靠得更近：管缝缩到 2/3；与冒号之间仍是原来的 .075em */
+.clock .tm .dg:nth-child(1),
+.clock .tm .dg:nth-child(4){margin-right:.05em}
+.clock .dg > span{grid-area:1/1;text-align:center;white-space:nowrap}
+.clock .dg .on{position:relative;z-index:2;color:var(--clk-on)}
+.clock .dg .on.one{text-align:right}
+.clock .dg .off{position:relative;z-index:1;color:var(--clk-off)}
+/* 冒号：两个实心方块。尺寸与上下位置由 JS 按设备像素算好写进变量——
+   3px 在 1.5 倍屏上是 4.5 个物理像素，上面那个被抹成 4 行、下面那个 5 行，
+   看起来就是「上点小下点大」。按物理像素取整 + 对齐，两个点才真的一样高。
+   槽宽保持 5.5px：点宽 + 剩余管缝。 */
+.clock .ck-c{
+  position:relative;display:block;width:var(--ck-dot,3px);
+  margin-right:calc(5.5px - var(--ck-dot,3px));height:1em;
+  flex:0 0 auto;color:var(--clk-on);
+  animation:clk-blink 2s steps(1,end) infinite;
+}
+.clock .ck-c::before,
+.clock .ck-c::after{
+  content:'';position:absolute;left:0;
+  width:var(--ck-dot,3px);height:var(--ck-dot,3px);background:currentColor;
+}
+.clock .ck-c::before{top:var(--ck-y1,11px)}
+.clock .ck-c::after{top:var(--ck-y2,20px)}
+@keyframes clk-blink{
+  0%,49.99%{opacity:1}
+  50%,100%{opacity:.1}
+}
+
+/* 四象限拖拽：落点整格高亮，浮层不再吃卡片的过渡动画 */
+.qbox.dragover{background:var(--brand-softer);box-shadow:inset 0 0 0 2px var(--brand)}
+.qbox.dragover .qhead{background:transparent}
+.drag-ghost.kcard{transition:none;cursor:grabbing}

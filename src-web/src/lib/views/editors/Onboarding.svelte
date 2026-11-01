@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { chooseDataDirQuiet, defaultDataDir, finishOnboarding, restartApp } from '$lib/bridge/desktop';
   import { toast } from '$lib/store/toast.svelte';
+  import ModalHead from '$lib/ui/ModalHead.svelte';
 
   let dir = $state('');
   let busy = $state(false);
@@ -31,7 +32,7 @@
 
 <div class="modal-mask in" id="sdOnboard" style="z-index:99999;background:var(--bg)">
   <div class="modal" style="max-width:560px">
-    <div class="m-head"><h3>欢迎使用日程台</h3></div>
+    <ModalHead title="欢迎使用日程台" />
     <div class="m-body">
       <div style="font-size:13.5px;color:var(--text-2);line-height:1.9">
         数据全部保存在本机一个 <b>schedule.json</b> 里，断网也能用。

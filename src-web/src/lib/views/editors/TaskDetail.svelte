@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { addDays, dayDiff, durText, hmStr, mdShort, parseAnchor, parseHM, parseYmd, stampDay, stampTime, toDtLocal, weekdayName, tagColor as tagColorOf } from '$lib/domain/date';
-  import { PRIO_LABEL, TAG_COLORS } from '$lib/domain/constants';
+  import { addDays, dayDiff, durText, hmStr, mdShort, parseAnchor, parseHM, parseYmd, stampDay, stampTime, toDtLocal, weekdayName } from '$lib/domain/date';
+  import { PRIO_LABEL } from '$lib/domain/constants';
   import { quadName, ebStageName } from '$lib/domain/chips';
   import { repeatLabel, subPlan, subStats, subLate, segDateText, taskSpan } from '$lib/domain/task';
   import { taskState } from '$lib/domain/window';
@@ -10,6 +10,8 @@
   import type { Layer } from '$lib/store/overlay.svelte';
   import { toast } from '$lib/store/toast.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import ModalHead from '$lib/ui/ModalHead.svelte';
+  import TagChips from '$lib/components/TagChips.svelte';
 
   // 由层栈传入：换一条任务时整层会换 uid 重挂载，不会再拿旧快照
   let { layer }: { layer: Extract<Layer, { kind: 'detail' }> } = $props();
@@ -137,10 +139,7 @@
 </script>
 
 {#if t && view}
-  <div class="m-head">
-    <h3>事项详情</h3>
-    <button class="m-close" onclick={close}><Icon name="close" /></button>
-  </div>
+  <ModalHead title="事项详情" onclose={close} />
   <div class="m-body">
     <div class="dt-head">
       <button class="dt-chk{t.done ? ' on' : ''}" id="dtChk" title="标记完成" onclick={toggle}><Icon name="check" /></button>
@@ -164,7 +163,7 @@
       {#if t.tags.length}
         <div class="dt-row">
           <span class="dt-k">标签</span>
-          <span class="dt-v">{#each t.tags as g (g)}<span class="tag-chip {tagColorOf(g, TAG_COLORS)}">#{g}</span>{/each}</span>
+          <span class="dt-v"><TagChips tags={t.tags} /></span>
         </div>
       {/if}
       <div class="dt-row">

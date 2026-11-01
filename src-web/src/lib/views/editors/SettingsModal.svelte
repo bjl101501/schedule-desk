@@ -9,7 +9,7 @@
   import {
     chooseDataDir, openDataDir, restartApp, updateCheck, updateInstall, webdavSave, webdavTest
   } from '$lib/bridge/desktop';
-  import Icon from '$lib/ui/Icon.svelte';
+  import ModalHead from '$lib/ui/ModalHead.svelte';
   import { prepareForm } from '$lib/actions/prepare-form';
 
   const cfg = $derived(dbConfig());
@@ -99,10 +99,7 @@
   }
 </script>
 
-<div class="m-head">
-  <h3>设置</h3>
-  <button class="m-close" onclick={close}><Icon name="close" /></button>
-</div>
+<ModalHead title="设置" onclose={close} />
 <div class="m-body">
   <div class="field" data-sd-block="desktop">
     <label>数据存储</label>

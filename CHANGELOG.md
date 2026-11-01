@@ -5,9 +5,66 @@
 
 ---
 
+## v3.3.0 · 2026-11-01
+
+R9 收口时留下的三项（组件抽取、超大文件拆分、样式整理）这一轮做完。
+目标仍然是「行为一模一样」，判定标准是 `ui-check --strict` 与 `remedy-check` 全绿。
+
+### 组件抽取（B7）
+
+- **`ui/ModalHead.svelte`**：17 个弹窗的标题栏此前各写一遍，
+  现在统一成「返回键 / 标题 / 额外动作 / 关闭键」五段。
+  能拖这件事不靠组件 —— `modalShell` 用事件委托认 `.m-head`，DOM 一致就还能拖。
+- **`components/TagChips.svelte`**：列表 / 卡片 / 看板 / 象限 / 详情五处标签 chip
+  的取色与写法收成一处。
+- **`components/EmptyState.svelte`**：三个视图的空态（图标 + 标题 + 说明 + 主操作）。
+- **`ui/ColorPicker.svelte`**：习惯 / 纪念日的颜色圆点（测试脚本认的 `data-*` 保留）。
+
+### 文件拆分（B8）
+
+- **`TaskEditor.svelte` 630 → 138 行**。表单状态与规则搬进
+  `views/editors/task/form.svelte.ts`（`TaskForm` 类：字段、派生提示、校验、
+  `toPatch()`、提醒基准沿用已读标记），四个分区各自成组件
+  （`TimeSection` / `RemindSection` / `SubsSection` / `MetaSection`）。
+  外壳只剩「存到哪去」：改现有条目走 `apiUpdateTask`，新建走 `saveTask`。
+- **`CalendarView.svelte` 572 → 404 行**。`blocksOf` / `segOn` 移进
+  `domain/calendar.ts`（纯函数、不碰 store 与 DOM），工具条与时间栅格拆成
+  `views/calendar/CalHead.svelte`、`views/calendar/TimeGrid.svelte`。
+- **`store/data.svelte.ts` 637 → 16 行**，实现拆到 `store/data/`
+  六个模块（state / write / tasks / cache / holiday / bulk），
+  出口仍是一句 `import '$lib/store/data.svelte'`，二十多个调用点零改动。
+
+### 样式（B9）
+
+- **`styles.css` 1926 行拆成 9 个文件**（base / layout / views / modal / detail /
+  calendar / themes / forms / clock），入口只留 `@import`，顺序与原行序一致，
+  拆分前后产物大小、gzip 后大小均未变。
+- **修好两处结构错误**：
+  - `.cal-head` / `.cal-nav` 在「日历工具条」和「日期浮层」上同名不同义，
+    浮层那条把工具条的前后翻键压成 26×26。浮层改用 `.dp-head` / `.dp-nav`。
+  - `@media (min-width:1000px)` 里提前多了一个 `}`，导致 `.modal-mask.stacked`、
+    `.task.active` 等 5 条全局规则被关在媒体查询外面（窄屏下选中态不生效）。
+- 动效令牌 `--t-fast / --t / --t-slow / --ease`；删掉从未使用的 `--r` / `--r-sm`；
+  补 `prefers-reduced-motion`（系统要求减少动态效果时，过渡压到一帧）。
+- 合并重复的「已归档」段头。
+
+### 顺带修掉的两处交互
+
+- 搜索面板「有关键词但没有结果」时只剩一行结果计数，现在给出空态提示。
+- 提醒中心的行上按回车：此前行内的「知道了 / 完成」会先响应、再冒泡到行又打开详情，
+  一次回车干两件事。现在只认落在行本身的回车，并阻止冒泡。
+
+### 验证
+
+- 单测 48 → 60 条（新增 `domain/calendar.test.ts`：分道、最小高度、贴边钳制、
+  子项分段、结束时间计算）。
+- `bun run check`：svelte-check 0 error，`check-writes` 0 处直接写入。
+- `ui-check --strict` 0 失败、`remedy-check` 全绿。
+
 ---
 
 ## v3.2.0 · 2026-11-01
+
 
 不改变功能，把「用 Svelte 语法写 jQuery 思路」的部分换掉。
 

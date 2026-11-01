@@ -8,6 +8,7 @@
   import { uiState } from '$lib/store/ui.svelte';
   import { toast } from '$lib/store/toast.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import ModalHead from '$lib/ui/ModalHead.svelte';
   import { prepareForm } from '$lib/actions/prepare-form';
 
 
@@ -154,10 +155,7 @@
 
 </script>
 
-<div class="m-head">
-  <h3>备份与恢复</h3>
-  <button class="m-close" onclick={close}><Icon name="close" /></button>
-</div>
+<ModalHead title="备份与恢复" onclose={close} />
 <div class="m-body">
   <div class="field">
     <label>导出<span class="hint">JSON 可再导入，CSV 给表格用</span></label>

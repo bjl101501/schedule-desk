@@ -7,6 +7,7 @@
   import { openQuickAdd } from '$lib/store/ui.svelte';
   import { toast } from '$lib/store/toast.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import EmptyState from '$lib/components/EmptyState.svelte';
   import TodayPanel from './TodayPanel.svelte';
   import FilterBar from './FilterBar.svelte';
   import ListMode from './modes/ListMode.svelte';
@@ -47,12 +48,11 @@
 {:else if app.vmode === 'kanban'}
   <KanbanMode {rows} />
 {:else if !rows.length}
-  <div class="empty">
-    <div class="empty-ico"><Icon name="inbox" /></div>
-    <h4>这里很干净</h4>
-    <p>没有符合条件的日程。换个筛选条件，或者添加一条新日程。</p>
-    <button data-empty="add" onclick={() => openQuickAdd()}>+ 添加日程</button>
-  </div>
+  <EmptyState icon="inbox" title="这里很干净" text="没有符合条件的日程。换个筛选条件，或者添加一条新日程。">
+    {#snippet action()}
+      <button data-empty="add" onclick={() => openQuickAdd()}>+ 添加日程</button>
+    {/snippet}
+  </EmptyState>
 {:else if app.vmode === 'card'}
   <CardMode {rows} />
 {:else}

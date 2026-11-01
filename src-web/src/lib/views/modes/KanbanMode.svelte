@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Task, KanbanGroup } from '$lib/domain/types';
   import { LIST_COLORS } from '$lib/domain/constants';
-  import { dayDiff, parseYmd, shortDate, tagColor as tagColorOf } from '$lib/domain/date';
+  import { dayDiff, parseYmd, shortDate } from '$lib/domain/date';
   import { allLists, allTags } from '$lib/domain/selectors';
   import { subStats } from '$lib/domain/task';
   import { taskState } from '$lib/domain/window';
@@ -15,6 +15,7 @@
   import { isSuppressed } from '$lib/actions/suppress';
   import { beginDrag, type DragFx } from '$lib/actions/dragFx';
   import Icon from '$lib/ui/Icon.svelte';
+  import TagChips from '$lib/components/TagChips.svelte';
   import Flags from '$lib/components/Flags.svelte';
   import { pointerDrag, hitAt } from '$lib/actions/drag';
   import { dropKanban } from '$lib/store/dndActions.svelte';
@@ -185,9 +186,7 @@
                 </div>
               {/if}
               <div class="kcard-foot">
-                {#each t.tags.slice(0, 2) as gg (gg)}
-                  <span class="tag-chip {tagColorOf(gg, ['c0', 'c1', 'c2', 'c3', 'c4'])}">#{gg}</span>
-                {/each}
+                <TagChips tags={t.tags.slice(0, 2)} />
                 {#if t.date}<span class="kcard-date {dateCls(t)}">{shortDate(parseYmd(t.date), today)}</span>{/if}
               </div>
             </div>

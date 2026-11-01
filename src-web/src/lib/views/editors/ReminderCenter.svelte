@@ -7,6 +7,7 @@
   import { openTaskDetail, uiState } from '$lib/store/ui.svelte';
   import { completeFromReminder, markRemindRead, remindStage } from '$lib/store/remind.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import ModalHead from '$lib/ui/ModalHead.svelte';
 
   const pend = $derived(pendingReminders(data.tasks, clock.now));
 
@@ -41,16 +42,20 @@
   }
 </script>
 
-<div class="m-head">
-  <h3>提醒中心</h3>
-  <button class="m-close" onclick={close}><Icon name="close" /></button>
-</div>
+<ModalHead title="提醒中心" onclose={close} />
 <div class="m-body">
   <div class="field">
     <label>已到点<span class="hint">{pend.length} 条</span></label>
     {#if pend.length}
       {#each pend as p (p.task.id + p.r.idx)}
-        <div class="tpl-row" data-remind-open={p.task.id} onclick={() => open(p.task.id)} role="button" tabindex="0" onkeydown={(e) => { if (e.key === 'Enter') open(p.task.id); }}>
+        <div class="tpl-row" data-remind-open={p.task.id} onclick={() => open(p.task.id)} role="button" tabindex="0" onkeydown={(e) => {
+          // 只认落在行本身的回车：行内的「知道了 / 完成」自己处理按键，
+          // 不拦的话会先触发按钮、再冒泡到行，一次回车干两件事
+          if (e.key !== 'Enter' || e.target !== e.currentTarget) return;
+          e.preventDefault();
+          e.stopPropagation();
+          open(p.task.id);
+        }}>
           <span class="tpl-t"><Icon name="bell" /> {p.task.title}</span>
           <span class="tpl-m">
             {#if p.task.remindMode === '艾宾浩斯'}

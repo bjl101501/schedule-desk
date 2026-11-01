@@ -1,12 +1,9 @@
 <script lang="ts">
   import { uiState } from '$lib/store/ui.svelte';
-  import Icon from '$lib/ui/Icon.svelte';
+  import ModalHead from '$lib/ui/ModalHead.svelte';
 </script>
 
-<div class="m-head">
-  <h3>使用说明</h3>
-  <button class="m-close" onclick={() => (uiState.help = false)}><Icon name="close" /></button>
-</div>
+<ModalHead title="使用说明" onclose={() => (uiState.help = false)} />
 <div class="m-body">
   <div class="field">
     <label>数据放在哪</label>

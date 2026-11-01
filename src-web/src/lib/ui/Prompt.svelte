@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { PromptReq } from '$lib/store/overlay.svelte';
   import { pop } from '$lib/store/overlay.svelte';
-  import Icon from './Icon.svelte';
+  import ModalHead from './ModalHead.svelte';
 
   let { req }: { req: PromptReq } = $props();
 
@@ -28,10 +28,7 @@
   }
 </script>
 
-<div class="m-head">
-  <h3>{req.title}</h3>
-  <button class="m-close" onclick={() => pop()}><Icon name="close" /></button>
-</div>
+<ModalHead title={req.title} onclose={() => pop()} />
 <div class="m-body">
   {#if req.label}<div style="font-size:12.5px;color:var(--text-2);line-height:1.7;margin-bottom:9px">{@html req.label}</div>{/if}
   <input

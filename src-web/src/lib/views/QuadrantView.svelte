@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { Task } from '$lib/domain/types';
-  import { dayDiff, parseYmd, shortDate, tagColor as tagColorOf } from '$lib/domain/date';
-  import { TAG_COLORS } from '$lib/domain/constants';
+  import { dayDiff, parseYmd, shortDate } from '$lib/domain/date';
   import { subStats } from '$lib/domain/task';
   import { sortTasks } from '$lib/domain/selectors';
   import { app } from '$lib/store/app.svelte';
@@ -11,6 +10,7 @@
   import { isSuppressed } from '$lib/actions/suppress';
   import { beginDrag, type DragFx } from '$lib/actions/dragFx';
   import Icon from '$lib/ui/Icon.svelte';
+  import TagChips from '$lib/components/TagChips.svelte';
   import Flags from '$lib/components/Flags.svelte';
   import { pointerDrag, hitAt } from '$lib/actions/drag';
   import { dropQuadrant } from '$lib/store/dndActions.svelte';
@@ -111,9 +111,7 @@
                 </div>
               {/if}
               <div class="kcard-foot">
-                {#each t.tags.slice(0, 2) as g (g)}
-                  <span class="tag-chip {tagColorOf(g, TAG_COLORS)}">#{g}</span>
-                {/each}
+                <TagChips tags={t.tags.slice(0, 2)} />
                 {#if t.date}
                   <span class="kcard-date {diff !== null && diff < 0 ? 'over' : diff === 0 ? 'today' : ''}">{shortDate(parseYmd(t.date), today)}</span>
                 {/if}

@@ -6,7 +6,7 @@
   import { meta } from '$lib/store/meta.svelte';
   import { uiState } from '$lib/store/ui.svelte';
   import DateField from '$lib/ui/DateField.svelte';
-  import Icon from '$lib/ui/Icon.svelte';
+  import ModalHead from '$lib/ui/ModalHead.svelte';
   import { prepareForm } from '$lib/actions/prepare-form';
 
   let prio = $state<string[]>([...app.filters.prio]);
@@ -45,10 +45,7 @@
   }
 </script>
 
-<div class="m-head">
-  <h3>筛选</h3>
-  <button class="m-close" onclick={close}><Icon name="close" /></button>
-</div>
+<ModalHead title="筛选" onclose={close} />
 <div class="m-body">
   <div class="field">
     <label>优先级</label>

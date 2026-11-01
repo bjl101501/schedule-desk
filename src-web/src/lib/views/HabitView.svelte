@@ -9,6 +9,7 @@
   import { apiSaveHabit, cacheLocal, data } from '$lib/store/data.svelte';
   import { uiState } from '$lib/store/ui.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import EmptyState from '$lib/components/EmptyState.svelte';
 
   const tick = $derived(clock.now);
   const today = $derived(todayD());
@@ -110,12 +111,11 @@
 </script>
 
 {#if !data.habits.length}
-  <div class="empty">
-    <div class="empty-ico"><Icon name="repeat" /></div>
-    <h4>还没有习惯</h4>
-    <p>每天重复的小事，才是改变的开始。添加第一个习惯吧。</p>
-    <button data-habitadd onclick={() => editHabit('')}>+ 添加习惯</button>
-  </div>
+  <EmptyState icon="repeat" title="还没有习惯" text="每天重复的小事，才是改变的开始。添加第一个习惯吧。">
+    {#snippet action()}
+      <button data-habitadd onclick={() => editHabit('')}>+ 添加习惯</button>
+    {/snippet}
+  </EmptyState>
 {:else}
   <div class="view-bar">
     <button class="btn btn-pri view-add" data-habitadd onclick={() => editHabit('')}><Icon name="plus" />添加习惯</button>

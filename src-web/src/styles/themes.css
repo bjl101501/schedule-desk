@@ -1,0 +1,86 @@
+/* ---------- 主题（换肤） ---------- */
+html[data-theme="celadon"]{
+  --bg:#EEF2EE; --panel:#FCFEFB; --panel-2:#F4F8F3;
+  --line:#DEE6DB; --line-2:#EAF0E8; --field-bg:#FFFFFF; --field-line:#D2DDCE;
+  --text:#26302A; --text-2:#5E6C63; --text-3:#8D9A91;
+  --brand:#2E7D6F; --brand-2:#1F5F54; --brand-soft:#E3F1ED; --brand-softer:#F2F9F6;
+  --red:#B23A34; --red-soft:#F9EDEB;
+  --orange:#B98530; --orange-soft:#FAF2E1;
+  --green:#4F8464; --green-soft:#EAF3EC;
+  --purple:#6E4E66; --purple-soft:#F4EDF2;
+  --cyan:#2A7F94; --cyan-soft:#E8F4F6;
+  --shadow:0 6px 18px rgba(40,60,48,.08);
+  --shadow-lg:0 20px 48px rgba(40,60,48,.16);
+}
+html[data-theme="moon"]{
+  --bg:#EEF1F6; --panel:#FBFCFE; --panel-2:#F4F7FB;
+  --line:#DCE3EC; --line-2:#E9EEF5; --field-bg:#FFFFFF; --field-line:#D2DBE6;
+  --text:#232A33; --text-2:#5C6774; --text-3:#8C97A5;
+  --brand:#3B6EA5; --brand-2:#2C5580; --brand-soft:#E6EFF8; --brand-softer:#F3F8FD;
+  --red:#B23B41; --red-soft:#F9ECEC;
+  --orange:#B98530; --orange-soft:#FAF2E1;
+  --green:#4E7F68; --green-soft:#EAF2EE;
+  --purple:#6C4F73; --purple-soft:#F4EDF5;
+  --cyan:#2C7C96; --cyan-soft:#E8F4F7;
+  --shadow:0 6px 18px rgba(38,50,68,.09);
+  --shadow-lg:0 20px 48px rgba(38,50,68,.18);
+}
+html[data-theme="dusk"]{
+  --bg:#1B1A18; --panel:#232220; --panel-2:#292724;
+  --line:#3A362F; --line-2:#302D28; --field-bg:#2B2926; --field-line:#4A4338;
+  --text:#EDE7DC; --text-2:#B4ABA0; --text-3:#8A8277;
+  --brand:#6FA7C9; --brand-2:#9CC6DE; --brand-soft:#25333B; --brand-softer:#20292E;
+  --red:#E08A7F; --red-soft:#3A2724;
+  --orange:#D9A55E; --orange-soft:#392F1F;
+  --green:#8FB894; --green-soft:#232F26;
+  --purple:#BE92A8; --purple-soft:#33262F;
+  --cyan:#7FC1D6; --cyan-soft:#1F2F36;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 8px 20px rgba(0,0,0,.4);
+  --shadow-lg:0 22px 52px rgba(0,0,0,.6);
+}
+/* 深色主题下热力图色阶翻成暗色，不然几块亮蓝亮绿特别扎眼 */
+html[data-theme="dusk"],
+html[data-theme="ink"]{
+  --heat-1:#22303F; --heat-2:#2C4A5F; --heat-3:#3F6E8C; --heat-4:#5C9AC0;
+  --hh-1:#1F3327;   --hh-2:#2A4A35;   --hh-3:#3A6E4C;   --hh-4:#529A6B;
+}
+html[data-theme="ink"]{
+  --bg:#15181F; --panel:#1C212B; --panel-2:#212734;
+  --line:#2F3746; --line-2:#262D3A; --field-bg:#242B37; --field-line:#3B4658;
+  --text:#E6ECF6; --text-2:#A7B2C3; --text-3:#7B8799;
+  --brand:#6FA8DC; --brand-2:#9CC4E8; --brand-soft:#22303F; --brand-softer:#1B242F;
+  --red:#E0857C; --red-soft:#392528;
+  --orange:#D8AA63; --orange-soft:#383020;
+  --green:#8BBE9A; --green-soft:#1F2E28;
+  --purple:#B995C4; --purple-soft:#2D2636;
+  --cyan:#7EC0D8; --cyan-soft:#1F2F38;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.45);
+  --shadow:0 8px 20px rgba(0,0,0,.45);
+  --shadow-lg:0 22px 52px rgba(0,0,0,.65);
+}
+/* 深色下按钮与描边 */
+html[data-theme="dusk"] .btn-pri,
+html[data-theme="ink"] .btn-pri{color:#101419}
+html[data-theme="dusk"] .kcard,
+html[data-theme="ink"] .kcard{background:var(--panel)}
+
+/* 主题选择器 */
+.theme-menu{min-width:190px;padding:6px}
+.theme-row{
+  display:flex;align-items:center;gap:9px;width:100%;padding:8px 9px;border-radius:8px;
+  font-size:12.5px;color:var(--text);text-align:left;transition:.12s;
+}
+.theme-row:hover{background:var(--panel-2)}
+.theme-row.on{background:var(--brand-soft);color:var(--brand)}
+.theme-row .tn{flex:1}
+.theme-row .tdots{display:flex;gap:3px}
+.theme-row .tdots i{width:9px;height:9px;border-radius:50%;display:block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.theme-chips{display:flex;flex-wrap:wrap;gap:8px}
+.theme-chip{
+  display:flex;align-items:center;gap:7px;padding:6px 11px 6px 8px;border-radius:9px;
+  border:1px solid var(--line);background:var(--panel);font-size:12.5px;transition:.12s;
+}
+.theme-chip:hover{border-color:var(--brand)}
+.theme-chip.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+.theme-chip .tdots i{width:10px;height:10px;border-radius:50%;display:block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}

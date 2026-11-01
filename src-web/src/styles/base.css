@@ -1,0 +1,71 @@
+:root{
+  /* 中国传统色：宣纸底 + 墨色字 + 靛青主色（色卡参考 sealuo.com/category/all） */
+  --bg:#F7F3EA;          /* 缟 · 宣纸（淡） */
+  --panel:#FFFEFA;       /* 象牙白 */
+  --panel-2:#FBF7EE;     /* 素纸 */
+  --line:#E6DDCB;        /* 米色界线 */
+  --line-2:#F1EADC;
+  --field-bg:#FFFFFF;    /* 输入框底色，比面板更亮一档 */
+  --field-line:#DDD1BC;  /* 输入框描边，比分隔线深一档 */
+  --text:#2A2925;        /* 玄色 */
+  --text-2:#6B6156;      /* 苍褐 */
+  --text-3:#9C9285;      /* 灰褐 */
+  --brand:#177CB0;       /* 靛青 */
+  --brand-2:#0E5F8A;     /* 花青 */
+  --brand-soft:#E7F2F8;
+  --brand-softer:#F5FAFD;
+  --red:#C3272B;         /* 朱砂 */
+  --red-soft:#FBECEA;
+  --orange:#C8892B;      /* 杏黄 */
+  --orange-soft:#FCF2DF;
+  --green:#5E8C6A;       /* 竹青 */
+  --green-soft:#EDF4EA;
+  --purple:#7A4E63;      /* 绛紫 */
+  --purple-soft:#F6EDF1;
+  --cyan:#1685A9;        /* 石青 */
+  --cyan-soft:#E8F5F8;
+  /* 热力图 / 习惯格的四档色阶，深色主题里翻成暗色系 */
+  --heat-1:#CFE0FF; --heat-2:#8DB4FF; --heat-3:#4B82FF; --heat-4:#1F4FD0;
+  --hh-1:#C6ECDB;   --hh-2:#7FD6B3;   --hh-3:#2EB984;   --hh-4:#128257;
+  --shadow-sm:0 1px 2px rgba(74,60,42,.06);
+  --shadow:0 6px 18px rgba(74,60,42,.09);
+  --shadow-lg:0 20px 48px rgba(74,60,42,.18);
+  --r-lg:16px; --r-xl:22px;
+  /* 动效：三档时长 + 一条统一缓动。过渡一律引用这里，别在规则里写裸秒数 */
+  --t-fast:.13s; --t:.2s; --t-slow:.26s;
+  --ease:cubic-bezier(.32,.72,0,1);
+  --side:248px;
+  --panel-w:400px;
+  --font-ui:"LXGW WenKai GB","LXGW WenKai GB Medium",-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:var(--font-ui);
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+button{font-family:inherit;font-size:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+h1,h2,h3,h4,strong,b{font-family:"LXGW WenKai GB Medium",var(--font-ui);font-weight:500}
+input,textarea,select{font-family:inherit;font-size:16px;color:inherit}
+a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:9px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:var(--text-3);background-clip:content-box}
+::-webkit-scrollbar-track{background:transparent}
+.hidden{display:none!important}
+
+/*
+  系统开了「减少动态效果」时，所有过渡/动画压到一帧内。
+  面板滑入、弹窗缩放、拖拽浮层这些都只影响观感，不该让前庭敏感的人难受。
+*/
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.001ms!important;
+    scroll-behavior:auto!important;
+  }
+}
+

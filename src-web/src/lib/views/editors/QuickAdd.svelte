@@ -6,6 +6,7 @@
   import { toast } from '$lib/store/toast.svelte';
   import { openTaskEditor, uiState } from '$lib/store/ui.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import ModalHead from '$lib/ui/ModalHead.svelte';
   import { prepareForm } from '$lib/actions/prepare-form';
 
   let raw = $state(uiState.quickDraft || '');
@@ -74,10 +75,7 @@
   setTimeout(() => input?.focus(), 80);
 </script>
 
-<div class="m-head">
-  <h3>添加日程</h3>
-  <button class="m-close" onclick={close}><Icon name="close" /></button>
-</div>
+<ModalHead title="添加日程" onclose={close} />
 <div class="m-body">
   <div class="field">
     <input class="inp" id="qaInput" bind:this={input} bind:value={raw} onkeydown={onKey} placeholder="例：明天下午 3 点开会 #工作 !p1" style="height:46px;font-size:16px" autofocus use:prepareForm />

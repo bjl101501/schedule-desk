@@ -1,8 +1,7 @@
 <script lang="ts">
   import type { Task } from '$lib/domain/types';
-  import { doneText, durText, parseYmd, shortDate, tagColor as tagColorOf, dayDiff } from '$lib/domain/date';
+  import { doneText, durText, parseYmd, shortDate, dayDiff } from '$lib/domain/date';
   import { repeatLabel, subStats, timeRangeText } from '$lib/domain/task';
-  import { TAG_COLORS } from '$lib/domain/constants';
   import { taskState } from '$lib/domain/window';
   import { clock, todayD } from '$lib/store/clock.svelte';
   import { deleteTask, toggleDone } from '$lib/store/data.svelte';
@@ -10,6 +9,7 @@
   import { isDetailOpen } from '$lib/store/overlay.svelte';
   import { isSuppressed } from '$lib/actions/suppress';
   import Icon from '$lib/ui/Icon.svelte';
+  import TagChips from '$lib/components/TagChips.svelte';
   import Flags from './Flags.svelte';
   import SubRows from './SubRows.svelte';
   import StateChip from './StateChip.svelte';
@@ -85,9 +85,7 @@
         <span class="m due-repeat"><Icon name="repeat" />{repeatLabel(t)}</span>
       {/if}
       <RemindChip {t} />
-      {#each t.tags as g (g)}
-        <span class="tag-chip {tagColorOf(g, TAG_COLORS)}">#{g}</span>
-      {/each}
+      <TagChips tags={t.tags} />
       {#if t.list && t.list !== '收集箱'}
         <span class="m"><Icon name="inbox" />{t.list}</span>
       {/if}

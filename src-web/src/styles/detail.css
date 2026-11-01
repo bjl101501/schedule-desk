@@ -1,0 +1,246 @@
+/* ---------- task detail ---------- */
+.m-back{
+  width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  color:var(--text-2);flex:0 0 auto;
+}
+.m-back:hover{background:var(--line-2);color:var(--brand)}
+.m-back svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.dt-head{display:flex;align-items:flex-start;gap:11px}
+.dt-chk{
+  width:22px;height:22px;border-radius:7px;border:2px solid var(--line-2);flex:0 0 auto;margin-top:3px;
+  display:flex;align-items:center;justify-content:center;transition:.15s;background:var(--panel);
+}
+.dt-chk:hover{border-color:var(--brand);background:var(--brand-softer)}
+.dt-chk svg{width:12px;height:12px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:0;transition:.15s}
+.dt-chk.on{background:var(--brand);border-color:var(--brand)}
+.dt-chk.on svg{opacity:1}
+.dt-title{margin:0;font-size:19px;font-weight:700;line-height:1.42;letter-spacing:-.3px;word-break:break-word;flex:1}
+.dt-title.done{text-decoration:line-through;color:var(--text-3)}
+.dt-meta{display:flex;flex-direction:column;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.dt-row{display:flex;align-items:center;gap:9px;padding:9px 12px;font-size:12.5px;border-bottom:1px solid var(--line-2)}
+.dt-row:last-child{border-bottom:0}
+.dt-row .dt-ico{width:15px;height:15px;flex:0 0 auto;stroke:var(--text-3);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.dt-row .dt-k{color:var(--text-3);width:52px;flex:0 0 auto;font-size:11.5px}
+.dt-row .dt-v{flex:1;color:var(--text);font-weight:500;word-break:break-word;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.dt-row .dt-v.warn{color:var(--red);font-weight:600}
+.dt-row .dt-v.brand{color:var(--brand);font-weight:600}
+.dt-row .dt-v.muted{color:var(--text-3);font-weight:400}
+.dt-sec{display:flex;flex-direction:column;gap:7px}
+.dt-sec>label{font-size:11.5px;font-weight:700;color:var(--text-2);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.dt-sec>label svg{width:14px;height:14px;flex:0 0 auto;stroke:var(--text-3);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dt-sec>label span{font-weight:500;color:var(--text-3);font-size:11px}
+.dt-note{font-size:13px;color:var(--text-2);line-height:1.75;white-space:pre-wrap;word-break:break-word;background:var(--panel-2);border-radius:10px;padding:10px 12px}
+/* ---------- 优先级 & 四象限标记 ---------- */
+.flags{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto}
+.flag-p{
+  font-size:9.5px;font-weight:800;letter-spacing:.2px;line-height:15px;padding:0 4px;border-radius:4px;
+  font-variant-numeric:tabular-nums;
+}
+.flag-p.p0{background:var(--red-soft);color:var(--red)}
+.flag-p.p1{background:var(--orange-soft);color:var(--orange)}
+.flag-p.p2{background:var(--brand-soft);color:var(--brand)}
+.flag-p.p3{background:var(--line-2);color:var(--text-3)}
+.flag-q{display:inline-flex;width:13px;height:13px;flex:0 0 auto;vertical-align:-2px}
+.flag-q svg{width:13px;height:13px;display:block}
+/* 象限颜色跟着 v2.2.0 的坐标走：Ⅰ 蓝（计划做）/ Ⅱ 红（立即做）/ Ⅲ 杏（少做）/ Ⅳ 灰（不做）。
+   这里曾按旧编号配成 Ⅰ 红、Ⅱ 蓝，和四象限视图里的格头对不上。 */
+.flag-q.q1{color:var(--brand)}
+.flag-q.q2{color:var(--red)}
+.flag-q.q3{color:var(--orange)}
+.flag-q.q4{color:var(--text-3)}
+.task-title-row .flags{margin-right:1px}
+.due-repeat{color:var(--purple)}
+.due-repeat svg{width:12px;height:12px}
+
+/* 搜索面板 */
+.sc-res{display:flex;flex-direction:column;gap:3px;margin-top:2px}
+.sc-item{
+  display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:10px;cursor:pointer;
+  border:1px solid transparent;transition:.12s;
+}
+.sc-item:hover{background:var(--brand-softer);border-color:var(--brand-2)}
+.sc-item .sc-t{flex:1;min-width:0;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-item .sc-m{font-size:11px;color:var(--text-3);flex:0 0 auto}
+.sc-empty{font-size:12.5px;color:var(--text-3);padding:14px 4px;text-align:center}
+
+/* 预计时长：输入框 + 分钟 / 小时单选，不再放一排快选按钮 */
+.est-row{display:flex;align-items:center;gap:7px}
+.est-row #edEst{flex:1 1 auto;min-width:0;text-align:center}
+.est-unit{flex:0 0 auto}
+.est-unit button{flex:0 0 auto;padding:0 10px;height:32px;font-size:12px;border-radius:7px}
+.est-hint{font-size:11px;color:var(--orange);margin-top:3px;display:none}
+.est-hint.show{display:block;display:flex;align-items:center;gap:5px}
+
+/* 编辑器分区：各项之间一条浅分割线，长表单不至于糊成一片 */
+.ed-sep{height:0;border-top:1px dashed var(--line);opacity:.9;margin:1px 0}
+/* 计划：勾选后出现结束日期 / 结束时间，未勾选时整行收起 */
+.plan-block{display:flex;flex-direction:column;gap:9px}
+.plan-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.plan-dates.is-off{display:none}
+/* 预计用时：输入框 + 分钟/小时两段，单独一行 */
+.est-line{display:flex;align-items:center;gap:8px;max-width:260px}
+.est-line .inp{flex:1 1 auto;min-width:0}
+.est-unit{flex:0 0 auto}
+.check-line.is-off{opacity:.5}
+.check-line.is-off input{cursor:not-allowed}
+/* 清单 / 标签：输入框 + 「选已有」下拉 + 新建，两处 format 一致 */
+.pick-row{display:flex;gap:6px;margin-top:5px}
+.pick-row select{height:34px;font-size:13px;flex:1 1 auto;min-width:0}
+.pick-row .chip-p{height:34px;flex:0 0 auto;display:inline-flex;align-items:center}
+/* 清单 / 标签的「选已有」：同一个按钮壳 + 同一个浮层，清单单选、标签多选 */
+.pick-row .pick-multi{
+  height:34px;font-size:13px;flex:1 1 auto;min-width:0;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;
+}
+.pick-row .pick-multi:hover{border-color:var(--brand-2)}
+.pick-row .pick-multi.open{border-color:var(--brand);background:var(--panel);box-shadow:0 0 0 3px rgba(47,107,255,.11)}
+.pick-row .pick-multi .pm-n{font-size:11px;font-weight:700;color:var(--brand);font-variant-numeric:tabular-nums}
+.pick-row .pick-multi .pm-t{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick-row .pick-multi .pm-c{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;color:var(--text-3)}
+.pick-row .pick-multi .pm-c svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;transition:.13s}
+.pick-row .pick-multi.open .pm-c svg{transform:rotate(180deg)}
+.pick-menu{
+  position:fixed;z-index:1000;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  box-shadow:0 14px 34px rgba(21,24,29,.18);padding:4px;max-height:264px;overflow-y:auto;
+}
+.pick-opt{
+  display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 9px;border-radius:7px;
+  font-size:12.5px;color:var(--text);text-align:left;transition:.1s;
+}
+.pick-opt span{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick-opt:hover{background:var(--panel-2)}
+.pick-opt.on{background:var(--brand-soft);color:var(--brand);font-weight:600}
+.pick-opt .pick-box{
+  width:15px;height:15px;border-radius:4px;border:1.5px solid var(--line);background:var(--panel);
+  display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1;font-style:normal;
+  font-weight:700;color:#fff;flex:0 0 auto;
+}
+.pick-opt.on .pick-box{background:var(--brand);border-color:var(--brand)}
+/* 单选画成圆点，和多选的勾一眼能分开 */
+.pick-menu.single .pick-box{border-radius:50%}
+.pick-menu.single .pick-opt.on .pick-box{box-shadow:inset 0 0 0 3.5px var(--panel)}
+.pick-menu-empty{font-size:12px;color:var(--text-3);padding:10px 9px;line-height:1.65}
+/* 子项「天」列只在多天日程里出现 */
+.sub-edit .sub-dayin{display:none}
+.sub-edit.has-span .sub-edit-row .sub-dayin{display:block}
+
+/* ---------- 拆分 / 子项 ---------- */
+.sub-prog{display:flex;align-items:center;gap:9px;margin-bottom:2px}
+.sub-bar{flex:1;height:5px;border-radius:3px;background:var(--line-2);overflow:hidden;min-width:60px}
+.sub-bar i{display:block;height:100%;background:var(--brand);border-radius:3px;transition:width .22s}
+.sub-bar.full i{background:var(--green)}
+.sub-prog-num{font-size:11.5px;font-weight:700;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.sub-prog-num em{font-style:normal;color:var(--text-3);font-weight:600}
+.sub-list{display:flex;flex-direction:column;gap:5px}
+.sub-item{
+  display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:10px;background:var(--panel-2);
+  border:1px solid var(--line);text-align:left;width:100%;cursor:pointer;transition:.12s;font-family:inherit;
+}
+.sub-item:hover{background:var(--brand-softer);border-color:var(--brand-2)}
+.sub-box{
+  width:17px;height:17px;flex:0 0 auto;border-radius:5px;border:1.6px solid var(--line-2);background:var(--panel);
+  display:flex;align-items:center;justify-content:center;transition:.14s;
+}
+.sub-box svg{width:11px;height:11px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:0;transform:scale(.6);transition:.14s}
+.sub-item.done .sub-box{background:var(--green);border-color:var(--green)}
+.sub-item.done .sub-box svg{opacity:1;transform:scale(1)}
+.sub-t{flex:1;min-width:0;font-size:13.5px;color:var(--text);line-height:1.45;word-break:break-word}
+.sub-item.done .sub-t{color:var(--text-3);text-decoration:line-through}
+.sub-min{font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums;flex:0 0 auto}
+.sub-item.done .sub-min{opacity:.7}
+.sub-empty{font-size:12px;color:var(--text-3)}
+
+/* 编辑器里的子项录入 */
+.sub-edit{display:flex;flex-direction:column;gap:5px}
+.sub-edit-row{display:flex;align-items:center;gap:6px}
+.sub-edit-row .inp{height:33px;font-size:13px}
+.sub-edit-row .sub-name{flex:1;min-width:0}
+.sub-edit-row .sub-minin{width:74px;flex:0 0 74px;text-align:center}
+.sub-edit-row .sub-dayin{width:56px;flex:0 0 56px;text-align:center}
+.sub-edit-row .sub-del{
+  width:26px;height:26px;flex:0 0 auto;border-radius:7px;color:var(--text-3);display:flex;
+  align-items:center;justify-content:center;transition:.12s;
+}
+.sub-edit-row .sub-del:hover{background:var(--red-soft);color:var(--red)}
+.sub-edit-row .sub-del svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+.sub-edit-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:7px}
+.sub-edit-foot .hint{font-size:11px;color:var(--text-3)}
+.sub-edit-foot .hint b{color:var(--brand);font-weight:700}
+
+/* 列表 / 卡片里直接展开的子项 */
+.sub-rows{display:flex;flex-direction:column;gap:4px;margin:6px 0 3px}
+.sub-rows.dense{gap:3px}
+.sub-rows.dense .sub-row{padding:4px 9px}
+.sub-rows.dense .sub-row.done{padding:2px 9px;opacity:.72;background:transparent;border-color:transparent}
+.sub-rows.dense .sub-row.done .sub-box{width:14px;height:14px}
+.sub-rows.dense .sub-row.done .sub-t{font-size:11.5px}
+.sub-rows.dense .sub-row .sub-t{font-size:12px}
+.task-main .sub-rows{max-width:540px}
+.sub-row{
+  display:flex;align-items:center;gap:9px;padding:6px 10px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--line);background:var(--panel-2);
+  transition:.12s;font-size:12.5px;color:var(--text-2);line-height:1.5;user-select:none;
+}
+.sub-row:hover{background:var(--brand-softer);border-color:var(--brand-2)}
+.sub-row:active{transform:scale(.995)}
+.sub-row .sub-box{width:17px;height:17px;border-radius:5px;border-width:1.6px;border-color:var(--line-2);background:var(--panel)}
+.sub-row .sub-box svg{width:10px;height:10px}
+.sub-row.done{background:var(--green-soft);border-color:var(--line)}
+.sub-row.done .sub-box{background:var(--green);border-color:var(--green)}
+.sub-row.done .sub-box svg{opacity:1;transform:scale(1)}
+.sub-row .sub-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px}
+.sub-row.done .sub-t{color:var(--text-3);text-decoration:line-through}
+.sub-row .sub-min{font-size:10.5px}
+.sub-branch{
+  flex:0 0 11px;width:11px;text-align:center;font-family:ui-monospace,Menlo,Consolas,monospace;
+  font-size:13px;line-height:1;color:var(--text-2);opacity:.62;user-select:none;
+  transform:translateY(-.5px);
+}
+.sub-item:hover .sub-branch,.sub-row:hover .sub-branch{color:var(--brand);opacity:1}
+.sub-row .sub-day,.sub-item .sub-day{font-size:10.5px;color:var(--brand);flex:0 0 auto;font-variant-numeric:tabular-nums;opacity:.85}
+.sub-row-more{font-size:11px;color:var(--text-3);padding:3px 2px 1px}
+.sub-tools{display:flex;align-items:center;gap:8px;padding:0 2px 1px}
+.sub-tools span{font-size:10.5px;color:var(--text-3);font-variant-numeric:tabular-nums}
+.sub-only{
+  font-size:10.5px;font-weight:600;color:var(--text-2);background:var(--panel-2);border:1px solid var(--line);
+  border-radius:20px;padding:0 8px;line-height:18px;transition:.12s;
+}
+.sub-only:hover{border-color:var(--brand);color:var(--brand)}
+.sub-only.on{background:var(--brand-soft);border-color:var(--brand-2);color:var(--brand)}
+.task.done .sub-row{opacity:.65}
+
+.task-title-row{display:flex;align-items:center;gap:7px;min-width:0}
+.task-title-row .task-title{flex:0 1 auto;min-width:0}
+.sub-count{
+  font-size:10.5px;font-weight:700;color:var(--text-3);background:var(--panel-2);
+  border:1px solid var(--line-2);border-radius:20px;padding:0 6px;line-height:16px;
+  flex:0 0 auto;font-variant-numeric:tabular-nums;
+}
+.sub-count.full{color:var(--green);background:var(--green-soft);border-color:var(--green)}
+.tcard-top .sub-count{margin-left:auto}
+
+/* 行内进度（列表 / 卡片 / 看板 / 象限） */
+.sub-inline{display:flex;align-items:center;gap:6px;margin-top:4px;max-width:190px}
+.sub-inline .sub-bar{height:3px}
+.sub-inline .sub-txt{font-size:10.5px;font-weight:700;color:var(--text-3);font-variant-numeric:tabular-nums;flex:0 0 auto}
+.task.done .sub-inline{opacity:.5}
+.kcard .sub-inline{margin-top:5px;max-width:100%}
+.tcard .sub-inline{max-width:100%;margin-top:7px}
+/* 时间块里的细进度条 */
+.md-ev2 .md-ev2-p{position:absolute;left:0;right:0;bottom:0;height:2.5px;background:rgba(255,255,255,.55)}
+.md-ev2 .md-ev2-p i{display:block;height:100%;background:currentColor;opacity:.55}
+.eb-track{display:flex;flex-direction:column;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:9px 12px;position:relative}
+.eb-node{display:flex;align-items:center;gap:9px;font-size:11.5px;padding:4px 0;position:relative}
+.eb-dot{width:9px;height:9px;border-radius:50%;background:var(--line-2);flex:0 0 auto;z-index:1;box-shadow:0 0 0 3px var(--panel-2)}
+.eb-node.past .eb-dot{background:var(--green)}
+.eb-node.now .eb-dot{background:var(--red);box-shadow:0 0 0 3px rgba(229,72,77,.16)}
+.eb-node.future .eb-dot{background:var(--line-2)}
+
+.eb-node .eb-l{width:78px;flex:0 0 auto;color:var(--text-2);font-weight:600;display:flex;align-items:center;gap:4px}
+.eb-node .eb-n{font-style:normal;font-size:9.5px;font-weight:700;color:var(--text-3);letter-spacing:.2px}
+.eb-node .eb-t{color:var(--text-3);font-variant-numeric:tabular-nums;flex:1}
+.eb-node.past .eb-t{color:var(--green)}
+.eb-node.now .eb-t{color:var(--red);font-weight:700}
+.eb-node .eb-s{font-size:10px;color:var(--text-3);flex:0 0 auto}
+.eb-node.past .eb-s{color:var(--green)}
+.eb-node.muted{opacity:.42}

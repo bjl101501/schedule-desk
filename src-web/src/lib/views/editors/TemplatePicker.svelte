@@ -4,7 +4,7 @@
   import { parseYmd, shortDate } from '$lib/domain/date';
   import { data } from '$lib/store/data.svelte';
   import { todayD } from '$lib/store/clock.svelte';
-  import Icon from '$lib/ui/Icon.svelte';
+  import ModalHead from '$lib/ui/ModalHead.svelte';
   import { prepareForm } from '$lib/actions/prepare-form';
 
   let { onpick, onclose }: { onpick: (t: Task) => void; onclose: () => void } = $props();
@@ -19,10 +19,7 @@
   });
 </script>
 
-<div class="m-head">
-  <h3>用已有日程填充</h3>
-  <button class="m-close" onclick={onclose}><Icon name="close" /></button>
-</div>
+<ModalHead title="用已有日程填充" onclose={onclose} />
 <div class="m-body">
   <div class="field">
     <input class="inp" id="tplKw" bind:value={kw} placeholder="搜索已有日程的标题或备注" use:prepareForm />

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { uiState } from '$lib/store/ui.svelte';
-  import Icon from '$lib/ui/Icon.svelte';
+  import ModalHead from '$lib/ui/ModalHead.svelte';
 
   const rows: [string, string][] = [
     ['Esc', '关掉最上层的弹窗或抽屉'],
@@ -16,10 +16,7 @@
   ];
 </script>
 
-<div class="m-head">
-  <h3>快捷键</h3>
-  <button class="m-close" onclick={() => (uiState.shortcuts = false)}><Icon name="close" /></button>
-</div>
+<ModalHead title="快捷键" onclose={() => (uiState.shortcuts = false)} />
 <div class="m-body">
   {#each rows as [k, v] (k)}
     <div class="sc-row"><kbd>{k}</kbd><span>{v}</span></div>
