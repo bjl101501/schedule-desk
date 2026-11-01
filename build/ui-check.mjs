@@ -661,6 +661,25 @@ async function main() {
   await evaluate(cdp, 'setCal({ calMode: "month" }); goView("today")');
   await sleep(350);
 
+  // ---------- 22.5 窄屏抽屉入口 ----------
+  await resize(cdp, 860, 800);
+  await sleep(450);
+  const menuBtn = await evaluate(
+    cdp,
+    `(function(){var b=document.getElementById('btnMenu');if(!b)return null;var cs=getComputedStyle(b);return {display:cs.display,w:Math.round(b.getBoundingClientRect().width)};})()`
+  );
+  c.check('nav.menuNarrow', !!menuBtn && menuBtn.display !== 'none' && menuBtn.w > 8, menuBtn);
+  await evaluate(cdp, `document.getElementById('btnMenu')?.click()`);
+  await sleep(350);
+  c.check(
+    'nav.drawerOpens',
+    (await evaluate(cdp, `!!document.getElementById('drawerMask')?.classList.contains('in')`)) === true
+  );
+  await evaluate(cdp, `__SD_TEST__.goView('today')`);
+  await sleep(250);
+  await resize(cdp, 1280, 800);
+  await sleep(300);
+
   // ---------- 23. 未捕获异常 ----------
   const errs = exceptions(cdp);
   report.errors = errs;

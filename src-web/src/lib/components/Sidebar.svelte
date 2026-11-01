@@ -7,6 +7,7 @@
   import { data } from '$lib/store/data.svelte';
   import { isArchived, meta } from '$lib/store/meta.svelte';
   import { goView, selectList, selectTag } from '$lib/store/nav.svelte';
+  import { isSuppressed } from '$lib/actions/suppress';
   import { createList, createTag } from '$lib/store/listActions.svelte';
   import { openQuickAdd, uiState } from '$lib/store/ui.svelte';
   import Icon from '$lib/ui/Icon.svelte';
@@ -122,9 +123,9 @@
       use:pointerDrag={{
         handle: '[data-drag-name]',
         threshold: 6,
-        onStart: (el) => el.classList.add('dragging'),
+        onStart: (el) => el.classList.add('side-dragging'),
         onEnd: (el, e, moved) => {
-          el.classList.remove('dragging');
+          el.classList.remove('side-dragging');
           if (!moved) return;
           const hit = hitAt(e, '[data-drag-name]');
           const from = el.getAttribute('data-drag-name') || '';
@@ -138,7 +139,7 @@
           class="side-item{app.selectedList === nm ? ' on' : ''}"
           data-list={nm}
           data-drag-name={nm}
-          onclick={() => selectList(nm)}
+          onclick={() => { if (!isSuppressed()) selectList(nm); }}
         >
           <span class="dot" style="background:{LIST_COLORS[i % LIST_COLORS.length]}"></span>
           <span class="nm">{nm}</span>
@@ -153,7 +154,7 @@
       {#if lists.archived.length}
         <div class="side-sub"><span>已归档</span><b>{lists.archived.length}</b></div>
         {#each lists.archived as nm (nm)}
-          <div class="side-item archived{app.selectedList === nm ? ' on' : ''}" data-list={nm} onclick={() => selectList(nm)}>
+          <div class="side-item archived{app.selectedList === nm ? ' on' : ''}" data-list={nm} onclick={() => { if (!isSuppressed()) selectList(nm); }}>
             <span class="dot" style="background:#B9AE9C"></span>
             <span class="nm">{nm}</span>
             <button class="side-more show" data-listmore={nm} title="管理清单" onclick={(e) => more('list', nm, e)}><Icon name="more" /></button>
@@ -171,9 +172,9 @@
       use:pointerDrag={{
         handle: '[data-drag-name]',
         threshold: 6,
-        onStart: (el) => el.classList.add('dragging'),
+        onStart: (el) => el.classList.add('side-dragging'),
         onEnd: (el, e, moved) => {
-          el.classList.remove('dragging');
+          el.classList.remove('side-dragging');
           if (!moved) return;
           const hit = hitAt(e, '[data-drag-name]');
           const from = el.getAttribute('data-drag-name') || '';
@@ -184,7 +185,7 @@
     >
       {#if tags.length}
         {#each tags as g (g)}
-          <div class="side-item{app.selectedTag === g ? ' on' : ''}" data-tag={g} data-drag-name={g} onclick={() => selectTag(g)}>
+          <div class="side-item{app.selectedTag === g ? ' on' : ''}" data-tag={g} data-drag-name={g} onclick={() => { if (!isSuppressed()) selectTag(g); }}>
             <span class="nm"># {g}</span>
             {#if tagCount(g)}<span class="cnt">{tagCount(g)}</span>{/if}
             <button class="side-more" data-tagmore={g} title="管理标签" onclick={(e) => more('tag', g, e)}><Icon name="more" /></button>

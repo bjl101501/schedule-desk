@@ -83,7 +83,7 @@
 </script>
 
 <header class="topbar">
-  <button aria-label="菜单" class="icon-btn" id="btnMenu" style="display:none" onclick={openDrawer}>
+  <button aria-label="菜单" class="icon-btn" id="btnMenu" onclick={openDrawer}>
     <Icon name="menu" />
   </button>
 

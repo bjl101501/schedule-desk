@@ -92,7 +92,7 @@
         const hit = hitAt(e, '[data-tid]');
         const same = hit && hit !== el && hit.closest('.task-list') === el.closest('.task-list');
         fx.move(e);
-        fx.mark(same ? hit : null, 'insert-l', same ? '松手放到「' + (hit.querySelector('.tt')?.textContent || '') + '」之前' : '');
+        fx.mark(same ? hit : null, 'insert-l', same ? '松手放到「' + (hit.querySelector('.task-title')?.textContent || '') + '」之前' : '');
       },
       onEnd: onDragEnd
     }}

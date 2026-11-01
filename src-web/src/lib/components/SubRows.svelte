@@ -5,6 +5,7 @@
   import { app } from '$lib/store/app.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
   import { toggleSubAt } from '$lib/store/data.svelte';
+  import { isSuppressed } from '$lib/actions/suppress';
   import Icon from '$lib/ui/Icon.svelte';
 
   let { t }: { t: Task } = $props();
@@ -23,6 +24,7 @@
 
   function onRow(e: MouseEvent, i: number): void {
     e.stopPropagation();
+    if (isSuppressed()) return;
     void tick;
     toggleSubAt(t, i);
   }

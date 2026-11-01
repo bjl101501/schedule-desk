@@ -13,6 +13,7 @@
   import { setKanbanGroup } from '$lib/store/nav.svelte';
   import { isDetailOpen } from '$lib/store/overlay.svelte';
   import { isSuppressed } from '$lib/actions/suppress';
+  import { beginDrag, type DragFx } from '$lib/actions/dragFx';
   import Icon from '$lib/ui/Icon.svelte';
   import Flags from '$lib/components/Flags.svelte';
   import { pointerDrag, hitAt } from '$lib/actions/drag';
@@ -124,6 +125,9 @@
   function addIn(key: string): void {
     openTaskEditor('', { group: { kind: app.kanbanGroup, key } });
   }
+
+  // 一次只有一个拖拽在跑
+  let fx: DragFx | null = null;
 </script>
 
 <div class="sec-head"><h3>看板</h3><span class="meta">{groups.length} 列</span><span class="line"></span></div>
@@ -140,10 +144,19 @@
     onStart: (el) => {
       beginDragSession();
       el.classList.add('dragging');
+      fx = beginDrag({ source: el, scrollEl: () => document.getElementById('content') });
+    },
+    onMove: (_el, e) => {
+      if (!fx) return;
+      const col = hitAt(e, '[data-kkey]');
+      fx.move(e);
+      fx.mark(col, 'box', col ? '松手移到「' + (col.getAttribute('data-kkey') || '') + '」' : '');
     },
     onEnd: (el, e, moved) => {
       endDragSession();
       el.classList.remove('dragging');
+      fx?.end();
+      fx = null;
       if (!moved) return;
       const col = hitAt(e, '[data-kkey]');
       const id = el.getAttribute('data-tid') || '';

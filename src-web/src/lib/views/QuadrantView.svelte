@@ -9,6 +9,7 @@
   import { data } from '$lib/store/data.svelte';
   import { toggleTaskDetail } from '$lib/store/ui.svelte';
   import { isSuppressed } from '$lib/actions/suppress';
+  import { beginDrag, type DragFx } from '$lib/actions/dragFx';
   import Icon from '$lib/ui/Icon.svelte';
   import Flags from '$lib/components/Flags.svelte';
   import { pointerDrag, hitAt } from '$lib/actions/drag';
@@ -51,6 +52,9 @@
     if (isSuppressed()) return;
     toggleTaskDetail(t.id);
   }
+
+  // 一次只有一个拖拽在跑
+  let fx: DragFx | null = null;
 </script>
 
 <div class="banner" style="background:var(--brand-softer);border:1px solid var(--line);color:var(--text-2)">
@@ -65,10 +69,19 @@
     onStart: (el) => {
       beginDragSession();
       el.classList.add('dragging');
+      fx = beginDrag({ source: el, scrollEl: () => document.getElementById('content') });
+    },
+    onMove: (_el, e) => {
+      if (!fx) return;
+      const box = hitAt(e, '.qbox');
+      fx.move(e);
+      fx.mark(box as HTMLElement | null, 'box', box ? '松手放到这一格' : '');
     },
     onEnd: (el, e, moved) => {
       endDragSession();
       el.classList.remove('dragging');
+      fx?.end();
+      fx = null;
       if (!moved) return;
       const box = hitAt(e, '.qbox');
       const id = el.getAttribute('data-tid') || '';

@@ -37,18 +37,23 @@
     toggleTaskDetail(t.id);
   }
 
+  // 拖拽松手会补发一次 click：这几个动作都在行内，必须一起挡掉，
+  // 否则「拖完顺手把任务勾掉 / 删掉」是真会发生的
   function onDone(e: MouseEvent): void {
     e.stopPropagation();
+    if (isSuppressed()) return;
     toggleDone(t.id);
   }
 
   function onEdit(e: MouseEvent): void {
     e.stopPropagation();
+    if (isSuppressed()) return;
     openTaskEditor(t.id);
   }
 
   function onDel(e: MouseEvent): void {
     e.stopPropagation();
+    if (isSuppressed()) return;
     askDeleteTask(t.title, () => deleteTask(t.id));
   }
 </script>
