@@ -156,13 +156,10 @@
 .g-bar.active{
   box-shadow:inset 0 0 0 2px var(--brand),0 6px 16px -12px rgba(23,124,176,.5);
 }
-.g-bar.dragging{cursor:grabbing;z-index:5;opacity:.45;box-shadow:0 6px 16px rgba(40,30,20,.28)}
-/* 拖动时的落点预览：竖着贯穿所有泳道的淡色带，比一条线更容易看出「放到哪几天」 */
-.g-drop{
-  position:absolute;top:52px;bottom:0;z-index:1;pointer-events:none;border-radius:8px;
-  background:var(--brand-softer);border-left:2px dashed var(--brand);border-right:2px dashed var(--brand);
-}
+/* 拖动中的色带自己跟手（translate 由 JS 写），不再半透明留在原地 */
+.g-bar.dragging{cursor:grabbing;z-index:5;opacity:.96;box-shadow:0 10px 24px rgba(40,30,20,.26)}
 .g-day.on{background:var(--brand-soft);box-shadow:inset 0 -2px 0 var(--brand)}
+.g-lane.on{background-color:var(--brand-softer)}
 .g-segs{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;pointer-events:none;border-radius:inherit;overflow:hidden}
 /* 分段只用细缝示意，不再给奇偶段填色：一段两段三段都是同一张卡面 */
 .g-segs i{height:100%;border-right:1px dashed var(--line);box-sizing:border-box}

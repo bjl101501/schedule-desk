@@ -66,6 +66,8 @@
   });
 
   let fx: DragFx | null = null;
+  /** 按下点相对色带顶部的像素：不记它的话，抓色带中间一拖，时间会直接跳到鼠标那一刻 */
+  let grabPx = 0;
   let lineEl: HTMLElement | null = null;
   let bubEl: HTMLElement | null = null;
 
@@ -97,18 +99,22 @@
     if (bubEl) bubEl.style.display = 'none';
   }
 
-  /** 指针在某天列里的分钟数（按 5 分钟吸附） */
+  /** 指针在某天列里的分钟数。按 15 分钟吸附：5 分钟太细，手一抖就落到 14:05 这种地方 */
+  const SNAP_MIN = 15;
   function minuteAt(day: HTMLElement, clientY: number): number {
     const r = day.getBoundingClientRect();
     const ratio = (clientY - r.top) / Math.max(1, r.height);
-    const raw = Math.round((ratio * 24 * 60) / 5) * 5;
-    return Math.max(0, Math.min(23 * 60 + 55, raw));
+    const raw = Math.round((ratio * 24 * 60) / SNAP_MIN) * SNAP_MIN;
+    const last = 24 * 60 - SNAP_MIN;
+    return Math.max(0, Math.min(last, raw));
   }
 
   const mdDrag = {
     handle: '.md-ev2, .md-adchip, .wev',
     onStart: (el: HTMLElement, _e: PointerEvent, origin: { x: number; y: number }) => {
       beginDragSession();
+      const r0 = el.getBoundingClientRect();
+      grabPx = Math.max(0, Math.min(origin.y - r0.top, r0.height));
       el.classList.add('dragging');
       fx = beginDrag({ source: el, at: origin, scrollEl: () => el.closest('.md-wrap') as HTMLElement | null });
     },
@@ -133,7 +139,8 @@
         fx.mark(day, 'box', ds ? '松手改到 ' + mdShort(parseYmd(ds)) : '');
         return;
       }
-      const min = minuteAt(day, e.clientY);
+      // 减掉抓点偏移：气泡显示的是这条日程的新开始时间，不是鼠标所在时刻
+      const min = minuteAt(day, e.clientY - grabPx);
       showTimeCursor(day, min);
       fx.mark(day, 'box', '松手改到 ' + mdShort(parseYmd(ds)) + ' ' + hmStr(min));
     },
@@ -156,7 +163,7 @@
         dropToDate(id, ds);
         return;
       }
-      dropToDateTime(id, ds, hmStr(minuteAt(day as HTMLElement, e.clientY)));
+      dropToDateTime(id, ds, hmStr(minuteAt(day as HTMLElement, e.clientY - grabPx)));
     }
   };
 

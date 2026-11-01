@@ -22,6 +22,8 @@
   // 拖拽：按住条体改开始日，按住右手柄改天数（按实际列宽换算）
   /** 抓点相对色带左边界的像素：算「拖到第几天」时要用位移，不能用绝对天数 */
   let grabPx = 0;
+  /** 拖动开始时色带的左边界与宽度，用来做「色带跟手」的位移换算 */
+  let origLeft = 0;
   let resizing = false;
   let dragStart = new Date();
   let fx: DragFx | null = null;
@@ -170,7 +172,9 @@
           const under = document.elementFromPoint(origin.x, origin.y) as HTMLElement | null;
           resizing = !!under?.closest('[data-gresize]');
           const t = taskById(el.getAttribute('data-gbar') || '');
-          grabPx = origin.x - el.getBoundingClientRect().left;
+          const r0 = el.getBoundingClientRect();
+          grabPx = origin.x - r0.left;
+          origLeft = r0.left;
           if (t && t.date) {
             const off = dayDiff(dragStart, parseYmd(t.date)!);
             drop = { off, span: taskSpan(t) };
@@ -193,23 +197,29 @@
           const r = g.getBoundingClientRect();
           const dayAt = ((e.clientX - r.left) / Math.max(1, r.width)) * view.days;
           const span = taskSpan(t);
+          const dayW = r.width / view.days;
           if (resizing) {
             const off = dayDiff(dragStart, parseYmd(t.date)!);
             const next = Math.max(1, Math.min(90, Math.round(dayAt) - off + 1));
             drop = { off, span: next };
+            // 拉长时色带右缘跟手，别只给一句提示
+            el.style.width = Math.max(24, next * dayW - 4) + 'px';
             fx.mark(null, 'box', '松手把天数改成 ' + next + ' 天');
             return;
           }
           // 抓哪儿拖哪儿：新起点 = (指针 − 抓点) 所在的那一天
-          const dayW = r.width / view.days;
           const off = Math.max(0, Math.min(view.days - span, Math.round((e.clientX - grabPx - r.left) / dayW)));
           drop = { off, span };
+          // 色带本身吸附到目标那一天 —— 它自己就是落点，不用再画一根柱子
+          el.style.translate = r.left + off * dayW - origLeft + 'px 0';
           fx.mark(null, 'box', '松手移到 ' + mdShort(addDays(dragStart, off)) + ' 起 · 共 ' + span + ' 天');
         },
         onEnd: (el, _e, moved) => {
           endDragSession();
           el.classList.remove('dragging');
           const d = drop;
+          el.style.translate = '';
+          el.style.width = '';
           fx?.end();
           fx = null;
           drop = null;
@@ -261,14 +271,13 @@
               {/if}
               <span class="g-bar-t">{x.t.title}</span>
               <span class="g-bar-m">{meta2Of(x.t, x.span)}</span>
-              <i class="g-resize" data-gresize={x.t.id} title="拖我延长天数"></i>
+              {#if x.t.plan}
+                <i class="g-resize" data-gresize={x.t.id} title="拖我延长天数"></i>
+              {/if}
             </div>
           {/each}
         </div>
       {/each}
-      {#if drop}
-        <div class="g-drop" style={barStyle(drop.off, drop.span, view.days)}></div>
-      {/if}
     </div>
   </div>
   {#if view.undated.length}

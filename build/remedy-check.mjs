@@ -205,8 +205,7 @@ async function main() {
   }
   ck('drag.regroup', report.regroup.ok, report.regroup);
 
-  // ---------- 5d. 卡片视图重排：sort 必须压过日期 ----------
-  // 清空 + 导入之后只剩两条，正好够验「把第一张拖到第二张右半边」。
+  // ---------- 5d. 卡片视图：组内重排（卡片已按日期分组）----------
   await evaluate(cdp, "__SD_TEST__.goView('next7')");
   await sleep(300);
   await evaluate(cdp, "document.querySelector('[data-vmode=\"card\"]')?.click()");
@@ -214,27 +213,31 @@ async function main() {
   const cards = await evaluate(
     cdp,
     `(function(){
-       const cs = Array.from(document.querySelectorAll('.card-grid [data-tid]')).slice(0, 2);
-       if (cs.length < 2) return null;
+       const grid = Array.from(document.querySelectorAll('.card-grid'))
+         .find((g) => g.querySelectorAll('[data-tid]').length >= 2);
+       if (!grid) return null;
+       const cs = Array.from(grid.querySelectorAll('[data-tid]')).slice(0, 2);
        const a = cs[0].getBoundingClientRect(), b = cs[1].getBoundingClientRect();
        return { ids: cs.map((x) => x.getAttribute('data-tid')),
+                ds: grid.getAttribute('data-gdate'),
+                groups: document.querySelectorAll('.card-grid').length,
                 from: { x: Math.round(a.left + a.width * 0.3), y: Math.round(a.top + 20) },
                 to: { x: Math.round(b.left + b.width * 0.8), y: Math.round(b.top + 20) } };
      })()`
   );
   if (cards) {
     await drag(cdp, cards.from, cards.to);
+    await sleep(350);
     const after = await evaluate(
       cdp,
-      "Array.from(document.querySelectorAll('.card-grid [data-tid]')).slice(0,2).map((x) => x.getAttribute('data-tid'))"
+      `(function(){
+         const g = document.querySelector('.card-grid[data-gdate="${cards.ds}"]');
+         return g ? Array.from(g.querySelectorAll('[data-tid]')).map((x) => x.getAttribute('data-tid')).slice(0, 2) : [];
+       })()`
     );
-    report.cardDrag = {
-      before: cards.ids,
-      after,
-      ok: after[0] === cards.ids[1] && after[1] === cards.ids[0]
-    };
+    report.cardDrag = { ...cards, after, ok: cards.groups >= 2 && after[0] === cards.ids[1] && after[1] === cards.ids[0] };
   } else {
-    report.cardDrag = { ok: false, reason: 'less than 2 cards' };
+    report.cardDrag = { ok: false, reason: 'no group with 2 cards' };
   }
   // 不论成败都退回列表形态：后面的用例按 .task-list 取行
   await evaluate(cdp, "document.querySelector('[data-vmode=\"list\"]')?.click()");
@@ -370,8 +373,8 @@ async function main() {
     const mid = await evaluate(
       cdp,
       `(function(){
-         const d = document.querySelector('.g-drop');
-         return { drop: !!d, on: document.querySelectorAll('.g-day.on').length,
+         const b = document.querySelector('.g-bar[data-gbar]');
+         return { moved: b ? b.style.translate : '', on: document.querySelectorAll('.g-day.on').length,
                   tip: (document.querySelector('.drag-tip') || {}).textContent || '' };
        })()`
     );
@@ -391,7 +394,7 @@ async function main() {
       ok:
         tlCase.days >= 7 &&
         tlCase.heads === tlCase.days &&
-        mid.drop === true &&
+        /px/.test(mid.moved || '') &&
         mid.on >= 1 &&
         /松手移到/.test(mid.tip) &&
         got.date !== tlCase.was &&
