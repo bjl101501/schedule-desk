@@ -195,6 +195,25 @@ describe('筛选与排序', () => {
     ];
     expect(sortTasks(list, 'time').map((t) => t.id)).toEqual(['early', 'late', 'done']);
   });
+  test('手动排序：跨日期也按 sort 走（卡片视图拖动的依据）', () => {
+    // 三张卡分属不同日期；sort 被拖成 0 / 10 / 20
+    const list = [
+      mk({ id: 'c', date: Y1, sort: 20 }),
+      mk({ id: 'a', date: T, sort: 0 }),
+      mk({ id: 'b', date: Y2, sort: 10 })
+    ];
+    expect(sortTasks(list, 'manual').map((t) => t.id)).toEqual(['a', 'b', 'c']);
+    // 「按时间」口径不变：日期优先（Y2 比 Y1 更早）
+    expect(sortTasks(list, 'time').map((t) => t.id)).toEqual(['b', 'c', 'a']);
+  });
+  test('手动排序：同 sort 时按日期、再按时间稳定', () => {
+    const list = [
+      mk({ id: 'late', date: T, time: '18:00', sort: 0 }),
+      mk({ id: 'early', date: T, time: '09:00', sort: 0 }),
+      mk({ id: 'prev', date: Y1, sort: 0 })
+    ];
+    expect(sortTasks(list, 'manual').map((t) => t.id)).toEqual(['prev', 'early', 'late']);
+  });
   test('今日范围包含逾期未完成', () => {
     const ctx = { view: 'today' as const, selectedList: null, selectedTag: null };
     expect(inScope(mk({ date: Y2 }), ctx, NOW_D)).toBe(true);

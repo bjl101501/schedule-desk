@@ -113,10 +113,10 @@
   use:pointerDrag={{
     handle: '[data-cdgh]',
     threshold: 6,
-    onStart: (el) => {
+    onStart: (el, _e, origin) => {
       beginDragSession();
       el.closest('.cdgroup')?.classList.add('dragging');
-      fx = beginDrag({ source: el.closest('.cdgroup') as HTMLElement, scrollEl: () => document.getElementById('content') });
+      fx = beginDrag({ source: el.closest('.cdgroup') as HTMLElement, at: origin, scrollEl: () => document.getElementById('content') });
     },
     onMove: (el, e) => {
       if (!fx) return;

@@ -107,10 +107,10 @@
 
   const mdDrag = {
     handle: '.md-ev2, .md-adchip, .wev',
-    onStart: (el: HTMLElement) => {
+    onStart: (el: HTMLElement, _e: PointerEvent, origin: { x: number; y: number }) => {
       beginDragSession();
       el.classList.add('dragging');
-      fx = beginDrag({ source: el, scrollEl: () => el.closest('.md-wrap') as HTMLElement | null });
+      fx = beginDrag({ source: el, at: origin, scrollEl: () => el.closest('.md-wrap') as HTMLElement | null });
     },
     onMove: (_el: HTMLElement, e: PointerEvent) => {
       if (!fx) return;
@@ -295,10 +295,10 @@
       class="month-grid"
       use:pointerDrag={{
         handle: '[data-tid]',
-        onStart: (el) => {
+        onStart: (el, _e, origin) => {
           beginDragSession();
           el.classList.add('dragging');
-          fx = beginDrag({ source: el, scrollEl: () => document.getElementById('content') });
+          fx = beginDrag({ source: el, at: origin, scrollEl: () => document.getElementById('content') });
         },
         onMove: (_el, e) => {
           if (!fx) return;

@@ -130,6 +130,117 @@ async function main() {
   }
   ck('drag.list', report.drag.ok, report.drag);
 
+  // ---------- 5b. 幽灵跟手：抓点相对光标不能漂 ----------
+  const startPt = await evaluate(
+    cdp,
+    `(function(){
+       const row = document.querySelector('.task-list [data-tid]');
+       if (!row) return null;
+       const r = row.getBoundingClientRect();
+       return { x: Math.round(r.left + 120), y: Math.round(r.top + 20), grab: 20 };
+     })()`
+  );
+  if (startPt) {
+    const move = (y, buttons) =>
+      cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: startPt.x, y, buttons });
+    await move(startPt.y, 0);
+    await cdp.send('Input.dispatchMouseEvent', {
+      type: 'mousePressed', x: startPt.x, y: startPt.y, button: 'left', clickCount: 1
+    });
+    const offs = [];
+    for (const dy of [12, 40, 70]) {
+      await move(startPt.y + dy, 1);
+      await sleep(60);
+      offs.push(
+        await evaluate(
+          cdp,
+          `(function(){ const g = document.querySelector('.drag-ghost'); if (!g) return null;
+             return Math.round(g.getBoundingClientRect().top) - ${startPt.y + dy}; })()`
+        )
+      );
+    }
+    await cdp.send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased', x: startPt.x, y: startPt.y + 70, button: 'left', clickCount: 1
+    });
+    await sleep(250);
+    report.follow = { offs, grab: startPt.grab };
+    report.follow.ok = offs.every((o) => o !== null && Math.abs(o + startPt.grab) <= 1);
+    ck('drag.follow', report.follow.ok, report.follow);
+  } else {
+    ck('drag.follow', false, { reason: 'no row' });
+  }
+
+  // ---------- 5c. 列表里拖到另一日期分组 = 改日期 ----------
+  const regroup = await evaluate(
+    cdp,
+    `(function(){
+       const lists = Array.from(document.querySelectorAll('.task-list'))
+         .filter(l => { const d = l.getAttribute('data-gdate'); return d && d !== 'done'; });
+       if (lists.length < 2) return null;
+       const home = lists[0], target = lists[1];
+       const row = home.querySelector('[data-tid]');
+       if (!row) return null;
+       const trow = target.querySelector('[data-tid]') || target;
+       const a = row.getBoundingClientRect(), b = trow.getBoundingClientRect();
+       const id = row.getAttribute('data-tid');
+       return { id,
+                from: { x: Math.round(a.left + 120), y: Math.round(a.top + a.height / 2) },
+                to: { x: Math.round(b.left + 120), y: Math.round(b.top + b.height / 2) },
+                want: target.getAttribute('data-gdate'),
+                was: (__SD_TEST__.tasks.find(x => x.id === id) || {}).date };
+     })()`
+  );
+  if (regroup && regroup.was !== regroup.want) {
+    await drag(cdp, regroup.from, regroup.to);
+    const got = await evaluate(
+      cdp,
+      `(function(){
+         const t = __SD_TEST__.tasks.find(x => x.id === ${JSON.stringify(regroup.id)});
+         return { date: t && t.date, toast: (document.querySelector('.toast') || {}).textContent || '' };
+       })()`
+    );
+    report.regroup = { ...regroup, got, ok: got.date === regroup.want && /已改到/.test(got.toast) };
+  } else {
+    report.regroup = { regroup, ok: false };
+  }
+  ck('drag.regroup', report.regroup.ok, report.regroup);
+
+  // ---------- 5d. 卡片视图重排：sort 必须压过日期 ----------
+  // 清空 + 导入之后只剩两条，正好够验「把第一张拖到第二张右半边」。
+  await evaluate(cdp, "__SD_TEST__.goView('next7')");
+  await sleep(300);
+  await evaluate(cdp, "document.querySelector('[data-vmode=\"card\"]')?.click()");
+  await sleep(500);
+  const cards = await evaluate(
+    cdp,
+    `(function(){
+       const cs = Array.from(document.querySelectorAll('.card-grid [data-tid]')).slice(0, 2);
+       if (cs.length < 2) return null;
+       const a = cs[0].getBoundingClientRect(), b = cs[1].getBoundingClientRect();
+       return { ids: cs.map((x) => x.getAttribute('data-tid')),
+                from: { x: Math.round(a.left + a.width * 0.3), y: Math.round(a.top + 20) },
+                to: { x: Math.round(b.left + b.width * 0.8), y: Math.round(b.top + 20) } };
+     })()`
+  );
+  if (cards) {
+    await drag(cdp, cards.from, cards.to);
+    const after = await evaluate(
+      cdp,
+      "Array.from(document.querySelectorAll('.card-grid [data-tid]')).slice(0,2).map((x) => x.getAttribute('data-tid'))"
+    );
+    report.cardDrag = {
+      before: cards.ids,
+      after,
+      ok: after[0] === cards.ids[1] && after[1] === cards.ids[0]
+    };
+  } else {
+    report.cardDrag = { ok: false, reason: 'less than 2 cards' };
+  }
+  // 不论成败都退回列表形态：后面的用例按 .task-list 取行
+  await evaluate(cdp, "document.querySelector('[data-vmode=\"list\"]')?.click()");
+  await sleep(350);
+  ck('drag.card', report.cardDrag.ok, report.cardDrag);
+
   // ---------- 6. 日历改时刻 ----------
   await evaluate(cdp, "__SD_TEST__.goView('calendar')");
   await evaluate(

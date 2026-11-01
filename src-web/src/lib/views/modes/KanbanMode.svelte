@@ -142,10 +142,10 @@
   class="kanban"
   use:pointerDrag={{
     handle: '[data-tid]',
-    onStart: (el) => {
+    onStart: (el, _e, origin) => {
       beginDragSession();
       el.classList.add('dragging');
-      fx = beginDrag({ source: el, scrollEl: () => document.getElementById('content') });
+      fx = beginDrag({ source: el, at: origin, scrollEl: () => document.getElementById('content') });
     },
     onMove: (_el, e) => {
       if (!fx) return;

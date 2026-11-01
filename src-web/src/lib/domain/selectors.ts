@@ -15,6 +15,13 @@ export function taskTimeVal(t: Task): number {
   return m === null ? 24 * 60 + 1 : m;
 }
 
+/*
+  两种排序口径：
+  - time：日期优先，同一天再比时间，最后才看手动序；
+  - manual：手动序优先。卡片 / 看板是跨日期的平铺列表，若还把日期排在前面，
+    拖过另一张卡只改了 sort 也会被日期压回去，看起来就是「拖了没反应、位置却变了」。
+  日期仍作 manual 里的第二关键字，同一天内保持稳定。
+*/
 export function sortTasks(arr: Task[], sortMode: 'time' | 'manual'): Task[] {
   const manual = sortMode === 'manual';
   return arr.slice().sort((a, b) => {
@@ -22,15 +29,16 @@ export function sortTasks(arr: Task[], sortMode: 'time' | 'manual'): Task[] {
     if (a.done && b.done) return (b.doneAt || '').localeCompare(a.doneAt || '');
     const da = a.date || '9999-99-99';
     const db = b.date || '9999-99-99';
-    if (da !== db) return da < db ? -1 : 1;
     const sa = Number(a.sort) || 0;
     const sb = Number(b.sort) || 0;
     const ta = taskTimeVal(a);
     const tb = taskTimeVal(b);
     if (manual) {
       if (sa !== sb) return sa - sb;
+      if (da !== db) return da < db ? -1 : 1;
       if (ta !== tb) return ta - tb;
     } else {
+      if (da !== db) return da < db ? -1 : 1;
       if (ta !== tb) return ta - tb;
       if (sa !== sb) return sa - sb;
     }

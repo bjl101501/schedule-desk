@@ -14,8 +14,12 @@ export interface PointerDragOpts {
   /** 触发拖拽的选择器（相对 node） */
   handle: string;
   threshold?: number;
-  /** 开始拖（已越过阈值） */
-  onStart?: (el: HTMLElement, e: PointerEvent) => void;
+  /**
+   * 开始拖（已越过阈值）。
+   * origin 是按下那一刻的坐标 —— 阈值判定发生在之后的某次 move，
+   * 用 e 当抓点会让幽灵比真实抓点偏出阈值那几像素。
+   */
+  onStart?: (el: HTMLElement, e: PointerEvent, origin: { x: number; y: number }) => void;
   onMove?: (el: HTMLElement, e: PointerEvent) => void;
   onEnd?: (el: HTMLElement, e: PointerEvent, moved: boolean) => void;
 }
@@ -47,7 +51,7 @@ export function pointerDrag(node: HTMLElement, opts: PointerDragOpts) {
       const dy = e.clientY - down.y;
       if (Math.abs(dx) < (current.threshold ?? 4) && Math.abs(dy) < (current.threshold ?? 4)) return;
       dragging = true;
-      current.onStart?.(down.el, e);
+      current.onStart?.(down.el, e, { x: down.x, y: down.y });
     }
     e.preventDefault();
     current.onMove?.(down.el, e);

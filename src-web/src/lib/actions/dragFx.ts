@@ -40,9 +40,15 @@ export function beginDrag(opts: {
   source: HTMLElement;
   ghostClass?: string;
   scrollEl?: () => HTMLElement | null;
+  /** 按下时的指针位置：幽灵要「捏住原来的点」，不能固定偏移 */
+  at?: { x: number; y: number };
 }): DragFx {
   const src = opts.source;
   const rect = src.getBoundingClientRect();
+
+  // 捏住的位置 = 指针相对源元素左上角。捏哪跟哪，松手时鼠标才还在卡片上。
+  const grabX = opts.at ? Math.min(Math.max(0, opts.at.x - rect.left), rect.width) : Math.min(12, rect.width / 2);
+  const grabY = opts.at ? Math.min(Math.max(0, opts.at.y - rect.top), rect.height) : Math.min(10, rect.height / 2);
 
   ghost = src.cloneNode(true) as HTMLElement;
   // 克隆体不能带 id：否则 #edTitle 这类契约被复制，querySelector 会命中浮层
@@ -72,8 +78,8 @@ export function beginDrag(opts: {
   return {
     move(e: PointerEvent): void {
       if (ghost) {
-        const x = Math.min(Math.max(8, e.clientX + 12), window.innerWidth - ghost.offsetWidth - 8);
-        const y = Math.min(Math.max(8, e.clientY + 10), window.innerHeight - ghost.offsetHeight - 8);
+        const x = Math.min(Math.max(8, e.clientX - grabX), window.innerWidth - ghost.offsetWidth - 8);
+        const y = Math.min(Math.max(8, e.clientY - grabY), window.innerHeight - ghost.offsetHeight - 8);
         ghost.style.left = x + 'px';
         ghost.style.top = y + 'px';
       }
