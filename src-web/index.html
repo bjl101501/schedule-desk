@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport">
+<meta content="#F7F3EA" name="theme-color">
+<!-- 主题必须在首帧前落到 html 上，否则会闪一下默认纸色 -->
+<script>try{var _t=localStorage.getItem("wb_theme");if(_t)document.documentElement.setAttribute("data-theme",_t);}catch(e){}</script>
+<!--
+  行楷字体走 CDN，用 media=print 的写法异步加载：
+  断网或 CDN 不可达时不再阻塞首帧，直接回落到 --font-ui 的系统字体。
+-->
+<link crossorigin href="https://cdn.jsdelivr.net" rel="preconnect">
+<link href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-gb-web@latest/lxgwwenkaigb-regular/result.css" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-gb-web@latest/lxgwwenkaigb-medium/result.css" rel="stylesheet" media="print" onload="this.media='all'">
+<title>日程台 · 个人日程工作台</title>
+</head>
+<body>
+<div id="app"></div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

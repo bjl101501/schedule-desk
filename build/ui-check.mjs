@@ -74,6 +74,36 @@ async function shot(cdp, name) {
 }
 
 // v2.2.0 口径：结束时刻看「计划结束 / 开始+用时 / 全天 24:00」三者
+
+// Svelte 5 版本把全局收敛到 window.__SD_TEST__，这里做一层测试侧兼容，
+// 让下面几十条断言保持原样：S.tasks / S.cursor / Scheduler.timer 都映射过去。
+const SHIM = `(function(){
+  var T = window.__SD_TEST__;
+  if (!T) return false;
+  window.taskState = T.taskState;
+  window.today0 = T.today0;
+  window.openTaskEditor = T.openTaskEditor;
+  window.openTaskDetail = T.openTaskDetail;
+  window.openQuickAdd = T.openQuickAdd;
+  window.closeModal = T.closeModal;
+  window.goView = T.goView;
+  window.setTheme = T.setTheme;
+  window.showTip = T.showTip;
+  window.hideTip = T.hideTip;
+  window.refreshAll = T.refreshAll;
+  window.Scheduler = { get timer(){ return T.schedulerRunning() ? 1 : null; } };
+  window.S = {
+    get tasks(){ return T.tasks; },
+    get cursor(){ return new Date(); },
+    set cursor(v){ T.setCal({ cursor: v instanceof Date ? v : new Date(v) }); },
+    get calMode(){ return 'month'; },
+    set calMode(v){ T.setCal({ calMode: v }); },
+    get detailId(){ return ''; },
+    set detailId(v){}
+  };
+  return true;
+})()`;
+
 const EXPECT = {
   t01: "ongoing",     // 开始+时长，已过 20 分
   t02: "overdue",     // 开始+时长，已过 90 分
@@ -103,8 +133,9 @@ async function main() {
   await sleep(3500);
 
   const report = {};
+  await evaluate(cdp, SHIM);
   report.hasState = await evaluate(cdp, "typeof taskState === 'function'");
-  report.hasKit = await evaluate(cdp, "typeof mountDateField === 'function'");
+  report.hasKit = await evaluate(cdp, "!!window.__SD_TEST__ && typeof __SD_TEST__.fieldValue === 'function'");
   report.hasScheduler = await evaluate(cdp, "typeof Scheduler === 'object' && !!Scheduler.timer");
   report.count = await evaluate(cdp, "S.tasks.length");
 
@@ -251,13 +282,13 @@ async function main() {
   await sleep(150);
   report.timeAfterHour = await evaluate(
     cdp,
-    "(function(){return {value:document.querySelector('#edTime').value, open:!!document.querySelector('.tm-panel')};})()"
+    "(function(){return {value:(document.querySelector('#edTime').getAttribute('data-value')||''), open:!!document.querySelector('.tm-panel')};})()"
   );
   await evaluate(cdp, "document.querySelector('.tm-col [data-m=\"30\"]').click()");
   await sleep(250);
   report.timeAfterMinute = await evaluate(
     cdp,
-    "(function(){return {value:document.querySelector('#edTime').value, open:!!document.querySelector('.tm-panel')};})()"
+    "(function(){return {value:(document.querySelector('#edTime').getAttribute('data-value')||''), open:!!document.querySelector('.tm-panel')};})()"
   );
 
   // R2：只点小时、点面板外，也要把小时写进去
@@ -269,7 +300,7 @@ async function main() {
   await sleep(250);
   report.timeOnBlur = await evaluate(
     cdp,
-    "(function(){return {value:document.querySelector('#edTime').value, open:!!document.querySelector('.tm-panel')};})()"
+    "(function(){return {value:(document.querySelector('#edTime').getAttribute('data-value')||''), open:!!document.querySelector('.tm-panel')};})()"
   );
 
   // R2：快速添加不再回填草稿
@@ -307,7 +338,7 @@ async function main() {
           document.querySelector('#edTpl').click();
           setTimeout(function(){
             var kw = document.querySelector('#tplKw');
-            kw.value = '子项';
+            kw.value = '进行中';
             kw.dispatchEvent(new Event('input', {bubbles:true}));
             setTimeout(function(){
               var row = document.querySelector('.tpl-row');

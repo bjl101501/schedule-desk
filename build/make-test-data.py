@@ -19,7 +19,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 TASKS = "RBTQ4jwngkyjWiZE7VqCJZ"
+HABIT = "xaX0HSTIH0O7cXXvPnbsR2"
+# 磁盘上的真实表 id 是双 x 的那个；DB_IDS 里的短 id 由 bridge/db.ts 的 ALIAS 映射过来
 COUNT = "gVxrxS4S2Zb2xddhphNdjT"
+POMO = "6ny2WVjivlBujxY3ICpYGT"
 
 
 def at(day_offset, hour, minute=0):
@@ -73,6 +76,54 @@ def task(tid, title, date, time="", estimate=0, subs=None, remind=None,
         "创建时间": {"date": datetime.now().strftime("%Y-%m-%d")},
     }
     return {"id": tid, "properties": props, "createdAt": 1, "updatedAt": 1, "deleted": False}
+
+
+def habit_rows(today):
+    """两个习惯：一个连续打卡、一个断过；习惯视图与统计都靠它。"""
+    run_log = [ymd(today - timedelta(days=i)) for i in range(0, 6)]
+    read_log = [ymd(today - timedelta(days=d)) for d in (0, 2, 3)]
+    out = []
+    for hid, name, icon, color, target, streak, total, log in [
+        ("h1", "晨跑 3 公里", "sun", "#177CB0", 5, 6, 24, run_log),
+        ("h2", "读书 30 分钟", "book", "#B4894A", 7, 1, 11, read_log),
+    ]:
+        out.append({
+            "id": hid,
+            "properties": {
+                "名称": {"text": name},
+                "图标": {"text": icon},
+                "颜色": {"text": color},
+                "每周目标": {"number": target},
+                "连续天数": {"number": streak},
+                "总打卡": {"number": total},
+                "打卡记录": {"text": json.dumps(log)},
+                "创建时间": {"date": ymd(today - timedelta(days=40))},
+            },
+            "createdAt": 1, "updatedAt": 1, "deleted": False,
+        })
+    return out
+
+
+def pomo_rows(today):
+    """近一周的番茄记录，统计视图的「本周专注」与热力图要用。"""
+    out = []
+    for i in range(0, 5):
+        d = today - timedelta(days=i)
+        out.append({
+            "id": f"p{i + 1}",
+            "properties": {
+                "任务": {"text": ["整理会议记录", "写周报", "看论文", "画原型", "复盘"][i]},
+                "类型": {"select": "专注"},
+                "时长": {"number": 25},
+                "开始时间": {"date": fmt(datetime.combine(d, datetime.min.time()).replace(hour=10))},
+                "日期": {"date": ymd(d)},
+                "子项": {"text": ""},
+                "暂停次数": {"number": 0},
+                "暂停时长": {"number": 0},
+            },
+            "createdAt": 1, "updatedAt": 1, "deleted": False,
+        })
+    return out
 
 
 def main():
@@ -143,6 +194,8 @@ def main():
         "updatedAt": int(datetime.now().timestamp() * 1000),
         "tables": {
             TASKS: rows,
+            HABIT: habit_rows(today),
+            POMO: pomo_rows(today),
             COUNT: [{
                 "id": "c1",
                 "properties": {

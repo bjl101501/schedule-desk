@@ -1,0 +1,223 @@
+<script lang="ts">
+  import type { Task } from '$lib/domain/types';
+  import { addDays, dayDiff, hmStr, parseHM, parseYmd, ymd } from '$lib/domain/date';
+  import { prioCls, segDateText, subPlan, subStats, taskSpan } from '$lib/domain/task';
+  import { app } from '$lib/store/app.svelte';
+  import { todayD } from '$lib/store/clock.svelte';
+  import { openTaskDetail } from '$lib/store/ui.svelte';
+  import { isSuppressed } from '$lib/actions/suppress';
+  import Icon from '$lib/ui/Icon.svelte';
+  import TaskRow from '$lib/components/TaskRow.svelte';
+  import { pointerDrag } from '$lib/actions/drag';
+  import { dropTimeline, taskById } from '$lib/store/dndActions.svelte';
+
+  let { rows }: { rows: Task[] } = $props();
+
+  const today = $derived(todayD());
+
+  // 拖拽：按住条体改开始日，按住右手柄改天数（旧版按 40px/天换算，这里按实际列宽）
+  let grabDay = 0;
+  let resizing = false;
+  let dragStart = new Date();
+
+  const view = $derived.by(() => {
+    const t0s = ymd(today);
+    // 时间线跟着当前清单/视图走：今天视图只有今天的任务，范围自然就窄
+    const live = rows.filter((t) => !t.done);
+    const dated = live.filter((t) => !!t.date);
+    const undated = live.filter((t) => !t.date);
+
+    let minD: Date | null = null;
+    let maxD: Date | null = null;
+    dated.forEach((t) => {
+      const d = parseYmd(t.date);
+      if (!d) return;
+      const e = addDays(d, taskSpan(t) - 1);
+      if (!minD || d < minD) minD = d;
+      if (!maxD || e > maxD) maxD = e;
+    });
+    if (!minD || !maxD) {
+      return {
+        empty: true, undated, t0s,
+        start: new Date(), maxD: new Date(), days: 0,
+        head: [] as { ds: string; today: boolean; we: boolean; month: string; day: number; wd: string }[],
+        items: [] as { t: Task; off: number; span: number; end: number; lane: number }[],
+        lanes: [] as { t: Task; off: number; span: number; end: number; lane: number }[][]
+      };
+    }
+
+    const days = dayDiff(minD, maxD) + 1;
+    const start = minD;
+    const head = Array.from({ length: days }, (_, i) => {
+      const d = addDays(start, i);
+      const ds = ymd(d);
+      const wd = d.getDay();
+      return {
+        ds,
+        today: ds === t0s,
+        we: wd === 0 || wd === 6,
+        month: i === 0 || d.getDate() === 1 ? d.getMonth() + 1 + ' 月' : '',
+        day: d.getDate(),
+        wd: ['日', '一', '二', '三', '四', '五', '六'][wd]
+      };
+    });
+
+    const items = dated
+      .map((t) => {
+        const off = dayDiff(start, parseYmd(t.date));
+        const span = taskSpan(t);
+        return { t, off, span, end: off + span, lane: 0 };
+      })
+      .sort((a, b) => a.off - b.off || b.span - a.span);
+
+    // 不重叠的任务共用一行（泳道）
+    const laneEnd: number[] = [];
+    items.forEach((it) => {
+      let lane = 0;
+      while (laneEnd[lane] !== undefined && laneEnd[lane] > it.off) lane++;
+      laneEnd[lane] = it.end;
+      it.lane = lane;
+    });
+
+    const lanes = Array.from({ length: laneEnd.length }, (_, L) => items.filter((x) => x.lane === L));
+    return { empty: false, t0s, start, maxD, days, head, items, lanes, undated };
+  });
+
+  function fmtRange(a: Date, b: Date): string {
+    const s = a.getMonth() + 1 + '/' + a.getDate();
+    const e = b.getMonth() + 1 + '/' + b.getDate();
+    if (a.getFullYear() !== b.getFullYear()) return a.getFullYear() + '/' + s + ' – ' + b.getFullYear() + '/' + e;
+    return s + ' – ' + e + ' · ' + a.getFullYear();
+  }
+
+  function meta2Of(t: Task, span: number): string {
+    const segs = subPlan(t).filter((g) => g.days > 0);
+    if (segs.length > 1) return segs.length + ' 段 · ' + span + ' 天';
+    const sMin = parseHM(t.time);
+    const eMin = sMin !== null && t.estimate ? sMin + Number(t.estimate) : null;
+    return t.time ? (eMin !== null ? t.time + '–' + hmStr(eMin) : t.time) : '全天';
+  }
+
+  function tipOf(t: Task, span: number): string {
+    const stt = subStats(t);
+    const sMin = parseHM(t.time);
+    const eMin = sMin !== null && t.estimate ? sMin + Number(t.estimate) : null;
+    const timeTxt = t.time ? (eMin !== null ? t.time + '–' + hmStr(eMin) : t.time) : '全天';
+    return t.title + '\n' + timeTxt + ' · ' + span + ' 天' + (stt.n ? ' · 子项 ' + stt.done + '/' + stt.n : '') + '\n' + t.date + ' 起';
+  }
+
+  function open(id: string): void {
+    if (isSuppressed()) return;
+    openTaskDetail(id);
+  }
+
+  function barStyle(off: number, span: number, days: number) {
+    const left = ((off / days) * 100).toFixed(4);
+    const width = ((span / days) * 100).toFixed(4);
+    // 左右各留 2px：贴到最左 / 最右的那条不会被容器圆角切掉
+    return `left:calc(${left}% + 2px);width:calc(${width}% - 4px)`;
+  }
+</script>
+
+{#if view.empty}
+  <div class="sec-head"><h3>时间线</h3><span class="meta">横轴是日期，色带长度就是这件事占几天</span><span class="line"></span></div>
+  <div class="gantt-wrap">
+    <div class="g-empty"><Icon name="calendar" /><span>当前清单里还没有带日期的日程。加一条带日期的日程，这里就会自动铺开。</span></div>
+  </div>
+  {#if view.undated.length}
+    <div class="sec-head"><h3>未排期</h3><span class="meta">{view.undated.length} 项</span><span class="line"></span></div>
+    <div class="task-list">
+      {#each view.undated.slice(0, 12) as t (t.id)}<TaskRow {t} />{/each}
+    </div>
+  {/if}
+{:else}
+  <div class="sec-head">
+    <h3>时间线</h3>
+    <span class="meta">横轴是日期，色带长度就是这件事占几天；拖动改开始日，拖右边缘改天数</span>
+    <span class="line"></span>
+  </div>
+  <div class="gantt-wrap">
+    <div class="gantt-bar">
+      <span class="gantt-range">{fmtRange(view.start, view.maxD)}</span>
+      <span class="gantt-hint">{view.items.length} 条 · {view.days} 天</span>
+    </div>
+    <div
+      class="gantt"
+      data-start={ymd(view.start)}
+      style="--gdays:{view.days}"
+      use:pointerDrag={{
+        handle: '[data-gbar]',
+        threshold: 6,
+        onStart: (el, e) => {
+          app.dragging = true;
+          el.classList.add('dragging');
+          resizing = !!(e.target as HTMLElement).closest('[data-gresize]');
+          const g = document.querySelector('.gantt') as HTMLElement | null;
+          if (!g) return;
+          dragStart = view.start;
+          const r = g.getBoundingClientRect();
+          grabDay = Math.round(((e.clientX - r.left) / Math.max(1, r.width)) * view.days);
+        },
+        onEnd: (el, e, moved) => {
+          app.dragging = false;
+          el.classList.remove('dragging');
+          if (!moved) return;
+          const g = document.querySelector('.gantt') as HTMLElement | null;
+          const id = el.getAttribute('data-gbar') || '';
+          if (!g || !id) return;
+          const t = taskById(id);
+          if (!t || !t.date) return;
+          const r = g.getBoundingClientRect();
+          const day = Math.round(((e.clientX - r.left) / Math.max(1, r.width)) * view.days);
+          if (resizing) {
+            const off = dayDiff(dragStart, parseYmd(t.date)!);
+            const span = Math.max(1, Math.min(90, day - off + 1));
+            dropTimeline(id, '', span);
+          } else {
+            const next = addDays(dragStart, Math.max(0, Math.min(view.days - 1, day - grabDay)));
+            dropTimeline(id, ymd(next));
+          }
+        }
+      }}
+    >
+      <div class="g-head">
+        {#each view.head as d (d.ds)}
+          <div class="g-day{d.today ? ' today' : ''}{d.we ? ' we' : ''}">
+            <em>{d.month}</em><b>{d.day}</b><span>{d.wd}</span>
+          </div>
+        {/each}
+      </div>
+      {#each view.lanes as lane, li (li)}
+        <div class="g-lane">
+          {#each lane as x (x.t.id)}
+            {@const segs = subPlan(x.t).filter((g) => g.days > 0)}
+            <div
+              class="g-bar {prioCls(x.t)}{segs.length > 1 ? ' has-segs' : ''}{app.detailId === x.t.id ? ' active' : ''}"
+              data-gbar={x.t.id}
+              title={tipOf(x.t, x.span)}
+              style={barStyle(x.off, x.span, view.days)}
+              onclick={() => open(x.t.id)}
+            >
+              {#if segs.length > 1}
+                <div class="g-segs">
+                  {#each segs as g (g.i)}
+                    <i style="width:{((g.days / x.span) * 100).toFixed(3)}%" title="{g.title} · {g.days} 天 · {segDateText(g)}"></i>
+                  {/each}
+                </div>
+              {/if}
+              <span class="g-bar-t">{x.t.title}</span>
+              <span class="g-bar-m">{meta2Of(x.t, x.span)}</span>
+              <i class="g-resize" data-gresize={x.t.id} title="拖我延长天数"></i>
+            </div>
+          {/each}
+        </div>
+      {/each}
+    </div>
+  </div>
+  {#if view.undated.length}
+    <div class="sec-head"><h3>未排期</h3><span class="meta">{view.undated.length} 项</span><span class="line"></span></div>
+    <div class="task-list">
+      {#each view.undated.slice(0, 12) as t (t.id)}<TaskRow {t} />{/each}
+    </div>
+  {/if}
+{/if}

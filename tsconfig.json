@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["bun"],
+    "strict": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": false,
+    "noEmit": true,
+    "allowJs": false,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "$lib": ["./src-web/src/lib"],
+      "$lib/*": ["./src-web/src/lib/*"]
+    }
+  },
+  "include": [
+    "src-web/src/**/*.ts",
+    "src-web/src/**/*.svelte",
+    "src-web/src/**/*.svelte.ts",
+    "vite.config.ts"
+  ],
+  "exclude": ["src-web/src/js/**", "src-web/build/**", "node_modules"]
+}

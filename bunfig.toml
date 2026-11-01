@@ -1,0 +1,3 @@
+[install]
+# 锁文件里的解析地址必须指向官方源，否则 GitHub Actions 会去拉本机镜像地址
+registry = "https://registry.npmjs.org"

@@ -1,0 +1,96 @@
+/*
+  测试门面：旧 ui-check.mjs 依赖一批全局函数，Svelte 里不该把它们再挂回 window。
+  这里只暴露「读状态 + 触发动作」的最小面，脚本改调用路径即可，DOM 选择器一律不动。
+*/
+import { flushSync } from 'svelte';
+import { taskState, taskWindow, reminderState } from '$lib/domain/window';
+import { subStats } from '$lib/domain/task';
+import { today0, ymd } from '$lib/domain/date';
+import { sortTasks, visibleTasks } from '$lib/domain/selectors';
+import { app, refreshAll } from '$lib/store/app.svelte';
+import { clock, clockRunning, todayD } from '$lib/store/clock.svelte';
+import { data } from '$lib/store/data.svelte';
+import { closeTaskDetail, openQuickAdd, openTaskDetail, openTaskEditor, uiState } from '$lib/store/ui.svelte';
+import { setTheme } from '$lib/store/theme.svelte';
+import { goView } from '$lib/store/nav.svelte';
+import { showTip, hideTip } from '$lib/store/tip.svelte';
+
+export function installTestFacade(): void {
+  // 旧版是同步 innerHTML 渲染，脚本习惯了「调用完就能查到 DOM」。
+  // Svelte 默认在微任务里提交，这里替测试补一次同步刷新。
+  const sync =
+    <A extends unknown[]>(fn: (...a: A) => void) =>
+    (...a: A): void => {
+      flushSync(() => fn(...a));
+    };
+
+  /** 只关最上层：模板选择器之类叠在编辑器里的层先关，语义与旧版一致 */
+  function closeModal(): void {
+    const stacked = document.querySelectorAll('.modal-mask.stacked');
+    if (stacked.length) {
+      const top = stacked[stacked.length - 1] as HTMLElement;
+      (top.querySelector('.m-close') as HTMLElement | null)?.click();
+      return;
+    }
+    uiState.editorId = '';
+    uiState.quickAdd = false;
+    uiState.search = false;
+    uiState.filter = false;
+    uiState.reminder = false;
+    uiState.settings = false;
+    uiState.backup = false;
+    closeTaskDetail();
+  }
+
+  const api = {
+    taskState,
+    taskWindow,
+    reminderState,
+    subStats,
+    sortTasks,
+    today0,
+    get tasks() {
+      return $state.snapshot(data.tasks);
+    },
+    get states() {
+      return data.tasks.map((t) => ({ id: t.id, title: t.title, ...taskState(t, clock.now) }));
+    },
+    get counts() {
+      return {
+        tasks: data.tasks.length,
+        habits: data.habits.length,
+        countdowns: data.countdowns.length,
+        pomodoros: data.pomodoros.length,
+        online: app.online,
+        loaded: app.loaded,
+        view: app.view
+      };
+    },
+    goView: sync(goView),
+    openTaskEditor: sync((id = '') => openTaskEditor(id as string)),
+    openTaskDetail: sync(openTaskDetail),
+    openQuickAdd: sync(openQuickAdd),
+    closeModal: () => flushSync(() => closeModal()),
+    setTheme: sync(setTheme),
+    refreshAll,
+    showTip,
+    hideTip,
+    setCal(patch: Record<string, unknown>) {
+      flushSync(() => Object.assign(app, patch));
+    },
+    fieldValue(sel: string) {
+      return document.querySelector(sel)?.getAttribute('data-value') ?? '';
+    },
+    schedulerRunning: () => clockRunning(),
+    visibleTasks: () =>
+      visibleTasks(
+        data.tasks,
+        { view: app.view, selectedList: app.selectedList, selectedTag: app.selectedTag },
+        app.filters,
+        app.sortMode,
+        todayD()
+      ),
+    todayStr: () => ymd(todayD())
+  };
+  (window as unknown as Record<string, unknown>).__SD_TEST__ = api;
+}

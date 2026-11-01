@@ -5,6 +5,38 @@
 
 ---
 
+## v3.0.0 · 2026-11-01
+
+### 变更
+
+- **前端整体重写为 Svelte 5 + TypeScript + Vite**。原来的原生 JS 方案（11 个脚本、9,801 行、
+  292 个函数，全靠隐式全局互相调用）拆成：纯领域层 `lib/domain`、桥接层 `lib/bridge`、
+  响应式状态 `lib/store`、组件 `lib/components` / `lib/views`、动作 `lib/actions`。
+  旧方案完整留在 `legacy/vanilla-js` 分支。
+- **样式原样沿用**：`styles.css` 与 5 套主题的 87 个 CSS 变量未改，视觉逐像素对齐。
+  只把各组件自己的零散样式收进组件内，主题机制仍是 `html[data-theme]`。
+- **状态机独立成模块**：`taskWindow` / `taskState` / `reminderState` 落在 `lib/domain/window.ts`，
+  不依赖 DOM 与 Tauri，40 条单测覆盖状态矩阵、提醒节点、拆分排期与快速解析。
+- **刷新方式从「重建 innerHTML」改为「按 key 增量更新」**：列表滚动位置、展开的子项、
+  正在编辑的输入框不再因为一次 15 秒心跳而重置。
+- **构建链换成 bun + Vite**：`bun run build` 产出 `src-web/build`，`build/build.sh` 一条命令出 exe；
+  `build/inject.py` 与它生成的两个 shim 脚本删除，桌面桥接改成真正的 TS 模块。
+- **CI**：`release.yml` 改用 bun 装依赖与构建，并在 cargo 前 `touch src-tauri/src/main.rs`。
+
+### 修复
+
+- **元素被移除时抛 `state_unsafe_mutation`**：浏览器会在节点移出 DOM 的瞬间同步触发 `focusout`，
+  悬浮说明的隐藏逻辑正好在 Svelte 提交流程里写状态。改成微任务隐藏并加代次号，避免误关新提示。
+- **换肤菜单**：`theme` 这种菜单类型此前不在联合类型里，换肤入口实际打不开。
+
+### 保留
+
+- `window.__SMART_PAGE__.database` 门面、80ms 合批、260ms 本地缓存、`__SD_DESKTOP__` 桌面能力全部保留，
+  外部脚本与旧数据不受影响。
+- 回归脚本 `build/ui-check.mjs` 的 DOM 选择器一条未改，只把「取全局函数」改成走 `window.__SD_TEST__`。
+
+---
+
 ## v2.3.0 · 2026-11-01
 
 ### 变更

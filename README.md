@@ -72,15 +72,22 @@ snapshots/             每日快照，保留 7 天
 
 ## 从源码构建
 
+前端是 Svelte 5 + TypeScript + Vite，桌面壳是 Tauri 2。
+
 ```bash
-python build/inject.py                 # src/ → src-web/build/
-cd src-tauri
-cargo build --release                  # 产物 target/release/schedule-desk.exe
+bun install
+bun run build                          # src-web/ → src-web/build/（Tauri 的 frontendDist）
+bash build/build.sh                    # 前端 + exe，产物落 dist/ScheduleDesk.exe
 ```
 
-`build/inject.py` 只做组装：复制 `src/` 的三个部分到 `build/`，再生成两个
-桌面桥接脚本（`shim-head.js` 负责本地存储映射，`shim-body.js` 负责界面适配与导出）。
-业务逻辑全部在 `src/js/` 里，构建过程不修改任何源码。
+只想看界面：`bun run dev` 打开 `http://127.0.0.1:3000`。没有 Tauri 宿主时会自动装一层
+内存桥（数据存 localStorage），交互与真机走同一套代码。`?reset=1` 清空预览数据，
+`?onboard=1` 走首次引导。
+
+`build/build.sh` 里有一个必须记住的点：前端产物是编译期被 `tauri::generate_context!`
+嵌进 exe 的，而 tauri-build 不对 `frontendDist` 发 rerun-if-changed —— 只改前端时
+cargo 会判定「无变更」并静默复用旧 exe，所以脚本会先 `touch src-tauri/src/main.rs`
+强制重新嵌入。
 
 装有 Visual Studio Build Tools 的机器可直接构建，产物为单文件；
 CI 使用 `windows-latest`，同样输出无需 DLL 的 exe。
@@ -90,31 +97,34 @@ CI 使用 `windows-latest`，同样输出无需 DLL 的 exe。
 ## 目录
 
 ```
-build/inject.py               构建：src/ → build/，只做复制与组装
-src-web/src/index.html        页面骨架（177 行）
-src-web/src/styles.css        样式（1578 行）
-src-web/src/js/               应用脚本，按功能域拆成 9 个模块：
-  01-core.js                    数据库绑定 / 全局状态 / 工具
-  02-model.js                   数据层 / 拆分与排期 / 示例数据
-  03-ui.js                      通用 UI / 桌面面板 / 快照 / 换肤 / 计算 / 刷新
-  04-views.js                   侧栏 / 清单视图
-  05-dnd.js                     拖拽：排序 / 看板换列 / 日历改期 / 时间线
-  06-boards.js                  四象限 / 习惯打卡 / 倒数纪念日 / 数据统计
-  07-pomodoro.js                番茄专注 / 任务详情
-  08-editors.js                 任务编辑器 / 快速添加 / 过滤器 / 提醒 / 习惯与纪念日编辑器
-  09-app.js                     备份导出 / 导航事件 / 启动 / 每日快照 / 快捷键
+package.json                  前端依赖与脚本（bun）
+vite.config.ts                前端构建配置，产物直出 src-web/build
+src-web/index.html            Vite 入口骨架
+src-web/src/main.ts           挂载应用、装桥接、启动数据与时钟
+src-web/src/App.svelte        应用外壳：侧栏 / 顶栏 / 内容 / 各种浮层
+src-web/src/styles.css        样式，原样沿用；5 套主题靠 html[data-theme]
+src-web/src/lib/domain/       纯领域层：类型、日期、任务窗口与状态机、选择器、示例数据
+src-web/src/lib/bridge/       与 Tauri 的通道：invoke、数据库门面、桌面能力、导出、预览内存桥
+src-web/src/lib/store/        响应式状态（runes）：数据、视图、时钟、模态、提示、主题…
+src-web/src/lib/components/   通用组件：任务行、状态胶囊、侧栏、顶栏、铃铛、时钟…
+src-web/src/lib/views/        九个视图 + 四种布局 + 六种日历模式 + 各类编辑器
+src-web/src/lib/actions/      动作：浮层定位、传送门、拖拽控制器、value 契约
+src-web/src/lib/test/         测试门面，只给 build/ui-check.mjs 用
 src-web/build/                构建产物，不入库（Tauri 的 frontendDist）
 src-tauri/src/store.rs        数据模型、原子写、快照、记录级合并
 src-tauri/src/sync.rs         WebDAV 客户端
 src-tauri/src/remind.rs       提醒调度
 src-tauri/src/update.rs       GitHub 更新
+build/build.sh                本机一键构建（前端 + exe → dist/）
+build/ui-check.mjs            界面回归：状态矩阵 + 编辑器交互 + 截图（走 CDP）
 docs/                         截图、使用说明、日程台-功能表.md（完整功能手册）
 dist/                         本地构建输出，不入库
 CHANGELOG.md                  版本记录
 ```
 
-**这些源文件是唯一维护对象**，改动直接写进对应模块。`inject.py` 不再做文本替换，
-只把 `src/` 复制到 `build/` 并拼上桌面桥接脚本。
+**`src-web/src` 是唯一维护对象**，改动直接写进对应模块；`src-web/build` 是产物，
+每次构建整体重生成。领域层不碰 DOM、不碰 Tauri，能脱离界面单测
+（`bun test`，40 条断言覆盖状态矩阵、提醒节点、拆分排期、快速解析）。
 
 ## 文档
 
