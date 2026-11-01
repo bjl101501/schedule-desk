@@ -1,6 +1,6 @@
 [package]
 name = "schedule-desk"
-version = "3.4.7"
+version = "3.4.8"
 description = "Schedule Desk - personal schedule workbench"
 edition = "2021"
 

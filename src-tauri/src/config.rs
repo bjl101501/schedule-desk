@@ -2,6 +2,7 @@
 
 use std::fs;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde::{Deserialize, Serialize};
 
@@ -9,6 +10,21 @@ use crate::store::atomic_write;
 
 const APP_DIR: &str = "ScheduleDesk";
 const CONFIG_FILE: &str = "config.json";
+/// UTF-8 BOM；配置文件被别的编辑器另存过就可能带它
+const BOM: char = '\u{feff}';
+
+/// 便携 / 测试模式（带 `--data-dir` 启动）。这种实例只读写指定目录，
+/// **绝不改全局 config.json** —— 否则窗口几何、同步时间这类自动保存会把
+/// 测试目录写进 `dataDir`，用户下次正常启动就打开到测试数据里去了。
+static PORTABLE: AtomicBool = AtomicBool::new(false);
+
+pub fn set_portable(on: bool) {
+    PORTABLE.store(on, Ordering::Relaxed);
+}
+
+pub fn portable() -> bool {
+    PORTABLE.load(Ordering::Relaxed)
+}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -104,8 +120,11 @@ pub fn default_data_dir() -> PathBuf {
 
 impl Config {
     pub fn load() -> Self {
+        // 去掉可能的 BOM：用记事本另存过的 config.json 会带上它，serde_json 解析失败
+        // 会静默回退成默认值 —— 那看起来就像「数据目录被改了」。
         let mut cfg = fs::read_to_string(config_path())
             .ok()
+            .map(|t| t.trim_start_matches(BOM).to_string())
             .and_then(|t| serde_json::from_str::<Config>(&t).ok())
             .unwrap_or_default();
         if cfg.device_id.is_empty() {
@@ -116,6 +135,9 @@ impl Config {
     }
 
     pub fn save(&self) -> std::io::Result<()> {
+        if portable() {
+            return Ok(());
+        }
         let dir = app_dir();
         fs::create_dir_all(&dir)?;
         let bytes = serde_json::to_vec_pretty(self).unwrap_or_default();

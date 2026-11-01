@@ -1,7 +1,15 @@
 // 行为验收：数据安全、导入、提醒闭环、拖拽、面板调宽、弹窗复位
 // 用法：node remedy-check.mjs <输出目录> [端口]
 import fs from 'node:fs';
+import path from 'node:path';
 import { target, connect, evaluate, shot, sleep, drag, doubleClick, key, resize, exceptions } from './lib/cdp.mjs';
+
+// 全局配置：%APPDATA%\ScheduleDesk\config.json。带 --data-dir 启动的实例绝不能改它，
+// 否则窗口几何 / lastSync 这类自动保存会把测试目录写进 dataDir（用户下次启动就进测试数据）。
+const CFG_FILE = path.join(process.env.APPDATA || '', 'ScheduleDesk', 'config.json');
+const readCfg = () => {
+  try { return fs.readFileSync(CFG_FILE, 'utf8'); } catch { return null; }
+};
 
 const OUT = process.argv[2] || '.';
 const PORT = process.argv[3] || '9222';
@@ -18,6 +26,8 @@ async function main() {
 
   const report = {};
   const rows = [];
+  // 便携模式（--data-dir）下全局 config.json 必须一个字节都不动，最后再比一次
+  const cfgBefore = readCfg();
   const ck = (id, ok, detail) => {
     rows.push({ id, ok: !!ok, detail });
     return !!ok;
@@ -693,6 +703,29 @@ async function main() {
   // ---------- 10. 页面异常 ----------
   report.errors = exceptions(cdp);
   ck('errors.none', report.errors.length === 0, report.errors);
+
+  // ---------- 11. 全局配置不被测试实例改写 ----------
+  // 以前 --data-dir 直接写进 cfg.data_dir，而窗口几何 / 同步时间会自动 cfg.save()，
+  // 结果测试目录成了用户真正的数据目录。这条钉住「便携实例不碰全局配置」。
+  const cfgAfter = readCfg();
+  // 配置文件本来不存在（隔离 APPDATA 的测试环境）也算通过：关键是「测完也没被创建/改写」
+  let cfgOk = cfgBefore === null ? cfgAfter === null : cfgBefore === cfgAfter;
+  let cfgDataDir = null;
+  try {
+    cfgDataDir = cfgAfter ? (JSON.parse(cfgAfter.replace(/^\uFEFF/, '')).dataDir ?? '') : null;
+    // 即使文件被别的东西重写，dataDir 指向测试目录也必须判定为错
+    if (typeof cfgDataDir === 'string' && /dist[\\/]|test-data|remedy-data|ui-data/.test(cfgDataDir)) cfgOk = false;
+  } catch {
+    cfgOk = false;
+  }
+  report.config = {
+    file: CFG_FILE,
+    before: cfgBefore ? cfgBefore.length : null,
+    after: cfgAfter ? cfgAfter.length : null,
+    dataDir: cfgDataDir,
+    ok: cfgOk
+  };
+  ck('config.untouched', cfgOk, report.config);
 
   report.checks = rows;
   report.fails = rows.filter((r) => !r.ok).map((r) => r.id);

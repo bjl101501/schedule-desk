@@ -758,14 +758,22 @@ fn main() {
             notify_now
         ])
         .setup(move |app| {
-            let mut cfg = Config::load();
+            let cfg = Config::load();
 
-            // --data-dir <path>：临时覆盖数据目录（隔离测试 / 便携模式），不写入配置
-            if let Some(v) = arg_value(&argv, "--data-dir") {
-                cfg.data_dir = v;
+            // --data-dir <path>：临时覆盖数据目录（隔离测试 / 便携模式）。
+            // 注意：**不能写进 cfg.data_dir**。cfg 会被 save() 落盘（拖动窗口、同步完
+            // 写 lastSync 都会触发），一写就把测试目录变成本机器真正的数据目录 ——
+            // 用户下次正常启动就打开到测试数据里了。这里只决定「这次用哪个目录」，
+            // 并打开便携模式，让 Config::save 整体变成空操作。
+            let data_dir_override = arg_value(&argv, "--data-dir").filter(|v| !v.trim().is_empty());
+            if data_dir_override.is_some() {
+                config::set_portable(true);
             }
 
-            let dir = cfg.resolved_data_dir();
+            let dir = match &data_dir_override {
+                Some(v) => PathBuf::from(v),
+                None => cfg.resolved_data_dir(),
+            };
             let _ = fs::create_dir_all(&dir);
             import_legacy_v1(&dir);
             let mut store = Store::load(&dir);
@@ -786,14 +794,27 @@ fn main() {
 
             store.snapshot_daily(&dir);
 
-            // 记住上次的尺寸与位置；没有记录时用 1180×760（1366×768 的笔记本也放得下）
+            // 记住上次的尺寸与位置；没有记录时见下面的按屏幕自适应
             let saved_win = app
                 .state::<AppState>()
                 .config
                 .lock()
                 .map(|c| c.window.clone())
                 .unwrap_or_default();
-            let (mut ww, mut wh) = (1180.0_f64, 760.0_f64);
+            // 默认尺寸按屏幕算：固定 1180×760 在侧栏「清单 + 标签」都展开时会被压到要滚动，
+            // 看着就像「显示不全」。取「屏幕可用宽 − 120 / 高 − 140」，再夹到 1000…1320 × 700…940：
+            // 1080p 上开 1320×940，1366×768 的笔记本仍然是 1246×628→夹到 700 高，都放得下。
+            let (mut dw, mut dh) = (1180.0_f64, 760.0_f64);
+            if let Ok(Some(mon)) = app.primary_monitor() {
+                let sc = mon.scale_factor();
+                let sw = mon.size().width as f64 / sc;
+                let sh = mon.size().height as f64 / sc;
+                if sw > 600.0 && sh > 400.0 {
+                    dw = (sw - 120.0).clamp(1000.0, 1320.0);
+                    dh = (sh - 140.0).clamp(700.0, 940.0);
+                }
+            }
+            let (mut ww, mut wh) = (dw, dh);
             if saved_win.w >= 420 && saved_win.h >= 560 {
                 ww = saved_win.w as f64;
                 wh = saved_win.h as f64;

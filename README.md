@@ -94,22 +94,11 @@ CI 使用 `windows-latest`，同样输出无需 DLL 的 exe。
 本仓库开发机没有 MSVC，本地走 Rust GNU 目标，需要 MinGW binutils
 （`dlltool`、`windres`）与 `WebView2Loader.dll` 同目录运行。
 
-### 发版
+跑回归时用 `--data-dir` 指定临时数据目录，并把 `APPDATA` 指到临时目录，
+这样测试实例读写的配置与真实安装完全隔离（`remedy-check` 会断言全局配置文件一字节未变）：
 
 ```bash
-git tag -a v3.4.5 -m "v3.4.5 · 时钟管色跟随主题"
-git push origin v3.4.5          # 一个一个推
-```
-
-`.github/workflows/release.yml` 在 `v*` tag 推送时用 `windows-latest` 构建，
-并建 Release（`ScheduleDesk.exe` + `ScheduleDesk.zip`）。
-
-**别用 `git push --tags` 一次推多个**：本仓库实测，11 个 tag 同批推上去，
-GitHub 一个 run 都没触发（单个推立刻就有了）。推完用 `gh run list` 看一眼，
-没跑就手动补：
-
-```bash
-gh workflow run release.yml --ref v3.4.5
+APPDATA=/tmp/sd-appdata ./dist/ScheduleDesk.exe --data-dir /tmp/sd-data
 ```
 
 ## 目录
