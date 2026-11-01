@@ -10,6 +10,7 @@
     chooseDataDir, openDataDir, restartApp, updateCheck, updateInstall, webdavSave, webdavTest
   } from '$lib/bridge/desktop';
   import ModalHead from '$lib/ui/ModalHead.svelte';
+  import Icon from '$lib/ui/Icon.svelte';
   import { prepareForm } from '$lib/actions/prepare-form';
 
   const cfg = $derived(dbConfig());
@@ -108,9 +109,18 @@
       <div style="display:flex;gap:8px;margin-top:8px">
         <button class="btn btn-sec btn-sm" id="sdOpenDir" onclick={openDataDir}>打开目录</button>
         <button class="btn btn-sec btn-sm" id="sdChangeDir" onclick={changeDir}>更改目录</button>
-        <button class="btn btn-sec btn-sm" id="sdHelp" onclick={() => (uiState.help = true)}>使用说明</button>
       </div>
     </div>
+  </div>
+
+  <div class="field">
+    <label>使用说明<span class="hint">数据放在哪 / 提醒怎么响 / 艾宾浩斯 / 跨天日程</span></label>
+    <button
+      class="btn btn-sec"
+      id="stHelp"
+      style="justify-content:flex-start;width:100%;height:40px"
+      onclick={() => (uiState.help = true)}
+    ><Icon name="book" /> 打开使用说明</button>
   </div>
 
   <div class="field" data-sd-block="desktop">
@@ -159,28 +169,11 @@
   </div>
 
   <div class="field">
-    <label>艾宾浩斯提醒</label>
-    <div style="font-size:13px;color:var(--text-2);line-height:1.85">
-      按 0 / 5 / 30 分钟、12 小时、1 / 2 / 4 / 7 / 15 天的间隔提醒复习。
-      节点可以按需勾选，到点会发系统通知，同时进入顶部铃铛与「今天要处理」。
-    </div>
-  </div>
-
-  <div class="field">
     <label>外观</label>
     <div class="theme-chips">
       {#each THEMES as t (t.k)}
         <button class="theme-chip{theme.key === t.k ? ' on' : ''}" data-ththeme={t.k} onclick={() => setTheme(t.k)}>{t.name}</button>
       {/each}
-    </div>
-  </div>
-
-  <div class="field">
-    <label>引用与致谢</label>
-    <div style="font-size:12.5px;color:var(--text-3);line-height:1.85">
-      表格能力来自 WorkBuddy「资料库」结构，桌面外壳使用 Tauri 2，界面为手写 CSS；
-      图标来自 Lucide（另有少量自制），图表是手绘 SVG，不引入图表库。
-      行楷字体来自 LXGW WenKai GB（CDN 加载，离线时回落系统字体）。
     </div>
   </div>
 
@@ -196,8 +189,26 @@
       </div>
     {/if}
   </div>
+
+  <div class="field">
+    <label>引用与致谢<span class="hint">外部依赖逐项登记</span></label>
+    <div style="font-size:13.5px;color:var(--text-2);line-height:1.955">
+      · <b>图标</b>：Lucide（ISC 许可），逐路径引入 42 个；另有 5 个自制 path
+      （分屏 / 卡片 / 看板 / 时间线 / 趋势），因为 Lucide 没有同形图标<br>
+      · <b>浮层定位</b>：@floating-ui/dom（MIT 许可），负责上下翻转、左右钳制、视口内高度与滚动跟随<br>
+      · <b>图表</b>：手写 SVG / CSS 绘制，未使用图表库<br>
+      · <b>数据格式</b>：沿用 WorkBuddy「资料库」的表格结构（tables / properties），本机 JSON 文件保存，可选 WebDAV 同步<br>
+      · <b>配色</b>：中国传统色 —— 靛青 #177CB0（主色）、朱砂 #C3272B、杏黄 #C8892B、竹青 #5E8C6A、绛紫 #7A4E63、石青 #1685A9、宣纸 #F7F3EA（底）、玄色 #2A2925（字）；色名与色值参照 sealuo.com 传统色卡整理<br>
+      · <b>字体</b>：霞鹜文楷 GB — LXGW WenKai GB，作者 LXGW，SIL Open Font License 1.1；经 jsDelivr CDN 分片加载，加载失败自动回落到系统字体。
+      顶栏时钟用 Digital-7（作者 Style-7 / Sizenko Alexander），作者声明免费使用，商业分发需另行取得授权<br>
+      · <b>节假日数据</b>：holiday.ailcc.com 公开接口，仅取「下一个法定节假日」，每日缓存 6 小时；接口不可用时用内置的固定日期表兜底，并标注「预估」<br>
+      · <b>桌面外壳</b>：Tauri 2（MIT / Apache-2.0 双许可）
+    </div>
+  </div>
+
 </div>
 <div class="m-foot">
+  <div style="font-size:11px;color:var(--text-3)">日程台 · 作者 workbuddy &amp; bjl101501</div>
   <div class="spacer"></div>
   <button class="btn btn-pri" onclick={close}>知道了</button>
 </div>

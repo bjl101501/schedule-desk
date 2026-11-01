@@ -789,6 +789,60 @@ async function main() {
   await resize(cdp, 1280, 800);
   await sleep(300);
 
+  // ---------- 22.6 设置：引用与致谢逐项登记 ----------
+  // 这块在 R11 曾从「6 条逐项登记」被压成一段话，丢掉图标/配色/字体/节假日等条目，
+  // 而当时所有断言都盖不到设置面板。这里钉住条目数与关键字。
+  await evaluate(cdp, `__SD_TEST__.openSettings ? __SD_TEST__.openSettings() : document.getElementById('btnSettings')?.click()`);
+  await sleep(450);
+  const credits = await evaluate(
+    cdp,
+    `(function(){
+       var f = Array.from(document.querySelectorAll('.m-body .field'))
+         .find(function(x){ return /引用与致谢/.test(x.textContent); });
+       if (!f) return null;
+       var box = f.querySelector('div');
+       var text = box ? box.textContent : '';
+       var foot = document.querySelector('.m-foot');
+       // 只取 label 自身文字，不含 <span class="hint">：使用说明的 hint 里会提到「艾宾浩斯」
+       var labels = Array.from(document.querySelectorAll('.m-body .field > label'))
+                        .map(function(l){ var n = l.childNodes[0];
+                          return n ? String(n.textContent || '').trim() : ''; });
+       var helpBtn = document.getElementById('stHelp');
+       return { lines: box ? box.querySelectorAll('br').length + 1 : 0,
+                hint: /外部依赖逐项登记/.test(f.querySelector('label').textContent),
+                text: text,
+                footAuthor: foot ? /作者 workbuddy & bjl101501/.test(foot.textContent) : false,
+                has: ['Lucide', '@floating-ui/dom', 'Digital-7', 'holiday.ailcc.com',
+                      'LXGW WenKai GB', 'Tauri 2', 'WebDAV', '#177CB0']
+                       .filter(function(k){ return text.indexOf(k) === -1; }),
+                // 使用说明必须自成一行（独占一个 field，按钮撑满该行），且挪出「数据存储」
+                helpOwn: !!helpBtn && !!helpBtn.closest('.field') &&
+                         helpBtn.closest('.field').querySelectorAll('button').length === 1 &&
+                         Math.round(helpBtn.getBoundingClientRect().width) > 400,
+                helpInStore: /使用说明/.test((document.querySelector('#sdOpenDir')||{}).parentElement?.textContent || ''),
+                // 危险操作在致谢之前；艾宾浩斯已迁到使用说明
+                dangerBeforeCredit: labels.indexOf('危险操作') > -1 &&
+                                    labels.indexOf('危险操作') < labels.findIndex(function(x){ return /引用与致谢/.test(x); }),
+                ebbinghausMoved: !labels.some(function(x){ return /艾宾浩斯/.test(x); }) };
+     })()`
+  );
+  S.credits = credits;
+  c.check(
+    'settings.credits',
+    !!credits && credits.lines >= 7 && credits.hint === true && credits.has.length === 0 && credits.footAuthor === true,
+    credits ? { lines: credits.lines, hint: credits.hint, missing: credits.has, footAuthor: credits.footAuthor } : null
+  );
+  c.check(
+    'settings.layout',
+    !!credits && credits.helpOwn === true && credits.helpInStore === false &&
+      credits.dangerBeforeCredit === true && credits.ebbinghausMoved === true,
+    credits ? { helpOwn: credits.helpOwn, helpInStore: credits.helpInStore,
+                dangerBeforeCredit: credits.dangerBeforeCredit, ebbinghausMoved: credits.ebbinghausMoved } : null
+  );
+  await shot(cdp, OUT, 'settings.png');
+  await evaluate(cdp, `document.querySelector('.m-foot .btn-pri')?.click()`);
+  await sleep(300);
+
   // ---------- 23. 未捕获异常 ----------
   const errs = exceptions(cdp);
   report.errors = errs;

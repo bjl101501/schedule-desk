@@ -20,6 +20,14 @@
     </div>
   </div>
   <div class="field">
+    <label>艾宾浩斯提醒</label>
+    <div style="font-size:13px;color:var(--text-2);line-height:1.9">
+      在事项里开启「艾宾浩斯」后，按 准时 → 5 分钟 → 30 分钟 → 12 小时 → 1 / 2 / 4 / 7 / 15 天
+      共 9 个节点安排复习提醒，节点会显示成「第 6/9 次」。节点可以按需勾选；
+      到点由系统通知弹出，同时进入顶部铃铛与「今天要处理」。
+    </div>
+  </div>
+  <div class="field">
     <label>跨天日程</label>
     <div style="font-size:13px;color:var(--text-2);line-height:1.9">
       勾「计划」并选结束日期即可。结束时间留空表示到结束日 24:00；

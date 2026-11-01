@@ -42,6 +42,16 @@ def ymd(d):
     return d.strftime("%Y-%m-%d")
 
 
+def ts(d):
+    """时间戳 → (日期, 时刻)。
+
+    rel() 以「现在」为基准，23 点后跑就会跨到次日；若日期仍写死 t_str，
+    会造出「今天 00:01」这种已过去 23 小时的数据（t04 被判逾期而非即将逾期）。
+    所以日期一律从时间戳自己取。
+    """
+    return ymd(d), d.strftime("%H:%M")
+
+
 def task(tid, title, date, time="", estimate=0, subs=None, remind=None,
          mode="不提醒", done=False, note="", tags="",
          plan=False, end_date="", end_time=""):
@@ -142,6 +152,9 @@ def main():
     e = rel(40)    # 40 分钟后开始
     f = rel(-60)   # 1 小时前开始
     g = rel(120)   # 2 小时后结束
+    h70 = rel(-70)  # 艾宾浩斯基准，1 小时 10 分钟前
+    m1 = rel(-1)    # 1 分钟后
+
     # 晚上 22 点后跑，+120 分钟会跨到明天；end_date 还是今天，
     # 这个 00:0x 就成了「今天凌晨」→ t15 被误判逾期。压到当天 23:59。
     if g.date() != today:
@@ -149,13 +162,13 @@ def main():
 
     rows = [
         # 3 无计划 + 时间 + 用时 → 开始 + 60 分钟，已过 20 分钟
-        task("t01", "进行中 · 开始+时长", t_str, a.strftime("%H:%M"), 60),
+        task("t01", "进行中 · 开始+时长", *ts(a), 60),
         # 3 同上，已过 90 分钟 → 逾期
-        task("t02", "已逾期 · 超过预计时长", t_str, b.strftime("%H:%M"), 60),
+        task("t02", "已逾期 · 超过预计时长", *ts(b), 60),
         # 4 无计划 + 时间 + 无用时 → 到点即逾期
-        task("t03", "已逾期 · 定时无时长", t_str, c.strftime("%H:%M"), 0),
+        task("t03", "已逾期 · 定时无时长", *ts(c), 0),
         # 4 未开始，但提前提醒已到点 → 即将逾期
-        task("t04", "即将逾期 · 提前提醒已触发", t_str, d.strftime("%H:%M"), 0,
+        task("t04", "即将逾期 · 提前提醒已触发", *ts(d), 0,
              remind={"anchor": fmt(d), "offsets": [-60], "read": []}, mode="单次提醒"),
         # 5 全天
         task("t05", "全天 · 进行中", t_str, "", 0),
@@ -168,20 +181,20 @@ def main():
         task("t08", "计划 · 结束时间已过", y1, "09:00", 0,
              plan=True, end_date=t_str, end_time="01:00"),
         # 3 未开始，有时长，提前提醒到点 → 即将开始
-        task("t09", "即将开始 · 提前提醒已触发", t_str, e.strftime("%H:%M"), 30,
+        task("t09", "即将开始 · 提前提醒已触发", *ts(e), 30,
              remind={"anchor": fmt(e), "offsets": [-60], "read": []}, mode="单次提醒"),
         # 未开始
         task("t10", "明天 · 普通日程", str(today + timedelta(days=1)), "10:00", 0),
         task("t11", "已完成", t_str, "08:00", 30, done=True),
         # 5 全天 + 预计时长，仍然按全天算
         task("t12", "全天 · 有预计时长仍全天", t_str, "", 120),
-        task("t13", "艾宾浩斯 · 待复习", t_str, rel(-70).strftime("%H:%M"), 0,
-             remind={"anchor": fmt(rel(-70)), "offsets": [0, 5, 30], "read": []}, mode="艾宾浩斯"),
+        task("t13", "艾宾浩斯 · 待复习", *ts(h70), 0,
+             remind={"anchor": fmt(h70), "offsets": [0, 5, 30], "read": []}, mode="艾宾浩斯"),
         # 用于验证提醒链路：启动 1 分钟后扫描时应弹一条「现在开始，预计 45 分钟」
-        task("t14", "提醒测试 · 定时任务", t_str, rel(-1).strftime("%H:%M"), 45,
-             remind={"anchor": fmt(rel(-1)), "offsets": [0], "read": []}, mode="单次提醒"),
+        task("t14", "提醒测试 · 定时任务", *ts(m1), 45,
+             remind={"anchor": fmt(m1), "offsets": [0], "read": []}, mode="单次提醒"),
         # 6 计划与用时都有，取更晚：用时 30 分钟早于计划结束 → 以计划为准
-        task("t15", "计划 · 与用时取更晚", t_str, f.strftime("%H:%M"), 30,
+        task("t15", "计划 · 与用时取更晚", *ts(f), 30,
              plan=True, end_date=t_str, end_time=g.strftime("%H:%M")),
         # 计划的结束日已过（昨天 24:00）→ 逾期
         task("t17", "计划 · 结束日已过", y3, "09:00", 0,
