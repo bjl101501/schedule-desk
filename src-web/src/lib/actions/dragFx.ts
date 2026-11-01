@@ -13,6 +13,10 @@ let markedShadow = '';
 
 /** 占位与源元素，一次只有一个拖拽 */
 let slotEl: HTMLElement | null = null;
+/** 停顿多久才让位：拖到哪儿都立刻重排，整排卡片会跟着鼠标抖 */
+const SLOT_HOLD = 180;
+let slotTimer = 0;
+let pendingSlot: { host: HTMLElement | null; ref: HTMLElement | null; pos: 'before' | 'after' } | null = null;
 let srcEl: HTMLElement | null = null;
 let homeParent: HTMLElement | null = null;
 let homeNext: Node | null = null;
@@ -75,6 +79,39 @@ function restoreSlot(): void {
   }
 }
 
+/** 真正把占位挪过去（调用前已确认目标变了） */
+function placeSlot(host: HTMLElement | null, ref: HTMLElement | null, pos: 'before' | 'after'): void {
+  if (!slotEl) return;
+  if (!host || ref === srcEl) {
+    restoreSlot();
+    return;
+  }
+  const target = ref ? (pos === 'after' ? ref.nextSibling : ref) : null;
+  if (slotEl.parentElement === host && slotEl.nextSibling === target) return;
+  const from = slotEl.parentElement;
+  const beforeFrom = topMap(from);
+  const beforeTo = topMap(host);
+  host.insertBefore(slotEl, target);
+  flip(from, beforeFrom);
+  flip(host, beforeTo);
+}
+
+/** 松手时调用：把还在等待的目标立刻落地，保证「停哪儿落哪儿」 */
+function flushSlot(): void {
+  if (!pendingSlot) return;
+  const p = pendingSlot;
+  pendingSlot = null;
+  window.clearTimeout(slotTimer);
+  slotTimer = 0;
+  placeSlot(p.host, p.ref, p.pos);
+}
+
+function dropPending(): void {
+  pendingSlot = null;
+  window.clearTimeout(slotTimer);
+  slotTimer = 0;
+}
+
 export interface DropWhere {
   host: HTMLElement | null;
   prev: HTMLElement | null;
@@ -93,7 +130,6 @@ export interface DragFx {
 
 export function beginDrag(opts: {
   source: HTMLElement;
-  ghostClass?: string;
   scrollEl?: () => HTMLElement | null;
   /** 按下时的指针位置：幽灵要「捏住原来的点」，不能固定偏移 */
   at?: { x: number; y: number };
@@ -118,7 +154,10 @@ export function beginDrag(opts: {
     // 克隆体不能带 id：否则 #edTitle 这类契约被复制，querySelector 会命中浮层
     ghost.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
     ghost.removeAttribute('id');
-    ghost.className = 'drag-ghost' + (opts.ghostClass ? ' ' + opts.ghostClass : '');
+    // 必须保留原来的类（tcard / task / kcard）：padding、flex、gap、优先级色条都在那里。
+    // 以前是整体替换成 drag-ghost，结果内容贴着边框、行距塌掉，看起来像「被放大」。
+    ghost.classList.remove('dragging');
+    ghost.classList.add('drag-ghost');
     ghost.style.width = rect.width + 'px';
     ghost.style.height = rect.height + 'px';
     ghost.style.left = rect.left + 'px';
@@ -191,21 +230,22 @@ export function beginDrag(opts: {
     },
     slot(host: HTMLElement | null, ref: HTMLElement | null, pos: 'before' | 'after' = 'before'): void {
       if (!slotEl) return;
-      // 没有容器 = 落点无效，回原位；ref 为空但容器有值 = 放到该容器末尾（空列 / 空格子）
-      if (!host || ref === srcEl) {
-        restoreSlot();
-        return;
+      // 目标没变就不重排：拖动中每帧都会调到这里
+      if (pendingSlot) {
+        if (pendingSlot.host === host && pendingSlot.ref === ref && pendingSlot.pos === pos) return;
+      } else if (!host || ref === srcEl) {
+        if (slotEl.parentElement === homeParent && slotEl.nextSibling === homeNext) return;
+      } else {
+        const target = ref ? (pos === 'after' ? ref.nextSibling : ref) : null;
+        if (slotEl.parentElement === host && slotEl.nextSibling === target) return;
       }
-      const target = ref ? (pos === 'after' ? ref.nextSibling : ref) : null;
-      if (slotEl.parentElement === host && slotEl.nextSibling === target) return;
-      const from = slotEl.parentElement;
-      const beforeFrom = topMap(from);
-      const beforeTo = topMap(host);
-      host.insertBefore(slotEl, target);
-      flip(from, beforeFrom);
-      flip(host, beforeTo);
+      // 悬停稳定 SLOT_HOLD 毫秒后才真的让位；中途换目标就重新计时
+      pendingSlot = { host, ref, pos };
+      window.clearTimeout(slotTimer);
+      slotTimer = window.setTimeout(flushSlot, SLOT_HOLD);
     },
     where(): DropWhere {
+      flushSlot();
       return {
         host: slotEl?.parentElement ?? null,
         prev: (slotEl?.previousElementSibling as HTMLElement | null) ?? null,
@@ -214,6 +254,7 @@ export function beginDrag(opts: {
     },
     end(): void {
       clearMark();
+      dropPending();
       if (ghost) {
         ghost.remove();
         ghost = null;

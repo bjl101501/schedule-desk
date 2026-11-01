@@ -277,10 +277,13 @@ async function main() {
       );
       await sleep(25);
     }
+    // 占位是「悬停停顿才让位」，等过 180ms 再看
+    await sleep(280);
     const mid = await evaluate(
       cdp,
       `(function(){
          const s = document.querySelector('.drag-slot');
+         const g = document.querySelector('.drag-ghost');
          const list = document.querySelector('.task-list[data-gdate="${slotCase.ds}"]');
          const rows = list ? Array.from(list.querySelectorAll('[data-tid]')) : [];
          const hidden = rows.filter((r) => r.style.display === 'none').length;
@@ -288,8 +291,10 @@ async function main() {
                   prev: s && s.previousElementSibling ? s.previousElementSibling.getAttribute('data-tid') : null,
                   next: s && s.nextElementSibling ? s.nextElementSibling.getAttribute('data-tid') : null,
                   hidden, y1: rows[1] ? Math.round(rows[1].getBoundingClientRect().top) : null,
-                  ghostTrans: (function(){ const g = document.querySelector('.drag-ghost');
-                    return g ? getComputedStyle(g).transitionDuration : null; })() };
+                  ghostTrans: g ? getComputedStyle(g).transitionDuration : null,
+                  ghostW: g ? Math.round(g.getBoundingClientRect().width) : null,
+                  ghostPad: g ? getComputedStyle(g).paddingLeft : null,
+                  slotW: s ? Math.round(s.getBoundingClientRect().width) : null };
        })()`
     );
     await cdp.send('Input.dispatchMouseEvent', {
@@ -316,7 +321,11 @@ async function main() {
         mid.prev === slotCase.ids[1] &&
         after[0] === slotCase.ids[1] &&
         after[1] === slotCase.ids[0] &&
-        mid.ghostTrans === '0s'
+        mid.ghostTrans === '0s' &&
+        // 幽灵必须保留原卡样式：宽度与占位一致、padding 不为 0
+        mid.ghostW !== null &&
+        Math.abs(mid.ghostW - mid.slotW) <= 1 &&
+        mid.ghostPad !== '0px'
     };
   } else {
     report.slot = { ok: false, reason: 'no group with 2 rows' };
@@ -339,11 +348,12 @@ async function main() {
        const r = b.getBoundingClientRect();
        const id = b.getAttribute('data-gbar');
        const t = __SD_TEST__.tasks.find((x) => x.id === id);
-       return { days: Number(getComputedStyle(g).getPropertyValue('--gdays')),
+       const tlDays = Number(getComputedStyle(g).getPropertyValue('--gdays'));
+       return { days: tlDays,
                 heads: document.querySelectorAll('.g-day').length,
                 id, was: t && t.date,
                 from: { x: Math.round(r.left + 16), y: Math.round(r.top + r.height / 2) },
-                to: { x: Math.round(r.left + 16 + (gr.width / 21) * 4), y: Math.round(r.top + r.height / 2) } };
+                to: { x: Math.round(r.left + 16 + (gr.width / tlDays) * 3), y: Math.round(r.top + r.height / 2) } };
      })()`
   );
   if (tlCase) {
@@ -379,7 +389,7 @@ async function main() {
       mid,
       got,
       ok:
-        tlCase.days >= 21 &&
+        tlCase.days >= 7 &&
         tlCase.heads === tlCase.days &&
         mid.drop === true &&
         mid.on >= 1 &&

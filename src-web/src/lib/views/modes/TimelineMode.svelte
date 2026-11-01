@@ -28,8 +28,8 @@
   /** 拖动中的落点预览：off = 起点偏移，span = 天数 */
   let drop = $state<{ off: number; span: number } | null>(null);
 
-  /** 日期轴至少铺三周，否则清单里只有一条今天的任务时，整条轴只有一格，没地方可拖 */
-  const WIN_DAYS = 21;
+  /** 日期轴最少铺一周：只有一条今天的任务时也能看到后面几天、有地方可拖；再多就把列压扁了 */
+  const WIN_DAYS = 7;
 
   const view = $derived.by(() => {
     const t0s = ymd(today);
@@ -58,8 +58,8 @@
       };
     }
 
-    // 起点：最早的任务日与「今天前 3 天」取早者 —— 留一点历史上下文
-    const start = minD < addDays(today, -3) ? minD : addDays(today, -3);
+    // 起点就是最早的任务日：往前的空白没有信息量，只会把列压窄
+    const start = minD;
     const floor = addDays(start, WIN_DAYS - 1);
     const end = maxD > floor ? maxD : floor;
     const days = dayDiff(start, end) + 1;

@@ -176,11 +176,11 @@
 /* ---------- drag ---------- */
 .task,.kcard,.tcard{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .task.dragging,.kcard.dragging,.tcard.dragging{opacity:.3}
+/* 只补定位与阴影，圆角/底色/描边/padding 全部交给原类（.tcard / .task / .kcard） */
 .drag-ghost{
-  position:fixed;z-index:900;pointer-events:none;border-radius:11px;background:var(--panel);
-  /* 阴影收着点：原来的 42px 大阴影会让卡看起来「浮起来变大」 */
-  box-shadow:0 8px 20px rgba(21,24,29,.16);border:1px solid var(--line);opacity:.98;
-  /* 克隆体带上了 .tcard/.task 的 transition:.15s，left/top 会被缓动成「追不上手」 */
+  position:fixed;z-index:900;pointer-events:none;
+  box-shadow:0 8px 20px rgba(21,24,29,.16);opacity:.98;
+  /* 克隆体带上了 .tcard/.task 的 transition，left/top 会被缓动成「追不上手」 */
   transition:none!important;transform:none;overflow:hidden;
 }
 /* 让位占位：源元素隐藏后由它顶着位置，拖动中插到目标处，其余卡片随之挪开 */
