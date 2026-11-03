@@ -63,3 +63,18 @@ export function setFilters(patch: Partial<Filters>): void {
   Object.assign(app.filters, patch);
   app.listLimit = PAGE;
 }
+
+/**
+ * 清空筛选。切视图 / 切清单时调用：
+ * 关键词和日期区间留着不动，会让人在另一个清单看到「这里很干净」，
+ * 却看不出是被筛选过滤掉的。
+ */
+export function resetFilters(): void {
+  app.filters.prio = [];
+  app.filters.tags = [];
+  app.filters.status = 'todo';
+  app.filters.from = '';
+  app.filters.to = '';
+  app.filters.kw = '';
+  app.listLimit = PAGE;
+}

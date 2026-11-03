@@ -29,6 +29,6 @@
   <h3>{title}</h3>
   {@render actions?.()}
   {#if onclose}
-    <button class="m-close" onclick={onclose}><Icon name="close" /></button>
+    <button class="m-close" aria-label="关闭" title="关闭" onclick={onclose}><Icon name="close" /></button>
   {/if}
 </div>

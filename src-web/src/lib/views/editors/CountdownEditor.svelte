@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LIST_COLORS } from '$lib/domain/constants';
+  import { PICKER_PALETTE } from '$lib/domain/palette';
   import { today0, ymd } from '$lib/domain/date';
   import { apiDeleteCountdown, cacheLocal, data, saveCountdown } from '$lib/store/data.svelte';
   import { uiState } from '$lib/store/ui.svelte';
@@ -20,7 +20,7 @@
   let date = $state(src?.date ?? ymd(today0()));
   let note = $state(src?.note ?? '');
   let group = $state(src?.group ?? '');
-  let color = $state(src?.color ?? LIST_COLORS[0]);
+  let color = $state(src?.color ?? PICKER_PALETTE[0].hex);
 
   function close(): void {
     uiState.cdEditor = null;

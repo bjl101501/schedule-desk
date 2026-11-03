@@ -10,7 +10,6 @@
 </script>
 
 <section class="ed-sec">
-  <div class="ed-sec-t">时间安排</div>
   <div class="row2">
     <div class="field">
       <label>开始日期<span class="tip-i" tabindex="0" role="note" data-tip="日程从哪一天开始。跨多天用下面的「计划」。">?</span></label>
@@ -24,7 +23,7 @@
   <div class="field">
     <label>预计用时<span class="tip-i" tabindex="0" role="note" data-tip="填了时长：超过「开始 + 时长」还没完成才算逾期；留空按全天处理。">?</span></label>
     <div class="est-line">
-      <input class="inp" type="number" id="edEst" min="0" step={form.estUnit === 'hour' ? 0.5 : 5} bind:value={form.estValue} placeholder="留空" oninput={() => form.syncEstFromInput()} use:prepareForm />
+      <input class="inp" type="number" id="edEst" min="0" step={form.estUnit === 'hour' ? 0.5 : 5} bind:value={form.estValue} placeholder="可留空" oninput={() => form.syncEstFromInput()} use:prepareForm />
       <div class="seg est-unit" id="edEstUnit">
         <button type="button" class={form.estUnit === 'min' ? 'on' : ''} data-estunit="min" onclick={() => form.setUnit('min')}>分钟</button>
         <button type="button" class={form.estUnit === 'hour' ? 'on' : ''} data-estunit="hour" onclick={() => form.setUnit('hour')}>小时</button>
@@ -36,10 +35,8 @@
   <div class="plan-block">
     <div class="plan-head">
       <label class="check-line" style="margin:0"><input type="checkbox" id="edPlanOn" bind:checked={form.planOn} onchange={() => form.onPlanToggle()} use:prepareForm /><span>计划</span></label>
+      <span class="hint">{form.planOn ? '跨多天，到结束日之后才算逾期' : '不勾就是当天的日程'}</span>
       <span class="tip-i" tabindex="0" role="note" data-tip="跨多天完成的事项。勾选后选结束日期；结束时间可留空，表示到结束日 24:00。">?</span>
-      <span class="hint">
-        {form.planOn ? '跨多天：到结束日之后才算逾期' : '不勾就是当天的日程'}
-      </span>
     </div>
     <div class="row2 plan-dates{form.planOn ? '' : ' is-off'}" id="edPlanWrap">
       <div class="field">
@@ -52,7 +49,7 @@
       </div>
     </div>
   </div>
-  <div class="span-hint{form.planHint ? ' on' : ''}{form.subDays > form.spanDays ? ' warn' : ''}" id="edSpanHint">{@html form.planHint.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</div>
+  <div class="span-hint{form.planHint ? ' on' : ''}{form.subDays > form.spanDays ? ' warn' : ''}" id="edSpanHint">{form.planHint}</div>
 
   <div class="field">
     <label>重复<span class="hint">完成后自动排下一次</span><span class="tip-i" tabindex="0" role="note" data-tip="勾选后，完成当前这条会自动生成下一次，适合固定习惯。">?</span></label>

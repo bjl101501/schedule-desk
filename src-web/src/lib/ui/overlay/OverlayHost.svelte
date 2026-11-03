@@ -14,14 +14,15 @@
 </script>
 
 <div class="modal-root" id="modalRoot" use:modalShell>
-  {#each overlay.stack as o (o.uid)}
+  {#each [...overlay.stack, ...overlay.closing] as o (o.uid)}
     {@const s = SPEC[o.kind]}
     {@const isPanel = s.panel && panel}
+    {@const closing = overlay.closing.some((x) => x.uid === o.uid)}
     {@const taskId = 'id' in o ? (o as { id?: string }).id : undefined}
     <div
-      class="modal-mask in{isPanel ? ' panel' : ''}{s.stacked ? ' stacked' : ''}"
+      class="modal-mask {closing ? 'out' : 'in'}{isPanel ? ' panel' : ''}{s.stacked ? ' stacked' : ''}"
       data-task={s.taskAttr ? taskId : undefined}
-      onclick={s.maskClose ? (e) => { if (e.target === e.currentTarget) pop(); } : undefined}
+      onclick={s.maskClose && !closing ? (e) => { if (e.target === e.currentTarget) pop(); } : undefined}
     >
       <div class="modal {s.modal}">
         {#if s.grip && isPanel}

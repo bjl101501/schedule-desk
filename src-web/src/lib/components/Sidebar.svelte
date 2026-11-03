@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LIST_COLORS } from '$lib/domain/constants';
+  import { listColorFor, tagColorFor } from '$lib/store/palette.svelte';
   import { dayDiff, parseYmd, ymd } from '$lib/domain/date';
   import { allLists, allTags } from '$lib/domain/selectors';
   import { app } from '$lib/store/app.svelte';
@@ -122,7 +122,8 @@
       id="listNav"
       use:pointerDrag={{
         handle: '[data-drag-name]',
-        threshold: 6,
+        slop: 8,
+        holdMs: 200,
         onStart: (el) => el.classList.add('side-dragging'),
         onEnd: (el, e, moved) => {
           el.classList.remove('side-dragging');
@@ -134,14 +135,15 @@
         }
       }}
     >
-      {#each lists.live as nm, i (nm)}
+      {#each lists.live as nm (nm)}
+        {@const lc = listColorFor(nm)}
         <div
           class="side-item{app.selectedList === nm ? ' on' : ''}"
           data-list={nm}
           data-drag-name={nm}
           onclick={() => { if (!isSuppressed()) selectList(nm); }}
         >
-          <span class="dot" style="background:{LIST_COLORS[i % LIST_COLORS.length]}"></span>
+          <span class="dot" style="background:{lc.hex}" title={'清单色：' + lc.name}></span>
           <span class="nm">{nm}</span>
           {#if listCount(nm)}<span class="cnt">{listCount(nm)}</span>{/if}
           {#if nm !== '收集箱'}
@@ -171,7 +173,8 @@
       id="tagNav"
       use:pointerDrag={{
         handle: '[data-drag-name]',
-        threshold: 6,
+        slop: 8,
+        holdMs: 200,
         onStart: (el) => el.classList.add('side-dragging'),
         onEnd: (el, e, moved) => {
           el.classList.remove('side-dragging');
@@ -185,7 +188,9 @@
     >
       {#if tags.length}
         {#each tags as g (g)}
+          {@const tc = tagColorFor(g)}
           <div class="side-item{app.selectedTag === g ? ' on' : ''}" data-tag={g} data-drag-name={g} onclick={() => { if (!isSuppressed()) selectTag(g); }}>
+            <span class="tag-dot" style="background:{tc.hex}" title={'标签色：' + tc.name}></span>
             <span class="nm"># {g}</span>
             {#if tagCount(g)}<span class="cnt">{tagCount(g)}</span>{/if}
             <button class="side-more" data-tagmore={g} title="管理标签" onclick={(e) => more('tag', g, e)}><Icon name="more" /></button>

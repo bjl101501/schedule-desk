@@ -48,7 +48,7 @@
 .m-close{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text-3)}
 .m-close:hover{background:var(--line-2);color:var(--text)}
 .m-close svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
-.m-body{padding:16px 18px;overflow-y:auto;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:13px}
+.m-body{padding:16px 18px;overflow-y:auto;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:9px}
 /* 关键：内容块不允许被压缩，否则子项一多，日期/时间/优先级那几行会被挤成 0 高 */
 .m-body>*{flex:0 0 auto}
 .m-foot{padding:12px 18px;border-top:1px solid var(--line);display:flex;align-items:center;gap:9px;flex:0 0 auto;background:var(--panel-2)}
@@ -56,25 +56,38 @@
 /* ---------- desktop side panel ---------- */
 .app{transition:none}
 @media (min-width:1000px){
-  .content{transition:margin-right .26s cubic-bezier(.32,.72,0,1);will-change:margin-right}
-  .app.panel-open .content{margin-right:min(var(--panel-w),40vw)}
+  /* 用 @keyframes 而不是 transition：面板节点插入时首帧就带 .in，
+     transition 的起始值根本没被绘制过，于是「面板瞬现、内容慢慢让位」。 */
+  @keyframes sdPanelIn{from{transform:translateX(28px);opacity:0}to{transform:none;opacity:1}}
+  @keyframes sdPanelOut{from{transform:none;opacity:1}to{transform:translateX(28px);opacity:0}}
+
+  /* 内容让位：与面板滑入同时长同曲线；只在真的挤得下时开启（见 App.svelte 的 push） */
+  .content{transition:margin-right var(--t-slow) var(--ease)}
+  .app.panel-push .content{margin-right:var(--panel-now)}
+  /* 拖宽手柄时关掉过渡：否则内容要滞后 260ms 才跟上，看着就是「卡一下」 */
+  html.resizing .content{transition:none}
+
   .modal-mask.panel{
     background:transparent;padding:0;align-items:stretch;justify-content:flex-end;
     pointer-events:none;overflow:hidden;opacity:1;transition:none;
   }
   .modal-mask.panel .modal{
     pointer-events:auto;margin:0;flex:0 0 auto;
-    width:min(var(--panel-w),40vw);max-width:min(var(--panel-w),40vw);max-height:none;
+    width:var(--panel-now);max-width:var(--panel-now);max-height:none;
     height:calc(100% - 60px);margin-top:60px;
     border-radius:0;border-left:1px solid var(--line);
     box-shadow:-14px 0 40px rgba(21,24,29,.10);
-    transform:translateX(26px);opacity:0;
-    transition:transform .26s cubic-bezier(.32,.72,0,1),opacity .2s;
+    transform:none;opacity:1;
+    animation:sdPanelIn var(--t-slow) var(--ease) both;
   }
-  .modal-mask.panel.in .modal{transform:none;opacity:1}
+  /* 退场：closing 队列里的节点保留 240ms，播完再销毁 */
+  .modal-mask.panel.out .modal{
+    animation:sdPanelOut .2s cubic-bezier(.4,0,.9,.4) both;
+    pointer-events:none;
+  }
   .modal-mask.panel .m-head{cursor:default;padding:17px 20px 15px;background:var(--panel)}
   .modal-mask.panel .m-head h3{font-size:15.5px}
-  .modal-mask.panel .m-body{padding:15px 20px 22px}
+  .modal-mask.panel .m-body{padding:14px 20px 18px}
   .modal-mask.panel .m-foot{padding:13px 20px}
   .panel-grip{position:absolute;left:0;top:0;bottom:0;width:8px;z-index:6;cursor:col-resize;background:transparent}
   .panel-grip::after{
@@ -105,6 +118,8 @@
   background:var(--field-bg);transition:.13s;width:100%;
   box-shadow:inset 0 1px 2px rgba(74,60,42,.05);
 }
+.inp::placeholder{color:var(--text-3);font-size:inherit;opacity:1}
+.ed-sec .inp{height:34px;font-size:13px;border-radius:8px;padding:0 9px}
 .inp:hover{border-color:var(--text-3)}
 .inp:focus{outline:0;border-color:var(--brand);background:var(--panel);box-shadow:0 0 0 3px rgba(47,107,255,.11)}
 textarea.inp{height:auto;min-height:66px;padding:9px 11px;resize:vertical;line-height:1.55}

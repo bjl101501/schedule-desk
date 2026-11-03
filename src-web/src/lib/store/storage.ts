@@ -23,6 +23,9 @@ export const STORAGE_KEYS = {
   listOrder: 'wb_schedule_list_order',
   tagOrder: 'wb_schedule_tag_order',
   cdGroupOrder: 'wb_schedule_cdgroup_order',
+  /* 清单 / 标签的自选颜色：{ c: 名字→hex, p: [用户手动指定的名字] } */
+  listColors: 'wb_schedule_list_colors',
+  tagColors: 'wb_schedule_tag_colors',
   /* 浏览器预览专用 */
   mockDb: 'sd_mock_store',
   mockFirstRun: 'sd_mock_first_run'

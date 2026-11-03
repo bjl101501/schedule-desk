@@ -82,6 +82,8 @@
       title: '先清空再导入',
       desc: '会先删除现有全部数据，再用备份内容替换。删除前会自动存一份快照。',
       word: '替换',
+      okText: '确认替换',
+      danger: true,
       onOk: () => void doImport(text, 'replace')
     };
   }
@@ -103,8 +105,11 @@
       title: '恢复上次快照',
       desc:
         '会用 ' + new Date(at).toLocaleString() +
-        ' 的快照覆盖当前数据。恢复前会自动再存一份当前快照。',
+        ' 的快照覆盖当前数据。恢复前会自动再存一份当前快照，万一恢复错了还能回来。',
       word: '恢复',
+      okText: '确认恢复',
+      danger: false,
+      hint: '恢复前会先保存当前数据',
       onOk: () => void doImport(raw, 'replace')
     };
   }
@@ -138,6 +143,8 @@
       title: '清空事项',
       desc: '只删除全部事项，习惯与纪念日保留。',
       word: '清空',
+      okText: '确认清空',
+      danger: true,
       onOk: () => {
         writeSafetySnapshot('清空事项前');
         void clearTables(['tasks'], '正在清空事项').then(() => {

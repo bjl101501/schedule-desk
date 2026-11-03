@@ -30,7 +30,7 @@
 
 <ModalHead title={req.title} onclose={() => pop()} />
 <div class="m-body">
-  {#if req.label}<div style="font-size:12.5px;color:var(--text-2);line-height:1.7;margin-bottom:9px">{@html req.label}</div>{/if}
+  {#if req.label}<div style="font-size:12.5px;color:var(--text-2);line-height:1.7;margin-bottom:9px;white-space:pre-wrap">{req.label}</div>{/if}
   <input
     class="inp"
     id="pmInput"

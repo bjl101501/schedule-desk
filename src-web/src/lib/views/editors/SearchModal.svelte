@@ -1,5 +1,6 @@
 <script lang="ts">
   import { data } from '$lib/store/data.svelte';
+  import { matchTaskKw } from '$lib/domain/selectors';
   import { app, setFilters } from '$lib/store/app.svelte';
   import { uiState, openTaskDetail } from '$lib/store/ui.svelte';
   import ModalHead from '$lib/ui/ModalHead.svelte';
@@ -8,14 +9,9 @@
   let kw = $state(app.filters.kw);
 
   const rows = $derived.by(() => {
-    const k = kw.trim().toLowerCase();
+    const k = kw.trim();
     if (!k) return [];
-    return data.tasks
-      .filter((t) => {
-        const subTxt = (t.subs || []).map((x) => x.title).join(' ');
-        return (t.title + ' ' + t.note + ' ' + t.tags.join(' ') + ' ' + t.list + ' ' + subTxt).toLowerCase().indexOf(k) > -1;
-      })
-      .slice(0, 30);
+    return data.tasks.filter((t) => matchTaskKw(t, k)).slice(0, 30);
   });
 
   function close(): void {

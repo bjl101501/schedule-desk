@@ -111,6 +111,9 @@
 
   const mdDrag = {
     handle: '.md-ev2, .md-adchip, .wev',
+    // 日历事件块小、点位密，阈值放低一些；长按 120ms 就进可拖态
+    slop: 6,
+    holdMs: 120,
     onStart: (el: HTMLElement, _e: PointerEvent, origin: { x: number; y: number }) => {
       beginDragSession();
       const r0 = el.getBoundingClientRect();

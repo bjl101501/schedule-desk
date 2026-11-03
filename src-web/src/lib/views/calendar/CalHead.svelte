@@ -15,16 +15,27 @@
     { k: 'day', t: '日' },
     { k: 'multiday', t: '多日' }
   ];
+
+  // 从周 / 多周 / 多日点进日视图后，按钮原来一律写「返回月视图」，点了却回周视图
+  const backModeText: Record<string, string> = {
+    year: '年',
+    month: '月',
+    week: '周',
+    multiweek: '多周',
+    day: '日',
+    multiday: '多日'
+  };
+  const backText = $derived('返回' + (backModeText[app.calReturn?.mode || ''] || '上一') + '视图');
 </script>
 
 <div class="cal-head">
   {#if app.calReturn && (app.calMode === 'day' || app.calMode === 'month')}
-    <button class="cal-back" data-calback onclick={calBack}><Icon name="chevL" />返回{app.calReturn.mode === 'year' ? '年' : '月'}视图</button>
+    <button class="cal-back" data-calback onclick={calBack}><Icon name="chevL" />{backText}</button>
   {/if}
   <span class="cal-title">{title}</span>
   <div class="cal-nav">
-    <button data-calnav="-1" onclick={() => calNav(-1)}><Icon name="chevL" /></button>
-    <button data-calnav="1" onclick={() => calNav(1)}><Icon name="chevR" /></button>
+    <button data-calnav="-1" aria-label="上一段" title="上一段" onclick={() => calNav(-1)}><Icon name="chevL" /></button>
+    <button data-calnav="1" aria-label="下一段" title="下一段" onclick={() => calNav(1)}><Icon name="chevR" /></button>
   </div>
   <button class="cal-today-btn" data-caltoday onclick={calToday}>今天</button>
   <div style="margin-left:auto;display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end;max-width:100%;min-width:0">

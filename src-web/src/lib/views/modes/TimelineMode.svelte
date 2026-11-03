@@ -164,7 +164,8 @@
       style="--gdays:{view.days}"
       use:pointerDrag={{
         handle: '[data-gbar]',
-        threshold: 6,
+        slop: 3,
+        holdMs: 0,
         onStart: (el, _e, origin) => {
           beginDragSession();
           dragStart = view.start;

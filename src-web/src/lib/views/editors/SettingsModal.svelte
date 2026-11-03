@@ -1,6 +1,6 @@
 <script lang="ts">
   import { THEMES } from '$lib/domain/constants';
-  import { clearTables, dataJob, readDailySnaps, restoreDailySnap, seedDemo, writeSafetySnapshot } from '$lib/store/data.svelte';
+  import { clearTables, dataJob, hist, readDailySnaps, restoreDailySnap, seedDemo, undoTo, writeSafetySnapshot } from '$lib/store/data.svelte';
   import { sync } from '$lib/store/sync.svelte';
   import { setTheme, theme } from '$lib/store/theme.svelte';
   import { uiState } from '$lib/store/ui.svelte';
@@ -15,6 +15,11 @@
 
   const cfg = $derived(dbConfig());
   const snaps = $derived(readDailySnaps());
+
+  function hmOf(ts: number): string {
+    const d = new Date(ts);
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
 
   let davUrl = $state(cfg.webdav?.url || '');
   let davUser = $state(cfg.webdav?.username || '');
@@ -69,8 +74,10 @@
   function clearAll(): void {
     uiState.typed = {
       title: '清空全部数据',
-      desc: '会删除所有事项、习惯、纪念日与专注记录，且无法撤销。<br>删除前会自动存一份快照，可在「备份」里恢复。',
+      desc: '会删除所有事项、习惯、纪念日与专注记录。\n删除前会自动存一份快照，可在「备份」里恢复，或用撤销找回。',
       word: '清空',
+      okText: '确认清空',
+      danger: true,
       onOk: () => {
         writeSafetySnapshot('清空全部数据前');
         void clearTables(['tasks', 'habits', 'countdowns', 'pomodoros'], '正在清空全部数据').then(() => {
@@ -86,6 +93,9 @@
       title: '恢复每日快照',
       desc: '会用 ' + day + ' 的快照覆盖当前事项、习惯与纪念日。恢复前会自动再存一份当前快照。',
       word: '恢复',
+      okText: '确认恢复',
+      danger: false,
+      hint: '恢复前会先保存当前数据',
       onOk: () => {
         void restoreDailySnap(day).then((ok) => {
           if (ok) close();
@@ -169,6 +179,23 @@
   </div>
 
   <div class="field">
+    <label>操作历史<span class="hint">本次会话最多保留 50 步，可逐条回退</span></label>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      {#if hist.undo.length}
+        {#each [...hist.undo].reverse().slice(0, 20) as h (h.id)}
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+            <span style="flex:0 0 44px;color:var(--text-3);font-size:11.5px;font-variant-numeric:tabular-nums">{hmOf(h.at)}</span>
+            <span style="flex:1;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{h.label}</span>
+            <button class="btn btn-sm btn-sec" onclick={() => void undoTo(h.id)}>撤销到此</button>
+          </div>
+        {/each}
+      {:else}
+        <div style="font-size:13px;color:var(--text-3)">本次会话还没有可撤销的操作。</div>
+      {/if}
+    </div>
+  </div>
+
+  <div class="field">
     <label>外观</label>
     <div class="theme-chips">
       {#each THEMES as t (t.k)}
@@ -208,7 +235,7 @@
 
 </div>
 <div class="m-foot">
-  <div style="font-size:11px;color:var(--text-3)">日程台 · 作者 workbuddy &amp; bjl101501</div>
+  <div style="font-size:11px;color:var(--text-3)">日程台 <b style="color:var(--text-2);font-weight:600">v{dbVersion() || '—'}</b> · 作者 workbuddy &amp; bjl101501</div>
   <div class="spacer"></div>
   <button class="btn btn-pri" onclick={close}>知道了</button>
 </div>

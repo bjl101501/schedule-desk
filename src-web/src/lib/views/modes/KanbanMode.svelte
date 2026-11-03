@@ -1,13 +1,13 @@
 <script lang="ts">
   import type { Task, KanbanGroup } from '$lib/domain/types';
-  import { LIST_COLORS } from '$lib/domain/constants';
+  import { listColorFor, tagColorFor } from '$lib/store/palette.svelte';
   import { dayDiff, parseYmd, shortDate } from '$lib/domain/date';
   import { allLists, allTags } from '$lib/domain/selectors';
   import { subStats } from '$lib/domain/task';
   import { taskState } from '$lib/domain/window';
   import { app } from '$lib/store/app.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
-  import { data } from '$lib/store/data.svelte';
+  import { data, toggleDone } from '$lib/store/data.svelte';
   import { meta } from '$lib/store/meta.svelte';
   import { toggleTaskDetail, openTaskEditor } from '$lib/store/ui.svelte';
   import { setKanbanGroup } from '$lib/store/nav.svelte';
@@ -45,8 +45,8 @@
         else map[4].items.push(t);
       });
     } else if (g === 'list') {
-      allLists(data.tasks, meta.customLists, meta.listOrder).forEach((nm, i) =>
-        map.push({ key: nm, title: nm, color: LIST_COLORS[i % LIST_COLORS.length], items: [] })
+      allLists(data.tasks, meta.customLists, meta.listOrder).forEach((nm) =>
+        map.push({ key: nm, title: nm, color: listColorFor(nm).hex, items: [] })
       );
       rows.forEach((t) => {
         const nm = t.list || '收集箱';
@@ -56,7 +56,7 @@
     } else if (g === 'tags') {
       let tags = allTags(data.tasks, meta.customTags, meta.tagOrder);
       if (!tags.length) tags = ['无标签'];
-      tags.forEach((nm, i) => map.push({ key: nm, title: '#' + nm, color: LIST_COLORS[i % LIST_COLORS.length], items: [] }));
+      tags.forEach((nm) => map.push({ key: nm, title: '#' + nm, color: tagColorFor(nm).hex, items: [] }));
       map.push({ key: '__none', title: '无标签', color: 'var(--text-3)', items: [] });
       rows.forEach((t) => {
         if (!t.tags.length) {
@@ -191,7 +191,11 @@
           {#each g.items as t (t.id)}
             {@const st = subStats(t)}
             <div class="kcard{t.done ? ' done' : ''}{isDetailOpen(t.id) ? ' active' : ''}" data-tid={t.id} onclick={() => open(t)}>
-              <div class="kcard-title"><Flags {t} />{t.title}</div>
+              <div class="kcard-title">
+                <div class="chk" data-done={t.id} data-nodrag onclick={(e) => { e.stopPropagation(); toggleDone(t.id); }}><Icon name="check" /></div>
+                <Flags {t} />
+                <span class="kcard-t">{t.title}</span>
+              </div>
               {#if st.n}
                 <div class="sub-inline">
                   <span class="sub-bar{st.all ? ' full' : ''}"><i style="width:{st.pct}%"></i></span>

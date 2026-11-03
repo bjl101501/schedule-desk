@@ -5,6 +5,7 @@
 import type { Countdown } from '$lib/domain/types';
 import { today0, ymd } from '$lib/domain/date';
 import { cleanHolidayName, fallbackHoliday, HOLIDAY_API, type HolidayInfo } from '$lib/domain/holiday';
+import { muteJournal } from '$lib/bridge/db';
 import { STORAGE_KEYS, readJson, writeJson } from '../storage';
 import { cacheLocal } from './cache.svelte';
 import { data } from './state.svelte';
@@ -81,25 +82,31 @@ export function ensureHolidayCountdown(): void {
     const item = data.countdowns.filter((c) => c.sys === 'holiday')[0];
     const nm = '下一个假期 · ' + h.name;
     const note = h.est ? '预估 · 官方未公布' : '官方放假安排';
-    if (!item) {
-      const c: Countdown = {
-        id: '', name: nm, type: '倒数日', date: h.date, note, color: '#C3272B',
-        group: '假期', sys: 'holiday', createdAt: ymd(today0())
-      };
-      data.countdowns.push(c);
-      cacheLocal();
-      apiSaveCountdown(c);
-      return;
-    }
-    if (item.date !== h.date || item.name !== nm || item.note !== note || item.group !== '假期') {
-      item.date = h.date;
-      item.name = nm;
-      item.note = note;
-      item.group = '假期';
-      item.sys = 'holiday';
-      if (!item.color || item.color === '#177CB0') item.color = '#C3272B';
-      cacheLocal();
-      apiSaveCountdown(item);
+    // 假期条目由接口维护，不是用户动作：不进撤销栈
+    muteJournal(true);
+    try {
+      if (!item) {
+        const c: Countdown = {
+          id: '', name: nm, type: '倒数日', date: h.date, note, color: '#C3272B',
+          group: '假期', sys: 'holiday', createdAt: ymd(today0())
+        };
+        data.countdowns.push(c);
+        cacheLocal();
+        apiSaveCountdown(c);
+        return;
+      }
+      if (item.date !== h.date || item.name !== nm || item.note !== note || item.group !== '假期') {
+        item.date = h.date;
+        item.name = nm;
+        item.note = note;
+        item.group = '假期';
+        item.sys = 'holiday';
+        if (!item.color || item.color === '#177CB0') item.color = '#C3272B';
+        cacheLocal();
+        apiSaveCountdown(item);
+      }
+    } finally {
+      muteJournal(false);
     }
   });
 }

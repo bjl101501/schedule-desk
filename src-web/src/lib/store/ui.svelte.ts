@@ -32,7 +32,15 @@ export interface MiniMenuState {
   y: number;
 }
 
-export const popover = $state({ menu: null as MiniMenuState | null });
+/** 选色浮层：kind 决定给谁换色，x/y 是弹出位置 */
+export interface ColorPickState {
+  kind: 'list' | 'tag';
+  name: string;
+  x: number;
+  y: number;
+}
+
+export const popover = $state({ menu: null as MiniMenuState | null, color: null as ColorPickState | null });
 
 type FlagKind = 'quickAdd' | 'search' | 'filter' | 'reminder' | 'settings' | 'backup' | 'help' | 'shortcuts';
 
@@ -150,6 +158,13 @@ export const uiState = {
   },
   set themeMenu(v: boolean) {
     popover.menu = v ? { kind: 'theme', name: '', x: 0, y: 0 } : null;
+  },
+  /* 选色浮层 */
+  get colorPick(): ColorPickState | null {
+    return popover.color;
+  },
+  set colorPick(v: ColorPickState | null) {
+    popover.color = v;
   },
 
   /* 确认类 */

@@ -13,7 +13,6 @@
 </script>
 
 <section class="ed-sec">
-  <div class="ed-sec-t">提醒</div>
   <div class="field">
     <label>提醒方式<span class="tip-i" tabindex="0" role="note" data-tip="普通日程用「单次提醒」；需要复习记忆的内容用「艾宾浩斯」。">?</span></label>
     <div class="seg" id="edRemindMode">

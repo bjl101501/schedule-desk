@@ -2,10 +2,10 @@
   编辑器表单状态与规则。组件只管画，判定（能不能存、存什么）都在这里，
   这样「改日期要不要平移计划」「提醒基准沿用旧 read 标记」之类的规则可以被单独读和测。
 */
-import type { Sub, Task } from '$lib/domain/types';
+import type { Sub, SubDraft, Task } from '$lib/domain/types';
 import type { Layer } from '$lib/store/overlay.svelte';
 import { EB_OFFSETS } from '$lib/domain/constants';
-import { addDays, dayDiff, durText, fromDtLocal, mdShort, parseYmd, rangeShort, toDtLocal, uid, ymd, today0 } from '$lib/domain/date';
+import { addDays, dayDiff, durText, fromDtLocal, parseYmd, toDtLocal, uid, ymd, today0 } from '$lib/domain/date';
 import { taskSpan } from '$lib/domain/task';
 import { allLists, allTags } from '$lib/domain/selectors';
 import { app } from '$lib/store/app.svelte';
@@ -48,7 +48,7 @@ export class TaskForm {
   offsets = $state<number[]>([]);
   anchorDate = $state('');
   anchorTime = $state('');
-  subs = $state<Sub[]>([]);
+  subs = $state<SubDraft[]>([]);
   estMin = $state(0);
   estUnit = $state<'min' | 'hour'>('min');
   estValue = $state('');
@@ -92,8 +92,8 @@ export class TaskForm {
     this.subs = (src?.subs || []).map((x, i) => ({
       id: x.id || 's' + i,
       title: x.title,
-      min: Number(x.min) || 0,
-      days: Number(x.days) || 0,
+      min: Number(x.min) > 0 ? Number(x.min) : null,
+      days: Number(x.days) > 0 ? Number(x.days) : null,
       done: !!x.done,
       doneAt: x.doneAt || ''
     }));
@@ -105,8 +105,9 @@ export class TaskForm {
     this.estValue = initMin ? (this.estUnit === 'hour' ? String(initMin / 60) : String(initMin)) : '';
   }
 
-  subSum = $derived(this.subs.reduce((a, x) => a + (Number(x.min) || 0), 0));
-  subDays = $derived(this.subs.reduce((a, x) => a + (Number(x.days) || 0), 0));
+  /* 勾选「计划」后子项只填「天」、不填「分钟」；未勾计划只填「分钟」 */
+  subSum = $derived(this.planOn ? 0 : this.subs.reduce((a, x) => a + (Number(x.min) || 0), 0));
+  subDays = $derived(this.planOn ? this.subs.reduce((a, x) => a + (Number(x.days) || 0), 0) : 0);
 
   spanDays = $derived.by(() => {
     if (!this.planOn) return 1;
@@ -118,19 +119,19 @@ export class TaskForm {
 
   hasExplicitEnd = $derived((this.planOn && !!this.endDate && !!this.endTime) || (!!this.time && this.estMin > 0));
 
+  /*
+    计划提示。原来这里会把「天数 + 起止区间 + 阶段数 + 超期」全部重拼一遍，
+    而这四样上面刚填过的地方都能看到 —— 于是出现「3 天：11/1 – 11/3 · 2 个阶段」
+    这种一长串重复。现在只在「确实有信息增量」时才说话：
+      - 没选开始日期 / 没勾计划，但子项排了天 → 提示怎么才能跨天
+      - 子项排期超出计划天数 → 提示超出多少
+    其余情况（天数、区间、阶段数都能从上面读到）一律不吭声。
+  */
   planHint = $derived.by(() => {
-    if (!this.date) return this.subDays ? '子项排了 ' + this.subDays + ' 天，但还没选开始日期' : '';
+    if (!this.date) return this.subDays ? '子项排了 ' + this.subDays + ' 天，先选开始日期' : '';
     if (!this.planOn) return this.subDays ? '子项排了 ' + this.subDays + ' 天，勾选「计划」才能跨天' : '';
-    const st = parseYmd(this.date);
-    if (!st) return '';
-    const en = addDays(st, this.spanDays - 1);
-    const segs = this.subs.filter((x) => (Number(x.days) || 0) > 0).length;
-    const over = this.subDays > this.spanDays;
-    return (
-      '计划 **' + this.spanDays + '** 天：' + (this.spanDays === 1 ? mdShort(st) : rangeShort(st, en)) +
-      (segs ? ' · ' + segs + ' 个阶段' : '') +
-      (over ? ' ⚠ 子项排了 ' + this.subDays + ' 天，超出 ' + (this.subDays - this.spanDays) + ' 天' : '')
-    );
+    if (this.subDays > this.spanDays) return '⚠ 子项排期超出 ' + (this.subDays - this.spanDays) + ' 天';
+    return '';
   });
 
   estHint = $derived(
@@ -166,7 +167,9 @@ export class TaskForm {
   }
 
   addSub(): void {
-    this.subs = [...this.subs, { id: 's' + this.subs.length, title: '', min: 0, days: 0, done: false, doneAt: '' }];
+    // min / days 留 null 而不是 0：给 0 的话输入框里显示一个「0」，
+    // 用户不知道那里该填分钟还是天。留空才能让 placeholder 起作用。
+    this.subs = [...this.subs, { id: 's' + this.subs.length, title: '', min: null, days: null, done: false, doneAt: '' }];
   }
 
   delSub(i: number): void {
@@ -178,10 +181,17 @@ export class TaskForm {
     if (!tp) return 0;
     const exists: Record<string, boolean> = {};
     this.subs.forEach((x) => (exists[String(x.title || '').trim()] = true));
-    const add: Sub[] = [];
+    const add: SubDraft[] = [];
     tp.items.forEach((it) => {
       if (exists[it[0]]) return;
-      add.push({ id: 's' + (this.subs.length + add.length), title: it[0], min: it[1], days: 0, done: false, doneAt: '' });
+      add.push({
+        id: 's' + (this.subs.length + add.length),
+        title: it[0],
+        min: this.planOn ? null : it[1],
+        days: this.planOn ? 1 : null,
+        done: false,
+        doneAt: ''
+      });
       exists[it[0]] = true;
     });
     this.subs = [...this.subs, ...add].filter((x, i, arr) => !(i === 0 && !String(x.title || '').trim() && arr.length > 1));
@@ -261,7 +271,7 @@ export class TaskForm {
       .map((x, i) => ({
         id: 's' + i,
         title: String(x.title || '').trim(),
-        min: Number(x.min) || 0,
+        min: this.planOn ? 0 : Math.max(0, Number(x.min) || 0),
         days: this.planOn ? Math.max(0, Number(x.days) || 0) : 0,
         done: !!x.done,
         doneAt: x.doneAt || ''
@@ -322,8 +332,8 @@ export class TaskForm {
     this.subs = (t.subs || []).map((x, i) => ({
       id: 's' + i,
       title: x.title,
-      min: Number(x.min) || 0,
-      days: Math.max(0, Number(x.days) || 0),
+      min: Number(x.min) > 0 ? Number(x.min) : null,
+      days: Number(x.days) > 0 ? Number(x.days) : null,
       done: false,
       doneAt: ''
     }));

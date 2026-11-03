@@ -5,6 +5,7 @@
   import { createList, createTag, removeList, removeTag, renameList, renameTag, toggleArchive } from '$lib/store/listActions.svelte';
   import { isArchived } from '$lib/store/meta.svelte';
   import { popover } from '$lib/actions/popover';
+  import { portal } from '$lib/actions/portal';
   import type { VirtualElement } from '@floating-ui/dom';
   import Icon from './Icon.svelte';
 
@@ -25,7 +26,10 @@
         : [{ label: '新建标签', icon: 'plus', fn: createTag }];
     }
     if (m.kind === 'list') {
-      const out: Item[] = [{ label: '重命名清单', icon: 'edit', fn: () => renameList(m.name) }];
+      const out: Item[] = [
+        { label: '换颜色', icon: 'palette', fn: () => openColor('list', m.name, m.x, m.y) },
+        { label: '重命名清单', icon: 'edit', fn: () => renameList(m.name) }
+      ];
       out.push(
         isArchived(m.name)
           ? { label: '取消归档', icon: 'refresh', fn: () => toggleArchive(m.name) }
@@ -35,6 +39,7 @@
       return out;
     }
     return [
+      { label: '换颜色', icon: 'palette', fn: () => openColor('tag', m.name, m.x, m.y) },
       { label: '重命名标签', icon: 'edit', fn: () => renameTag(m.name) },
       { label: '删除标签', icon: 'trash', danger: true, fn: () => removeTag(m.name) }
     ];
@@ -56,6 +61,12 @@
     uiState.miniMenu = null;
   }
 
+  /* 菜单收起后在同一位置弹出选色板，用户不会觉得「点了一下什么都没发生」 */
+  function openColor(kind: 'list' | 'tag', name: string, x: number, y: number): void {
+    close();
+    uiState.colorPick = { kind, name, x, y };
+  }
+
 
 
 
@@ -65,6 +76,7 @@
   <div
     id="miniMenu"
     class="mini-menu{uiState.miniMenu.kind === 'theme' ? ' theme-menu' : ''}"
+    use:portal
     use:popover={{
       anchor: pointAt(uiState.miniMenu.x, uiState.miniMenu.y),
       onClose: close,

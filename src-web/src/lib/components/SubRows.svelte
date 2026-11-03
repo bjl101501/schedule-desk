@@ -22,7 +22,8 @@
   const lastVis = $derived(visIdx.length ? visIdx[visIdx.length - 1] : -1);
   const shown = $derived(visIdx.length);
 
-  function onRow(e: MouseEvent, i: number): void {
+  function toggleSub(e: MouseEvent, i: number): void {
+    // 只认勾选框：整行不再是开关，避免点标题时把子项（乃至父事项）标完成
     e.stopPropagation();
     if (isSuppressed()) return;
     void tick;
@@ -50,11 +51,10 @@
         class="sub-row{x.done ? ' done' : ''}"
         data-subrow={i}
         data-subrow-parent={t.id}
-        title="点一下勾选 / 取消"
-        onclick={(e) => onRow(e, i)}
+        data-nodrag
       >
         <span class="sub-branch">{i === lastVis ? '└' : '├'}</span>
-        <span class="sub-box"><Icon name="check" /></span>
+        <button class="sub-box" title={x.done ? '取消勾选' : '勾选完成'} onclick={(e) => toggleSub(e, i)}><Icon name="check" /></button>
         <span class="sub-t">{x.title}</span>
         {#if seg?.start}<span class="sub-day">{segDateText(seg)}</span>{/if}
         {#if x.min}<span class="sub-min">{durText(x.min)}</span>{/if}

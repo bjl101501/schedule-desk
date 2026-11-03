@@ -85,3 +85,10 @@ html[data-theme="ink"] .clock .dg .on{text-shadow:0 0 5px rgba(140,190,225,.3)}
 .qbox.dragover{background:var(--brand-softer);box-shadow:inset 0 0 0 2px var(--brand)}
 .qbox.dragover .qhead{background:transparent}
 .drag-ghost.kcard{transition:none;cursor:grabbing}
+
+/* 系统开了「减少动态效果」时，base.css 会把所有动画压到一帧，冒号就不闪了。
+   但冒号闪烁表达的是「秒在走」这一信息，不是装饰性动效，这里单独放行。
+   选择器特异性高于 base.css 的 *，同带 !important 时这里胜出。 */
+@media (prefers-reduced-motion: reduce){
+  .clock .ck-c{animation-duration:2s!important;animation-iteration-count:infinite!important}
+}

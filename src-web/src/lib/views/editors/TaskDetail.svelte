@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { addDays, dayDiff, durText, hmStr, mdShort, parseAnchor, parseHM, parseYmd, stampDay, stampTime, toDtLocal, weekdayName } from '$lib/domain/date';
+  import { dayDiff, durText, hmStr, mdShort, parseAnchor, parseHM, parseYmd, stampDay, stampTime, toDtLocal, weekdayName } from '$lib/domain/date';
   import { PRIO_LABEL } from '$lib/domain/constants';
-  import { quadName, ebStageName } from '$lib/domain/chips';
+  import { listColorFor } from '$lib/store/palette.svelte';
+  import { ebStageName, prioTone, quadShort, quadTone, stateChip } from '$lib/domain/chips';
   import { repeatLabel, subPlan, subStats, subLate, segDateText, taskSpan } from '$lib/domain/task';
   import { taskState } from '$lib/domain/window';
   import { clock, todayD } from '$lib/store/clock.svelte';
@@ -12,6 +13,7 @@
   import Icon from '$lib/ui/Icon.svelte';
   import ModalHead from '$lib/ui/ModalHead.svelte';
   import TagChips from '$lib/components/TagChips.svelte';
+  import StateChip from '$lib/components/StateChip.svelte';
 
   // 由层栈传入：换一条任务时整层会换 uid 重挂载，不会再拿旧快照
   let { layer }: { layer: Extract<Layer, { kind: 'detail' }> } = $props();
@@ -26,55 +28,46 @@
     const d = t.date ? parseYmd(t.date) : null;
     const diff = d ? dayDiff(today, d) : null;
     const st = taskState(t, tick);
-    const rows: { icon: string; k: string; v: string; cls: string }[] = [];
+    // 两列信息网格：标签 44px + 值域 ~143px，超出用省略号，完整内容进 title
+    const cells: { k: string; v: string; cls?: string; span?: boolean; title?: string }[] = [];
 
     if (d) {
       let txt = d.getMonth() + 1 + ' 月 ' + d.getDate() + ' 日 ' + weekdayName(d);
       if (t.plan && t.endDate) {
         const ed0 = parseYmd(t.endDate);
-        if (ed0) txt = mdShort(d) + ' – ' + mdShort(ed0) + ' · 共 ' + taskSpan(t) + ' 天';
+        // 起止区间本身就是「日期」，天数与截止挪到「计划」行，避免两行说同一件事
+        if (ed0) txt = mdShort(d) + ' – ' + mdShort(ed0);
       }
-      let cls = 'dt-v';
-      if (st.key === 'overdue') {
-        txt += ' · ' + st.label;
-        cls += ' warn';
-      } else if (st.key === 'ongoing' || st.key === 'upcoming' || st.key === 'remindSoon') {
-        txt += ' · ' + st.label;
-        cls += ' brand';
-      } else if (diff === 0) {
-        txt += ' · 今天';
-        cls += ' brand';
-      } else if (diff === 1) txt += ' · 明天';
-      else if (diff !== null && diff > 1) txt += ' · 还有 ' + diff + ' 天';
-      rows.push({ icon: 'calendar', k: '日期', v: txt, cls });
+      cells.push({ k: '日期', v: txt });
     } else {
-      rows.push({ icon: 'inbox', k: '日期', v: '未安排时间', cls: 'dt-v muted' });
+      cells.push({ k: '日期', v: '未安排', cls: 'muted' });
     }
 
     if (t.time) {
       const endMin = (parseHM(t.time) || 0) + (t.estimate || 0);
-      rows.push({ icon: 'clock', k: '时间', v: t.time + (t.estimate ? ' — ' + hmStr(endMin) : ''), cls: 'dt-v' });
+      cells.push({ k: '时间', v: t.time + (t.estimate ? ' – ' + hmStr(endMin) : '') });
     } else {
-      rows.push({ icon: 'clock', k: '时间', v: t.estimate ? '全天日程 · 预计 ' + durText(t.estimate) : '全天日程', cls: 'dt-v' });
+      cells.push({ k: '时间', v: t.estimate ? '全天 · 预计 ' + durText(t.estimate) : '全天' });
     }
 
     const sp = taskSpan(t);
     if (t.plan && d) {
-      const endD = t.endDate ? parseYmd(t.endDate) : addDays(d, sp - 1);
       const segN = (t.subs || []).filter((x) => Number(x.days) > 0).length;
-      rows.push({
-        icon: 'repeat', k: '计划',
-        v: sp + ' 天 · ' + mdShort(d) + ' – ' + mdShort(endD) + (t.endTime ? ' · 截止 ' + t.endTime : ' · 截止当天 24:00') + (segN ? ' · ' + segN + ' 个阶段' : ''),
-        cls: 'dt-v brand'
-      });
+      let txt = sp + ' 天';
+      if (t.endTime) txt += ' · 截止 ' + t.endTime;
+      if (segN) txt += ' · ' + segN + ' 个阶段';
+      cells.push({ k: '计划', v: txt, cls: 'brand' });
     }
-    if (t.estimate) rows.push({ icon: 'target', k: '预计', v: durText(t.estimate), cls: 'dt-v' });
-    if (repeatLabel(t)) rows.push({ icon: 'repeat', k: '重复', v: repeatLabel(t) + ' · 完成后自动排下一次', cls: 'dt-v brand' });
-    if (t.list && t.list !== '收集箱') rows.push({ icon: 'inbox', k: '清单', v: t.list, cls: 'dt-v' });
-    if (t.done && t.doneAt) {
-      const dDay = stampDay(t.doneAt);
-      const dHm = stampTime(t.doneAt);
-      rows.push({ icon: 'check', k: '完成于', v: dDay + (dHm ? ' ' + dHm : ''), cls: 'dt-v brand' });
+    if (t.estimate) cells.push({ k: '预计', v: durText(t.estimate) });
+    if (repeatLabel(t)) cells.push({ k: '重复', v: repeatLabel(t), title: '完成后自动排下一次' });
+    // 清单与优先级不进 cells：它们要渲染成带颜色的 chip，见模板
+
+    // 状态胶囊独立成行：它描述「这条事项现在的处境」，不属于日期字段
+    let when: { text: string; cls: string } | null = null;
+    if (!t.done && diff !== null && diff >= 0 && st.key === 'planned') {
+      if (diff === 0) when = { text: '今天', cls: 'soon' };
+      else if (diff === 1) when = { text: '明天', cls: '' };
+      else when = { text: '还有 ' + diff + ' 天', cls: 'soon' };
     }
 
     const nodes: { label: string; n: string; at: string; status: string; cls: string }[] = [];
@@ -96,10 +89,38 @@
       });
     }
 
-    return { rows, nodes, isEb: t.remindMode === '艾宾浩斯', hasRemind: nodes.length > 0, anchorText: t.remindCfg ? toDtLocal(t.remindCfg.anchor).replace('T', ' ') : '' };
+    let doneText = '';
+    if (t.done && t.doneAt) {
+      const dDay = stampDay(t.doneAt);
+      const dHm = stampTime(t.doneAt);
+      doneText = dDay + (dHm ? ' ' + dHm : '');
+    }
+
+    return {
+      cells,
+      when,
+      doneText,
+      nodes,
+      isEb: t.remindMode === '艾宾浩斯',
+      hasRemind: nodes.length > 0,
+      anchorText: t.remindCfg ? toDtLocal(t.remindCfg.anchor).replace('T', ' ') : ''
+    };
   });
 
   const segs = $derived(t ? subPlan(t) : []);
+  const chipInfo = $derived(t ? stateChip(t, tick) : null);
+
+  // 备注超 6 行折叠：按内容高度判，不能拿 scrollHeight 和 clientHeight 比 ——
+  // 初始没有 clamp 时两者恒等，永远判不出「太长」
+  let noteEl = $state<HTMLDivElement | null>(null);
+  let noteOpen = $state(false);
+  let noteLong = $state(false);
+  $effect(() => {
+    const el = noteEl;
+    void t?.note;
+    if (!el || noteOpen) return;
+    noteLong = el.scrollHeight > 140;
+  });
 
   function close(): void {
     closeTaskDetail();
@@ -142,34 +163,60 @@
   <ModalHead title="事项详情" onclose={close} />
   <div class="m-body">
     <div class="dt-head">
-      <button class="dt-chk{t.done ? ' on' : ''}" id="dtChk" title="标记完成" onclick={toggle}><Icon name="check" /></button>
       <h2 class="dt-title{t.done ? ' done' : ''}">{t.title}</h2>
+      <button class="dt-chk{t.done ? ' on' : ''}" id="dtChk" title={t.done ? '取消完成' : '标记完成'} onclick={toggle}><Icon name="check" /></button>
     </div>
 
+    {#if chipInfo || view.when}
+      <div class="dt-chips">
+        <StateChip {t} />
+        {#if view.when}<span class="dt-when {view.when.cls}">{view.when.text}</span>{/if}
+      </div>
+    {/if}
+
     <div class="dt-meta">
-      {#each view.rows as r (r.k)}
-        <div class="dt-row">
-          <Icon name={r.icon} cls="dt-ico" />
-          <span class="dt-k">{r.k}</span>
-          <span class={r.cls}>{r.v}</span>
+      {#each view.cells as c (c.k)}
+        <div class="dt-cell{c.span ? ' span2' : ''}">
+          <span class="dt-k">{c.k}</span>
+          <span class="dt-v {c.cls || ''}" title={c.title || c.v}>{c.v}</span>
         </div>
       {/each}
       {#if t.prio}
-        <div class="dt-row">
+        <div class="dt-cell">
           <span class="dt-k">优先级</span>
-          <span class="dt-v"><span class="tag-chip {t.prio === 'P0' ? 'c3' : t.prio === 'P1' ? 'c4' : 'c0'}">{String(t.prio).toUpperCase()} · {PRIO_LABEL[String(t.prio).toUpperCase()] || '无'}</span></span>
+          <span class="dt-v">
+            <span class="tag-chip {prioTone(String(t.prio))}">{String(t.prio).toUpperCase()} · {PRIO_LABEL[String(t.prio).toUpperCase()] || '无'}</span>
+          </span>
+        </div>
+      {/if}
+      <div class="dt-cell">
+        <span class="dt-k">四象限</span>
+        <span class="dt-v">
+          <span class="tag-chip {quadTone(t.important, t.urgent)}">{quadShort(t.important, t.urgent)}</span>
+        </span>
+      </div>
+      {#if t.list && t.list !== '收集箱'}
+        <div class="dt-cell">
+          <span class="dt-k">清单</span>
+          <span class="dt-v">
+            <span class="list-chip" style="--lc:{listColorFor(t.list).hex}" title={'清单：' + t.list + ' · ' + listColorFor(t.list).name}>
+              <Icon name="inbox" /><span class="lc-t">{t.list}</span>
+            </span>
+          </span>
         </div>
       {/if}
       {#if t.tags.length}
-        <div class="dt-row">
+        <div class="dt-cell span2">
           <span class="dt-k">标签</span>
-          <span class="dt-v"><TagChips tags={t.tags} /></span>
+          <span class="dt-v wrap"><TagChips tags={t.tags} /></span>
         </div>
       {/if}
-      <div class="dt-row">
-        <span class="dt-k">四象限</span>
-        <span class="dt-v"><span class="tag-chip {t.important && t.urgent ? 'c3' : t.important ? 'c4' : t.urgent ? 'c0' : ''}">{quadName(t.important, t.urgent).replace(/^· /, '')}</span></span>
-      </div>
+      {#if view.doneText}
+        <div class="dt-cell span2">
+          <span class="dt-k">完成于</span>
+          <span class="dt-v brand">{view.doneText}</span>
+        </div>
+      {/if}
     </div>
 
     <div id="dtSubs">
@@ -189,19 +236,30 @@
           <div class="sub-list" id="dtSubList">
             {#each t.subs as x, i (i)}
               {@const seg = segs[i]}
-              <button class="sub-item{x.done ? ' done' : ''}" data-subtoggle={i} onclick={() => toggleSubAt(t, i)}>
-                <span class="sub-branch">{i === t.subs.length - 1 ? '└' : '├'}</span>
-                <span class="sub-box"><Icon name="check" /></span>
+              <div class="sub-item{x.done ? ' done' : ''}" data-subrow={i} data-nodrag>
+                <button class="sub-box" data-subtoggle={i} title={x.done ? '取消勾选' : '勾选完成'} onclick={() => toggleSubAt(t, i)}><Icon name="check" /></button>
                 <span class="sub-t">{x.title}</span>
                 {#if seg?.start}<span class="sub-day">{segDateText(seg)}</span>{/if}
                 {#if x.min}<span class="sub-min">{durText(x.min)}</span>{/if}
                 {#if subLate(seg, x.done, today)}<span class="sub-late">子项逾期</span>{/if}
-              </button>
+              </div>
             {/each}
           </div>
         </div>
       {/if}
     </div>
+
+    {#if t.note}
+      <div class="dt-sec">
+        <label>
+          <Icon name="edit" /> 备注
+          {#if noteLong}
+            <button class="dt-more" onclick={() => (noteOpen = !noteOpen)}>{noteOpen ? '收起' : '展开全文'}</button>
+          {/if}
+        </label>
+        <div class="dt-note{noteLong && !noteOpen ? ' clamp' : ''}" bind:this={noteEl}>{t.note}</div>
+      </div>
+    {/if}
 
     {#if view.hasRemind}
       <div class="dt-sec">
@@ -222,10 +280,6 @@
         <label><Icon name="bell" /> 提醒</label>
         <div class="dt-note" style="color:var(--text-3)">未设置提醒。点「修改」可以加单次提醒或艾宾浩斯复习计划。</div>
       </div>
-    {/if}
-
-    {#if t.note}
-      <div class="dt-sec"><label><Icon name="edit" /> 备注</label><div class="dt-note">{t.note}</div></div>
     {/if}
   </div>
 

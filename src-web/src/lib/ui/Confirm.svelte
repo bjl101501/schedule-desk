@@ -14,7 +14,8 @@
 
 <ModalHead title={req.title} onclose={() => pop()} />
 <div class="m-body">
-  <div style="font-size:13px;color:var(--text-2);line-height:1.75">{@html req.desc}</div>
+  <!-- 纯文本：desc 里会拼事项标题 / 清单名，不能当 HTML 标签解析 -->
+  <div style="font-size:13px;color:var(--text-2);line-height:1.75;white-space:pre-wrap">{req.desc}</div>
 </div>
 <div class="m-foot">
   <div class="spacer"></div>

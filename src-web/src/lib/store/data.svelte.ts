@@ -16,3 +16,4 @@ export * from './data/records';
 export * from './data/cache.svelte';
 export * from './data/holiday';
 export * from './data/bulk.svelte';
+export * from './data/journal.svelte';

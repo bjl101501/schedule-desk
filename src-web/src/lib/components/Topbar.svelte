@@ -5,7 +5,7 @@
   import { app, setSortMode } from '$lib/store/app.svelte';
   import { setVMode } from '$lib/store/nav.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
-  import { data } from '$lib/store/data.svelte';
+  import { data, hist, redo, undo, undoHint } from '$lib/store/data.svelte';
   import { openDrawer } from '$lib/store/nav.svelte';
   import { uiState } from '$lib/store/ui.svelte';
     import { toast } from '$lib/store/toast.svelte';
@@ -122,6 +122,29 @@
     <Icon name="filter" />
     <span class="txt">{filterCount ? '筛选 ' + filterCount : '筛选'}</span>
   </button>
+
+  <div class="tb-undo">
+    <button
+      aria-label="撤销"
+      class="icon-btn"
+      id="btnUndo"
+      data-tip={undoHint()}
+      disabled={!hist.undo.length || hist.busy || !!uiState.editorId}
+      onclick={() => void undo()}
+    >
+      <Icon name="reset" />
+    </button>
+    <button
+      aria-label="重做"
+      class="icon-btn"
+      id="btnRedo"
+      data-tip={hist.redo.length ? '重做：' + hist.redo[hist.redo.length - 1].label + '（Ctrl+Shift+Z）' : '没有可重做的操作'}
+      disabled={!hist.redo.length || hist.busy}
+      onclick={() => void redo()}
+    >
+      <Icon name="redo" />
+    </button>
+  </div>
 
   <button aria-label="换肤" class="icon-btn" id="btnTheme" data-tip="切换配色，立即生效并记住。" onclick={cycleTheme}>
     <svg viewBox="0 0 24 24">

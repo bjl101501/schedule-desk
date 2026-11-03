@@ -656,10 +656,16 @@ fn start_reminder_loop(app: AppHandle) {
 }
 
 fn arg_value(args: &[String], key: &str) -> Option<String> {
-    args.iter()
-        .position(|a| a == key)
-        .and_then(|i| args.get(i + 1))
-        .cloned()
+    let prefix = format!("{}=", key);
+    for (i, a) in args.iter().enumerate() {
+        if a == key {
+            return args.get(i + 1).cloned();
+        }
+        if let Some(rest) = a.strip_prefix(&prefix) {
+            return Some(rest.trim_matches('"').trim_matches('\'').to_string());
+        }
+    }
+    None
 }
 
 /// 窗口几何只在拖动/缩放停下来之后写一次，避免每一帧都落盘

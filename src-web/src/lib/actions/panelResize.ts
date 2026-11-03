@@ -13,7 +13,11 @@ export function panelResize(node: HTMLElement): { destroy: () => void } {
     if (e.button !== 0) return;
     active = true;
     startX = e.clientX;
-    startW = meta.panelW;
+    // 起始宽度按「视觉宽度」算：--panel-w 可能存着 760，但 CSS 被 40vw 截断，
+    // 用存值算会让前几十像素的拖动完全没反应
+    startW = Math.min(meta.panelW, window.innerWidth * 0.4);
+    // 拖动期间关掉内容区的过渡，否则内容滞后面板一步
+    document.documentElement.classList.add('resizing');
     node.setPointerCapture(e.pointerId);
     e.preventDefault();
   }
@@ -27,6 +31,7 @@ export function panelResize(node: HTMLElement): { destroy: () => void } {
   function onUp(e: PointerEvent): void {
     if (!active) return;
     active = false;
+    document.documentElement.classList.remove('resizing');
     node.releasePointerCapture(e.pointerId);
     savePanelWidth();
   }
@@ -44,6 +49,7 @@ export function panelResize(node: HTMLElement): { destroy: () => void } {
 
   return {
     destroy() {
+      document.documentElement.classList.remove('resizing');
       node.removeEventListener('pointerdown', onDown);
       node.removeEventListener('pointermove', onMove);
       node.removeEventListener('pointerup', onUp);

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { taskState, taskWindow, reminderState } from './window';
 import { cdGroupOf, nextRepeatDate, normTask, shiftPlanTo, subPlan, taskSpan } from './task';
-import { alertSummary, applyFilters, inScope, sortTasks } from './selectors';
+import { attention, alertSummary, applyFilters, inScope, sortTasks } from './selectors';
 import { parseQuick } from './quickparse';
 import { parseBundleText, bundleCount } from './backup';
 import { addDays, ymd } from './date';
@@ -258,8 +258,9 @@ describe('铃铛角标：提醒 + 逾期，按 id 去重', () => {
     });
     const r = alertSummary([t], NOW);
     expect(r.total).toBe(1);
-    expect(r.remind).toBe(1);
+    // R21：已逾期的条目归入 overdue，不再同时计 remind —— 否则 remind + overdue > total
     expect(r.overdue).toBe(1);
+    expect(r.remind).toBe(0);
   });
   test('已完成不计入', () => {
     const t = mk({ date: Y1, time: '09:00', done: true });
@@ -269,6 +270,36 @@ describe('铃铛角标：提醒 + 逾期，按 id 去重', () => {
     const a = mk({ id: 'a', date: T, time: hm(rel(-90)), estimate: 60 });
     const b = mk({ id: 'b', date: Y1, time: '09:00' });
     expect(alertSummary([a, b], NOW).total).toBe(2);
+  });
+  test('全天事项逾期且没设提醒：角标与列表都要有它', () => {
+    const t = mk({ id: 'allday', date: Y1, time: '', remindCfg: null });
+    const r = alertSummary([t], NOW);
+    expect(r.total).toBe(1);
+    expect(r.overdue).toBe(1);
+    const list = attention([t], NOW);
+    expect(list.length).toBe(1);
+    expect(list[0].kind).toBe('overdue');
+  });
+  test('同一事项只出一条，逾期优先于提醒', () => {
+    const t = mk({
+      id: 'both', date: Y1, time: '09:00',
+      remindMode: '单次提醒',
+      remindCfg: { anchor: Y1 + ' 09:00', offsets: [0], read: [] }
+    });
+    const list = attention([t], NOW);
+    expect(list.length).toBe(1);
+    expect(list[0].kind).toBe('overdue');
+  });
+  test('未到点且在 24 小时内算 soon，不进角标', () => {
+    const t = mk({
+      id: 'soon', date: T, time: '17:00',
+      remindMode: '单次提醒',
+      remindCfg: { anchor: T + ' 17:00', offsets: [0], read: [] }
+    });
+    const list = attention([t], NOW);
+    expect(list.length).toBe(1);
+    expect(list[0].kind).toBe('soon');
+    expect(alertSummary([t], NOW).total).toBe(0);
   });
 });
 

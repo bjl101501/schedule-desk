@@ -8,7 +8,7 @@ import { today0, uid } from '$lib/domain/date';
 import { normCountdown, normHabit, normPomo, normTask } from '$lib/domain/task';
 import { calcStreak } from '$lib/domain/selectors';
 import { buildSeed } from '$lib/domain/seed';
-import { db, dbAvailable, flushNow } from '$lib/bridge/db';
+import { db, dbAvailable, flushNow, muteJournal } from '$lib/bridge/db';
 import type { Bundle } from '$lib/domain/backup';
 import { app } from '../app.svelte';
 import { markOffline, markSynced, markSyncing } from '../sync.svelte';
@@ -17,6 +17,7 @@ import {
   autoSnapshotDaily, cacheLocal, flushCache, loadLocalCache, markSeeded, readDailySnaps, seededFlag, writeSafetySnapshot
 } from './cache.svelte';
 import { data, pushProxied } from './state.svelte';
+import { beginTx, endTx } from './journal.svelte';
 import { ensureHolidayCountdown } from './holiday';
 import {
   apiAddPomo, apiAddTask, apiDeleteCountdown, apiDeleteHabit, apiDeletePomo, apiDeleteTask, apiSaveCountdown, apiSaveHabit
@@ -92,6 +93,14 @@ const TABLE_DELETE: Record<TableKey, (id: string) => Promise<void>> = {
   pomodoros: apiDeletePomo
 };
 
+/** 历史记录里说的「清空事项 / 习惯」用的中文名 */
+const TABLE_NOUN: Record<TableKey, string> = {
+  tasks: '事项',
+  habits: '习惯',
+  countdowns: '纪念日',
+  pomodoros: '专注记录'
+};
+
 /*
   真清空：必须按「库里有的行」逐条删，只清内存会让 loadAll 下次把数据读回来。
   顺序不能反：deleteRecord 会把行标成 deleted，边删边翻页会漏行，所以先收集再删。
@@ -111,6 +120,8 @@ export async function clearTables(which: TableKey[], label = '正在清空'): Pr
   dataJob.label = label;
   dataJob.done = 0;
   dataJob.total = total;
+  // 每 40 条 flush 一次会切出多条历史，用事务合成一条「清空」
+  beginTx('清空' + which.map((w) => TABLE_NOUN[w]).join('、'));
   try {
     if (online) {
       for (const w of which) {
@@ -132,6 +143,7 @@ export async function clearTables(which: TableKey[], label = '正在清空'): Pr
     markSeeded();
     flushCache();
   } finally {
+    endTx();
     dataJob.on = false;
   }
 }
@@ -151,22 +163,25 @@ export async function importBundle(
   const countdowns = b.countdowns.filter((c) => c.sys !== 'holiday');
   const total = b.tasks.length + habits.length + countdowns.length + b.pomodoros.length;
 
-  if (mode === 'replace') {
-    writeSafetySnapshot('先清空再导入前');
-    await clearTables(clearWhich, '正在清空');
-  }
-
-  dataJob.on = true;
-  dataJob.label = mode === 'replace' ? '正在替换' : '正在导入';
-  dataJob.done = 0;
-  dataJob.total = total;
-  let step = 0;
-  const bump = async (): Promise<void> => {
-    dataJob.done++;
-    if (++step % 20 === 0) await new Promise((r) => setTimeout(r, 0));
-  };
-
+  // 事务要在 clearTables 之前开：否则「替换」会被拆成「清空」「导入」两条历史，
+  // 撤销一次只回去一半
+  beginTx(mode === 'replace' ? '替换全部数据' : '导入备份');
   try {
+    if (mode === 'replace') {
+      writeSafetySnapshot('先清空再导入前');
+      await clearTables(clearWhich, '正在清空');
+    }
+
+    dataJob.on = true;
+    dataJob.label = mode === 'replace' ? '正在替换' : '正在导入';
+    dataJob.done = 0;
+    dataJob.total = total;
+    let step = 0;
+    const bump = async (): Promise<void> => {
+      dataJob.done++;
+      if (++step % 20 === 0) await new Promise((r) => setTimeout(r, 0));
+    };
+
     for (const t of b.tasks) {
       t.id = '';
       await apiAddTask(t);
@@ -198,6 +213,7 @@ export async function importBundle(
     markSeeded();
     flushCache();
   } finally {
+    endTx();
     dataJob.on = false;
   }
   return total;
@@ -207,18 +223,24 @@ export async function importBundle(
 export async function seedDemo(): Promise<void> {
   const bundle = buildSeed();
   markSeeded();
-  for (const t of bundle.tasks) {
-    await apiAddTask(pushProxied(data.tasks, t));
-  }
-  for (const h of bundle.habits) {
-    h.streak = calcStreak(h, today0());
-    await apiSaveHabit(pushProxied(data.habits, h));
-  }
-  for (const c of bundle.countdowns) {
-    await apiSaveCountdown(pushProxied(data.countdowns, c));
-  }
-  for (const p of bundle.pomodoros) {
-    await apiAddPomo(pushProxied(data.pomodoros, p));
+  // 示例数据不是用户动作，不进撤销栈（否则一路 Ctrl+Z 会被一屏示例挡住）
+  muteJournal(true);
+  try {
+    for (const t of bundle.tasks) {
+      await apiAddTask(pushProxied(data.tasks, t));
+    }
+    for (const h of bundle.habits) {
+      h.streak = calcStreak(h, today0());
+      await apiSaveHabit(pushProxied(data.habits, h));
+    }
+    for (const c of bundle.countdowns) {
+      await apiSaveCountdown(pushProxied(data.countdowns, c));
+    }
+    for (const p of bundle.pomodoros) {
+      await apiAddPomo(pushProxied(data.pomodoros, p));
+    }
+  } finally {
+    muteJournal(false);
   }
   cacheLocal();
   toast.show('已预置示例数据，可在「备份」里一键清空');

@@ -30,10 +30,17 @@ export interface PromptReq {
   onOk: (v: string) => void;
 }
 
+/** 输入确认框：同一个组件同时承担「删除 / 恢复 / 导入」三类动作，文案必须由调用方给 */
 export interface TypedReq {
   title: string;
   desc: string;
   word: string;
+  /** 确认按钮文案，缺省「确认」；删除类传「确认删除」，恢复类传「确认恢复」 */
+  okText?: string;
+  /** 是否危险动作（红按钮）。恢复 / 导入不是删除，传 false 用主色 */
+  danger?: boolean;
+  /** 输入框下方提示，缺省「此操作无法撤销」；可逆动作应换掉这句 */
+  hint?: string;
   onOk: () => void;
 }
 
@@ -58,10 +65,39 @@ export type Overlay =
 export type Layer = Overlay & { uid: number };
 export type LayerKind = Overlay['kind'];
 
-export const overlay = $state({ stack: [] as Layer[] });
+export const overlay = $state({ stack: [] as Layer[], closing: [] as Layer[] });
 
 let seq = 0;
 const nextUid = (): number => ++seq;
+
+/** 退场动画时长：面板滑出 200ms，留 40ms 缓冲再销毁节点 */
+const EXIT_MS = 240;
+
+const reduceMotion = (): boolean =>
+  typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const PANEL_KINDS = new Set<LayerKind>(['detail', 'editor', 'habitEditor', 'cdEditor']);
+const isPanelKind = (k: LayerKind): boolean => PANEL_KINDS.has(k);
+
+/**
+ * 关掉一层时不立刻销毁节点，先放进 closing 队列让 CSS 播完退场动画。
+ * 注意两条边界：
+ *   1. 只有右侧面板（panel 类）有 sdPanelOut 退场关键帧；居中弹窗没有 .out 规则，
+ *      放进 closing 只会让它在屏幕上多留 240ms 闪一下。
+ *   2. 如果栈里还留着另一层面板（例如从编辑器点「返回」回到详情），侧栏槽位本身没收起，
+ *      此时做滑出动画会让上层滑走、下层露底，视觉上像弹窗闪了一下 —— 直接瞬切。
+ */
+function retire(l: Layer): void {
+  if (reduceMotion()) return;
+  if (!isPanelKind(l.kind)) return;
+  if (overlay.stack.some((x) => isPanelKind(x.kind))) return;
+  overlay.closing = overlay.closing.filter((x) => !isPanelKind(x.kind));
+  overlay.closing.push(l);
+  setTimeout(() => {
+    const i = overlay.closing.findIndex((x) => x.uid === l.uid);
+    if (i > -1) overlay.closing.splice(i, 1);
+  }, EXIT_MS);
+}
 
 const last = (): Layer | undefined => overlay.stack[overlay.stack.length - 1];
 
@@ -79,6 +115,12 @@ export function hasKind(kind: LayerKind): boolean {
 }
 
 export function push(o: Overlay): Layer {
+  // 新面板进场时清掉正在退场的旧面板，避免一进一出叠在同一槽位里闪
+  if (overlay.closing.length) {
+    overlay.closing = isPanelKind(o.kind)
+      ? overlay.closing.filter((x) => !isPanelKind(x.kind))
+      : overlay.closing.filter((x) => x.kind !== o.kind);
+  }
   overlay.stack.push({ ...o, uid: nextUid() } as Layer);
   return overlay.stack[overlay.stack.length - 1];
 }
@@ -86,14 +128,15 @@ export function push(o: Overlay): Layer {
 /** 关掉栈顶一层；返回是否真的关掉了 */
 export function pop(): boolean {
   if (!overlay.stack.length) return false;
-  overlay.stack.pop();
+  retire(overlay.stack.pop()!);
   return true;
 }
 
 export function closeKind(kind: LayerKind): boolean {
   for (let i = overlay.stack.length - 1; i >= 0; i--) {
     if (overlay.stack[i].kind === kind) {
-      overlay.stack.splice(i, 1);
+      const [hit] = overlay.stack.splice(i, 1);
+      retire(hit);
       return true;
     }
   }
@@ -101,7 +144,10 @@ export function closeKind(kind: LayerKind): boolean {
 }
 
 export function closeAll(): void {
-  overlay.stack.splice(0, overlay.stack.length);
+  const all = overlay.stack.splice(0, overlay.stack.length);
+  // 一次关掉一摞时只给最上面那层做退场，其余直接消失，避免糊成一片
+  const top = all[all.length - 1];
+  if (top) retire(top);
 }
 
 /* ---------------- 任务详情 ---------------- */
@@ -116,12 +162,19 @@ export function isDetailOpen(id: string): boolean {
 
 export function openTaskDetail(id: string): void {
   if (!id) return;
+  // 右侧栏是单槽位：点开一条日程看详情时，栈里若还留着编辑器（例如之前点过「添加日程」），
+  // 必须顺手收掉 —— 否则关掉详情时底下的编辑器会突然蹦出来闪一下。
+  for (let i = overlay.stack.length - 1; i >= 0; i--) {
+    const k = overlay.stack[i].kind;
+    if (k === 'editor' || k === 'habitEditor' || k === 'cdEditor') {
+      overlay.stack.splice(i, 1);
+    }
+  }
   const at = overlay.stack.findIndex((l) => l.kind === 'detail' && l.id === id);
   // 已经在栈顶：不动，避免重复打开把滚动位置重置
   // 注意 at >= 0：空栈时 findIndex 与「栈顶下标」都是 -1，漏了这个判断就永远打不开
   if (at >= 0 && at === overlay.stack.length - 1) return;
   if (at >= 0) {
-    // 栈里已有这条（被编辑器压在下面）：提到栈顶，不重挂载
     const [hit] = overlay.stack.splice(at, 1);
     overlay.stack.push(hit);
     return;
@@ -129,6 +182,7 @@ export function openTaskDetail(id: string): void {
   const other = overlay.stack.findIndex((l) => l.kind === 'detail');
   if (other >= 0) {
     // 换一条：换 uid 强制重挂载，否则面板内容还停在上一条
+    if (overlay.closing.length) overlay.closing = overlay.closing.filter((x) => !isPanelKind(x.kind));
     overlay.stack.splice(other, 1, { kind: 'detail', id, uid: nextUid() });
     return;
   }
@@ -140,9 +194,24 @@ export function closeTaskDetail(): void {
 }
 
 /** 再点一次同一条就收起（旧版 toggleDetailFromClick 的语义） */
+/**
+ * 点同一条日程：已开着就关掉，没开就打开。
+ *
+ * 原条件里多了一句 `&& !hasKind('editor')` —— 本意是「编辑器压在上面时，
+ * 点日程应该切到详情而不是关掉它」。但结果是：新建日程面板开着 → 点一条日程
+ * 打开详情 → 再点同一条时，编辑器还在栈里，于是永远不关，用户只能按 Esc。
+ *
+ * 现在改成按「详情是不是栈顶」判断：详情在最上面就关掉它；
+ * 被别的层压着就先提到最上面（切换而不是关）。
+ */
 export function toggleTaskDetail(id: string): void {
   if (!id) return;
-  if (detailIdOf() === id && !hasKind('editor')) closeTaskDetail();
+  if (detailIdOf() !== id) {
+    openTaskDetail(id);
+    return;
+  }
+  // 详情就是这条：栈顶 = 再点收起，被压着 = 先提到顶层
+  if (last()?.kind === 'detail') closeTaskDetail();
   else openTaskDetail(id);
 }
 
@@ -158,11 +227,22 @@ export function editorIdOf(): string {
 
 export function openTaskEditor(id = '', preset: EditorPreset | null = null): void {
   const taskId = id && id !== '__new__' ? id : '__new__';
+  // 不是从详情点「修改」进来的（例如点「添加日程」或行内编辑按钮）：
+  // 清掉栈里旧的 detail / 其它面板，避免关掉编辑器时底下又露出上一条详情闪一下。
+  if (!preset?.fromDetail) {
+    for (let i = overlay.stack.length - 1; i >= 0; i--) {
+      const k = overlay.stack[i].kind;
+      if (k === 'detail' || k === 'habitEditor' || k === 'cdEditor') {
+        overlay.stack.splice(i, 1);
+      }
+    }
+  }
   const at = overlay.stack.findIndex((l) => l.kind === 'editor');
   if (at >= 0) {
     const cur = overlay.stack[at];
     if (at === overlay.stack.length - 1 && cur.kind === 'editor' && cur.id === taskId && cur.preset === preset) return;
     // 只保留一个编辑器；换条就重挂载，保证表单读到的是新草稿
+    if (overlay.closing.length) overlay.closing = overlay.closing.filter((x) => !isPanelKind(x.kind));
     overlay.stack.splice(at, 1, { kind: 'editor', id: taskId, preset, uid: nextUid() });
     if (at !== overlay.stack.length - 1) {
       const [hit] = overlay.stack.splice(at, 1);

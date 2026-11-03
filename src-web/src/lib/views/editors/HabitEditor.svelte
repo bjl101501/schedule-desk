@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { HABIT_ICONS, LIST_COLORS } from '$lib/domain/constants';
+  import { HABIT_ICONS } from '$lib/domain/constants';
+  import { PICKER_PALETTE } from '$lib/domain/palette';
   import { today0, ymd } from '$lib/domain/date';
   import { calcStreak } from '$lib/domain/selectors';
   import { apiDeleteHabit, cacheLocal, data, saveHabit } from '$lib/store/data.svelte';
@@ -15,7 +16,7 @@
 
   let name = $state(src?.name ?? '');
   let icon = $state(src?.icon ?? 'sun');
-  let color = $state(src?.color ?? LIST_COLORS[0]);
+  let color = $state(src?.color ?? PICKER_PALETTE[0].hex);
   let target = $state(src?.target ?? 7);
 
   function close(): void {

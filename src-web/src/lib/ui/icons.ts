@@ -34,6 +34,7 @@ import Lightbulb from '@lucide/svelte/icons/lightbulb';
 import List from '@lucide/svelte/icons/list';
 import Menu from '@lucide/svelte/icons/menu';
 import Moon from '@lucide/svelte/icons/moon';
+import Palette from '@lucide/svelte/icons/palette';
 import Pause from '@lucide/svelte/icons/pause';
 import Play from '@lucide/svelte/icons/play';
 import Plus from '@lucide/svelte/icons/plus';
@@ -41,6 +42,7 @@ import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 import Repeat from '@lucide/svelte/icons/repeat';
 import Rocket from '@lucide/svelte/icons/rocket';
 import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+import RotateCw from '@lucide/svelte/icons/rotate-cw';
 import Search from '@lucide/svelte/icons/search';
 import Settings from '@lucide/svelte/icons/settings';
 import SquarePen from '@lucide/svelte/icons/square-pen';
@@ -72,6 +74,7 @@ export const LUCIDE_ICONS: Record<string, Component<any>> = {
   play: Play,
   pause: Pause,
   reset: RotateCcw,
+  redo: RotateCw,
   more: Ellipsis,
   drag: GripVertical,
   target: Target,
@@ -95,6 +98,7 @@ export const LUCIDE_ICONS: Record<string, Component<any>> = {
   heart: Heart,
   coffee: Coffee,
   moon: Moon,
+  palette: Palette,
   sun: Sun,
   settings: Settings
 };

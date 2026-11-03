@@ -36,15 +36,41 @@
 .task-meta .m.due-remind{color:var(--purple);font-weight:600}
 /* 没设提醒：灰字留位，和「已提醒 / 待复习」的紫红分开，也不跟正文抢 */
 .task-meta .m.due-remind.none{color:var(--text-3);font-weight:400;opacity:.9}
+/* 标签：全圆胶囊 + # 前缀，颜色由 --tc 传入（来自 domain/palette 的传统色）。
+   背景用 color-mix 调淡，文字再与正文色混一点 —— 深色主题下自动提亮，不用逐主题写覆盖。 */
 .tag-chip{
-  font-size:10.5px;padding:1.5px 7px;border-radius:5px;background:var(--line-2);
-  color:var(--text-2);font-weight:500;white-space:nowrap;
+  --tc:var(--text-3);
+  font-size:10.5px;padding:1.5px 7px;border-radius:20px;
+  background:color-mix(in srgb,var(--tc) 15%,transparent);
+  color:color-mix(in srgb,var(--tc) 78%,var(--text));
+  font-weight:600;white-space:nowrap;
 }
-.tag-chip.c0{background:var(--brand-soft);color:var(--brand)}
-.tag-chip.c1{background:var(--purple-soft);color:var(--purple)}
-.tag-chip.c2{background:var(--green-soft);color:var(--green)}
-.tag-chip.c3{background:var(--orange-soft);color:var(--orange)}
-.tag-chip.c4{background:var(--cyan-soft);color:var(--cyan)}
+/* 优先级 / 四象限共用一套 tone：视图里的小标记与详情里的胶囊取同一个变量，不再是两套色板 */
+.tag-chip.p0{background:var(--tone-p0-bg);color:var(--tone-p0-fg)}
+.tag-chip.p1{background:var(--tone-p1-bg);color:var(--tone-p1-fg)}
+.tag-chip.p2{background:var(--tone-p2-bg);color:var(--tone-p2-fg)}
+.tag-chip.p3{background:var(--tone-p3-bg);color:var(--tone-p3-fg)}
+.tag-chip.q1{background:var(--tone-q1-bg);color:var(--tone-q1-fg)}
+.tag-chip.q2{background:var(--tone-q2-bg);color:var(--tone-q2-fg)}
+.tag-chip.q3{background:var(--tone-q3-bg);color:var(--tone-q3-fg)}
+.tag-chip.q4{background:var(--tone-q4-bg);color:var(--tone-q4-fg)}
+
+/* 清单：小方角 + 收件箱图标。方角 vs 胶囊、图标 vs #、蓝族 vs 其它色族 ——
+   三条线任意两条都能分清，不用看文字。 */
+.list-chip{
+  --lc:#1676B5;
+  display:inline-flex;align-items:center;gap:3px;vertical-align:-1px;
+  font-size:10.5px;font-weight:600;line-height:1.5;padding:1px 6px 1px 5px;
+  border-radius:4px;
+  color:color-mix(in srgb,var(--lc) 80%,var(--text));
+  background:color-mix(in srgb,var(--lc) 16%,transparent);
+  white-space:nowrap;max-width:11em;overflow:hidden;text-overflow:ellipsis;
+}
+.list-chip svg{
+  width:11px;height:11px;flex:0 0 auto;stroke:currentColor;fill:none;
+  stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:.9;
+}
+.list-chip .lc-t{overflow:hidden;text-overflow:ellipsis}
 .task-right{display:flex;align-items:center;gap:4px;flex:0 0 auto}
 .task-act{
   width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;
@@ -85,7 +111,8 @@
 .kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:14px;align-items:stretch;min-height:300px;
   --kmin:150px;--kmax:300px;max-width:none}
 /* 右侧面板打开后内容变窄，列也跟着变窄，而不是挤出横向滚动条 */
-.app.panel-open .kanban{--kmin:132px;--kmax:250px;gap:10px}
+/* 只有真的把内容挤窄了才收列宽；覆盖模式下看板宽度没变，不必缩 */
+.app.panel-push .kanban{--kmin:132px;--kmax:250px;gap:10px}
 .kcol{
   flex:1 1 0;min-width:var(--kmin,168px);max-width:var(--kmax,340px);background:var(--panel-2);border:1px solid var(--line);
   border-radius:var(--r-lg);display:flex;flex-direction:column;max-height:calc(100vh - 210px);
@@ -110,7 +137,15 @@
   border-color:var(--brand);transform:translateY(-1px);
 }
 .kcard.done{opacity:.55}
-.kcard-title{font-size:13px;font-weight:500;line-height:1.45;margin-bottom:6px;word-break:break-word}
+.kcard.done .chk{background:var(--brand);border-color:var(--brand)}
+.kcard.done .chk svg{opacity:1;transform:scale(1)}
+.kcard.done .kcard-t{text-decoration:line-through;color:var(--text-3)}
+.kcard-title{
+  display:flex;align-items:flex-start;gap:7px;
+  font-size:13px;font-weight:500;line-height:1.45;margin-bottom:6px;word-break:break-word;
+}
+.kcard-title .chk{width:17px;height:17px;border-radius:5px;margin-top:2px}
+.kcard-t{flex:1;min-width:0}
 .kcard-foot{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .kcard-date{font-size:10.5px;color:var(--text-3);margin-left:auto;display:flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums}
 .kcard-date.over{color:var(--red);font-weight:600}
@@ -302,11 +337,17 @@
 .wev .wt{font-size:9.5px;opacity:.75;font-variant-numeric:tabular-nums;margin-bottom:1px}
 
 /* ---------- quadrant ---------- */
-.quad-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;grid-auto-rows:minmax(230px,1fr);min-height:calc(100dvh - 420px)}
+/* 四象限两行两列精确铺满窗口（顶部占 130px + 下边距 20px = 150px，两行间距 16px，合计扣除 166px）：
+   最小高度 260px（没有日程或日程少时不会塌得很低），最大高度占满窗口剩余百分比且整页不产生多余纵向滚动条 */
+.quad-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:16px;
+  grid-template-rows:repeat(2,minmax(260px,1fr));
+  min-height:536px;height:calc(100dvh - 150px);
+}
 .qbox{
   --qc:var(--text-3);
   background:var(--panel);border:1px solid var(--line);border-radius:14px;
-  display:flex;flex-direction:column;min-height:236px;overflow:hidden;
+  display:flex;flex-direction:column;min-height:260px;max-height:calc((100dvh - 166px) / 2);overflow:hidden;
   transition:border-color .16s,box-shadow .16s;
 }
 .qbox:hover{border-color:var(--line-2);box-shadow:var(--shadow-sm)}
@@ -341,6 +382,7 @@
 .tcard.drop-before{box-shadow:inset 3px 0 0 var(--brand)}
 .tcard.drop-after{box-shadow:inset -3px 0 0 var(--brand)}
 .qempty{
+  flex:1;display:flex;align-items:center;justify-content:center;
   font-size:12px;color:var(--text-3);text-align:center;padding:20px 10px;
   border:1px dashed var(--line);border-radius:10px;
 }
@@ -467,7 +509,7 @@
 .cdcard{
   border-radius:14px;padding:15px 16px;color:#fff;position:relative;overflow:hidden;
   min-height:126px;display:flex;flex-direction:column;justify-content:space-between;gap:10px;
-  cursor:pointer;transition:.15s;
+  transition:.15s;
 }
 .cdcard:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
 .cdcard::after{
@@ -475,7 +517,16 @@
   background:rgba(255,255,255,.13);
 }
 .cdcard .cdn{font-size:14px;font-weight:700;opacity:.97;position:relative;z-index:1}
+.cdcard .cdn-name{display:flex;align-items:center;gap:4px}
 .cdcard .cdn small{display:block;font-size:10.5px;opacity:.74;font-weight:500;margin-top:2px}
+/* 与习惯卡片的 .h-edit 同一形态：常态低调，hover 卡片才显出来 */
+.cd-edit{
+  width:20px;height:20px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;
+  color:currentColor;opacity:.45;transition:.13s;flex:0 0 auto;
+}
+.cd-edit svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cdcard:hover .cd-edit{opacity:.8}
+.cd-edit:hover{background:rgba(255,255,255,.22);opacity:1}
 .cdcard .cdv{position:relative;z-index:1;display:flex;align-items:baseline;gap:5px}
 .cdcard .cdv b{font-size:clamp(26px,2.4vw,32px);font-weight:800;letter-spacing:-1px;line-height:1;font-variant-numeric:tabular-nums}
 .cdcard .cdv span{font-size:11.5px;opacity:.87}

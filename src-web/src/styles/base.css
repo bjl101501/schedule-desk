@@ -35,7 +35,22 @@
   --t-fast:.13s; --t:.2s; --t-slow:.26s;
   --ease:cubic-bezier(.32,.72,0,1);
   --side:248px;
-  --panel-w:400px;
+  /* 面板实际宽度只有这一个真源：CSS 与挤压量都读 --panel-now。
+     以前 CSS 里写 min(var(--panel-w),40vw)、内容让位又算一遍，两处会不一致。 */
+  --panel-w:440px;
+  --panel-now:min(var(--panel-w),40vw);
+
+  /* 优先级与四象限的 tone 只在这里定义一次：
+     视图里的小标记（.flag-p / .flag-q）和详情里的胶囊（.tag-chip.p0…）都读它，
+     避免「同一件事在两个地方是两个颜色」。 */
+  --tone-p0-bg:var(--red-soft);    --tone-p0-fg:var(--red);
+  --tone-p1-bg:var(--orange-soft); --tone-p1-fg:var(--orange);
+  --tone-p2-bg:var(--brand-soft);  --tone-p2-fg:var(--brand);
+  --tone-p3-bg:var(--line-2);      --tone-p3-fg:var(--text-3);
+  --tone-q1-bg:var(--brand-soft);  --tone-q1-fg:var(--brand);
+  --tone-q2-bg:var(--red-soft);    --tone-q2-fg:var(--red);
+  --tone-q3-bg:var(--orange-soft); --tone-q3-fg:var(--orange);
+  --tone-q4-bg:var(--line-2);      --tone-q4-fg:var(--text-3);
   --font-ui:"LXGW WenKai GB","LXGW WenKai GB Medium",-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}

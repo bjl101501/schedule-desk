@@ -2,7 +2,7 @@
 import type { Filters, Habit, Task, ViewKey } from './types';
 import { addDays, dayDiff, parseAnchor, parseHM, parseYmd, stampDay, ymd } from './date';
 import { EB_OFFSETS, PRIOS } from './constants';
-import { reminderState, taskState } from './window';
+import { reminderState, taskState, taskWindow } from './window';
 
 export interface ScopeCtx {
   view: ViewKey;
@@ -68,6 +68,15 @@ export function inScope(t: Task, ctx: ScopeCtx, today: Date): boolean {
   return true;
 }
 
+/** 搜索弹窗与筛选面板共用同一份关键词匹配：标题 + 备注 + 标签 + 清单 + 子项标题 */
+export function matchTaskKw(t: Task, rawKw: string): boolean {
+  const kw = String(rawKw || '').trim().toLowerCase();
+  if (!kw) return true;
+  const subTxt = (t.subs || []).map((x) => x.title).join(' ');
+  const hay = (t.title + ' ' + t.note + ' ' + t.tags.join(' ') + ' ' + t.list + ' ' + subTxt).toLowerCase();
+  return hay.indexOf(kw) > -1;
+}
+
 export function applyFilters(arr: Task[], f: Filters, today: Date): Task[] {
   const todayS = ymd(today);
   return arr.filter((t) => {
@@ -80,12 +89,7 @@ export function applyFilters(arr: Task[], f: Filters, today: Date): Task[] {
     if (f.tags.length && !f.tags.some((g) => t.tags.indexOf(g) > -1)) return false;
     if (f.from && (!t.date || t.date < f.from)) return false;
     if (f.to && (!t.date || t.date > f.to)) return false;
-    if (f.kw) {
-      const kw = f.kw.toLowerCase();
-      const subTxt = (t.subs || []).map((x) => x.title).join(' ');
-      const hay = (t.title + ' ' + t.note + ' ' + t.tags.join(' ') + ' ' + t.list + ' ' + subTxt).toLowerCase();
-      if (hay.indexOf(kw) === -1) return false;
-    }
+    if (f.kw && !matchTaskKw(t, f.kw)) return false;
     return true;
   });
 }
@@ -169,13 +173,50 @@ export function calcStreak(h: Habit, today: Date): number {
   return n;
 }
 
+export type AttentionKind = 'overdue' | 'remind' | 'soon';
+
+export interface AttentionItem {
+  task: Task;
+  kind: AttentionKind;
+  /** 排序依据：逾期用结束时刻，提醒用节点时刻 */
+  at: number;
+  /** 提醒节点下标；逾期项为 -1 */
+  idx: number;
+  offset: number;
+}
+
+/**
+ * 待处理事项的唯一出口：铃铛角标与提醒中心都必须用它，别再各算一套。
+ *
+ * 之前分成两份判据：角标 = 提醒节点 ∪ 逾期任务，列表只认提醒节点。
+ * 全天事项默认没有提醒，于是「角标 1、点开空空」。
+ * 同一事项只出一条，优先级 逾期 > 已到点 > 24 小时内。
+ */
+export function attention(tasks: Task[], now: number): AttentionItem[] {
+  const out: AttentionItem[] = [];
+  tasks.forEach((t) => {
+    if (!t || t.done) return;
+    if (taskState(t, now).key === 'overdue') {
+      const w = taskWindow(t);
+      out.push({ task: t, kind: 'overdue', at: w ? w.end.getTime() : now, idx: -1, offset: 0 });
+      return;
+    }
+    const r = reminderState(t, now);
+    if (!r) return;
+    if (r.overdue) out.push({ task: t, kind: 'remind', at: r.at, idx: r.idx, offset: r.offset });
+    else if (r.at - now < 86400000) out.push({ task: t, kind: 'soon', at: r.at, idx: r.idx, offset: r.offset });
+  });
+  return out.sort((a, b) => a.at - b.at);
+}
+
 export function pendingReminders(tasks: Task[], now: number): { task: Task; r: NonNullable<ReturnType<typeof reminderState>> }[] {
   const out: { task: Task; r: NonNullable<ReturnType<typeof reminderState>> }[] = [];
-  tasks.forEach((t) => {
-    const r = reminderState(t, now);
-    if (r && r.overdue) out.push({ task: t, r });
+  attention(tasks, now).forEach((i) => {
+    if (i.kind !== 'remind') return;
+    const r = reminderState(i.task, now);
+    if (r) out.push({ task: i.task, r });
   });
-  return out.sort((a, b) => a.r.at - b.r.at);
+  return out;
 }
 
 /**
@@ -211,27 +252,22 @@ export function syncRemindAnchor(t: Task, oldTime: string): boolean {
   铃铛角标口径（功能表 §1.1 / CHANGELOG v2.2.0）：
   = 已到点未确认的提醒 + 已逾期任务，同一条任务只算一次。
   两个都命中的任务（既逾期又有待复习）只贡献 1。
+
+  R21 起改为从 attention() 派生：逾期但没设提醒的事项（典型是全天事项）
+  以前只进角标不进列表，现在两边同源。
 */
 export function alertSummary(
   tasks: Task[],
   now: number
 ): { total: number; remind: number; overdue: number; ids: string[] } {
-  const ids = new Set<string>();
   let remind = 0;
   let overdue = 0;
-  tasks.forEach((t) => {
-    if (!t || t.done) return;
-    let hit = false;
-    const r = reminderState(t, now);
-    if (r && r.overdue) {
-      remind++;
-      hit = true;
-    }
-    if (taskState(t, now).key === 'overdue') {
-      overdue++;
-      hit = true;
-    }
-    if (hit) ids.add(t.id);
+  const ids: string[] = [];
+  attention(tasks, now).forEach((i) => {
+    if (i.kind === 'soon') return;
+    if (i.kind === 'overdue') overdue++;
+    else remind++;
+    ids.push(i.task.id);
   });
-  return { total: ids.size, remind, overdue, ids: Array.from(ids) };
+  return { total: ids.length, remind, overdue, ids };
 }

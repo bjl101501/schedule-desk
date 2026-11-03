@@ -46,6 +46,39 @@ export function quadName(imp: boolean, urg: boolean): string {
   return '· 不重要不紧急（不做）';
 }
 
+/** 详情 / 列表里只显示象限名，不带动作提示：括号里的「立即做」不是正式信息 */
+export function quadShort(imp: boolean, urg: boolean): string {
+  if (imp && urg) return '重要紧急';
+  if (imp) return '重要不紧急';
+  if (urg) return '不重要紧急';
+  return '不重要不紧急';
+}
+
+/** 动作提示单独成一小段灰字，与象限名分层，不挤在同一串里 */
+export function quadAction(imp: boolean, urg: boolean): string {
+  if (imp && urg) return '立即做';
+  if (imp) return '计划做';
+  if (urg) return '少做';
+  return '不做';
+}
+
+/**
+ * 象限 → 色调类名，与四象限视图里 .qbox.q1…q4 的配色一一对应。
+ * 详情、列表、象限格头必须用同一个映射，否则同一件事在两处是两个颜色。
+ */
+export function quadTone(imp: boolean, urg: boolean): string {
+  if (imp && urg) return 'q2';
+  if (imp) return 'q1';
+  if (urg) return 'q3';
+  return 'q4';
+}
+
+/** 优先级 → 色调类名，与列表里 .flag-p.p0…p3 共用 --tone-p* 变量 */
+export function prioTone(prio: string): string {
+  const p = String(prio || '').toUpperCase();
+  return p === 'P0' || p === 'P1' || p === 'P2' ? 'p' + p.charAt(1) : 'p3';
+}
+
 export function ebSpan(offsets: number[]): string {
   if (!offsets.length) return '0 分钟';
   const max = Math.max(...offsets);

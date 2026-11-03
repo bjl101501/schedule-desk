@@ -58,7 +58,9 @@
         saving = false;
       });
       close();
-      if (backId) setTimeout(() => openTaskDetail(backId), 160);
+      // 从详情点「修改」进来时，底层 detail 本来就留在栈里，close() 之后直接露出来；
+      // 若底层 detail 已被替换或不存在，则同步补回，不再用 160ms setTimeout 延迟闪一下。
+      if (backId) openTaskDetail(backId);
       toast.show('已保存');
       return;
     }

@@ -3,12 +3,12 @@
     颜色圆点单选。attr 是测试脚本认的属性后缀（cdcolor / hcolor），
     保持和旧版 DOM 一致，样式内联不落地到全局表。
   */
-  import { LIST_COLORS } from '$lib/domain/constants';
+  import { PICKER_PALETTE } from '$lib/domain/palette';
 
   let {
     value = $bindable(),
     attr,
-    colors = LIST_COLORS
+    colors = PICKER_PALETTE.map((c) => c.hex)
   }: { value: string; attr: string; colors?: readonly string[] } = $props();
 </script>
 

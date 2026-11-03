@@ -55,7 +55,9 @@
 }
 .side-item:hover{background:var(--line-2);color:var(--text)}
 .side-item.on{background:var(--brand-soft);color:var(--brand);font-weight:600}
-.side-item .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+/* 清单方点 / 标签圆点：形状先于颜色，色弱也能分开。色值由组件内联传入。 */
+.side-item .dot{width:8px;height:8px;border-radius:2px;flex:0 0 auto}
+.side-item .tag-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
 .side-item .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .side-item .cnt{font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums}
 
@@ -94,20 +96,28 @@
 .tb-btn.on{background:var(--brand-soft);color:var(--brand);border-color:var(--brand-2)}
 .tb-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .tb-btn .txt{display:inline}
+/* 文案会变的两个按钮锁宽并居中：否则「手动排序/按时间」「筛选 N」每变一次，整排按钮和时钟一起平移 */
+#btnSort{min-width:100px;justify-content:center}
+#btnFilter{min-width:86px;justify-content:center}
 /* 主区变窄：收起按钮文字，避免标题被挤成多行 */
 .main.condensed .tb-btn .txt{display:none}
 .main.condensed .tb-btn{padding:0 9px}
+.main.condensed #btnSort,.main.condensed #btnFilter{min-width:0}
 .main.condensed .topbar{gap:8px;padding:0 15px}
 .main.condensed .view-switch button{width:26px}
 .main.tight .sync-pill span{display:none}
-.main.tight .sync-pill{padding:0 7px}
+.main.tight .sync-pill{width:34px;padding:0 7px}
 .main.tight .topbar{gap:6px;padding:0 12px}
 .icon-btn{
   width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;
   color:var(--text-2);transition:.13s;position:relative;
 }
 .icon-btn:hover{background:var(--line-2);color:var(--text)}
+.icon-btn:disabled{opacity:.35;cursor:default}
+.icon-btn:disabled:hover{background:transparent;color:var(--text-2)}
 .icon-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+/* 撤销 / 重做成组：两个都常驻，避免出现消失时带动整排按钮平移 */
+.tb-undo{display:flex;align-items:center;gap:1px;flex:0 0 auto}
 .dot-badge{
   position:absolute;top:-6px;right:-10px;
   min-width:13px;height:15px;padding:0 3px;border-radius:8px;
@@ -124,15 +134,18 @@
 .view-switch button:hover{color:var(--text)}
 .view-switch button.on{background:var(--panel);color:var(--brand);box-shadow:var(--shadow-sm)}
 
-.content{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 20px 90px;scroll-behavior:smooth}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 20px 24px;scroll-behavior:smooth}
 .content.wide{padding:0}
 
 /* ---------- sync status ---------- */
+/* 固定宽度：文案在「本地模式 / 同步中 / 已同步 / 同步失败」之间切换时不再改变顶栏布局 */
 .sync-pill{
-  display:flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:13px;
+  display:flex;align-items:center;justify-content:center;gap:5px;height:26px;width:88px;padding:0 9px;border-radius:13px;
   font-size:11px;font-weight:600;background:var(--green-soft);color:var(--green);white-space:nowrap;
+  overflow:hidden;flex:0 0 auto;
 }
-.sync-pill svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.sync-pill #syncText{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.sync-pill svg{width:12px;height:12px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .sync-pill.syncing{background:var(--orange-soft);color:var(--orange)}
 .sync-pill.offline{background:var(--red-soft);color:var(--red)}
 
@@ -146,7 +159,16 @@
 .today-head h2{margin:0;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:7px}
 .today-head .pin{width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 0 3px rgba(229,72,77,.16)}
 .today-head .stat{font-size:11.5px;color:var(--text-3);font-weight:500}
+.today-wrap{position:relative}
 .today-body{margin-top:9px;display:flex;flex-direction:column;gap:2px;max-height:286px;overflow-y:auto;overscroll-behavior:contain}
+/* 底部淡向下箭头提示：只在未滚到底时出现，不挡鼠标点击与滚轮 */
+.today-scroll-cue{
+  position:absolute;left:0;right:0;bottom:0;height:24px;
+  display:flex;align-items:flex-end;justify-content:center;padding-bottom:1px;
+  background:linear-gradient(to bottom,transparent 0%,color-mix(in srgb,var(--panel) 86%,transparent) 85%);
+  color:var(--text-3);opacity:.55;pointer-events:none;
+}
+.today-scroll-cue svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
 .today-row{
   position:relative;display:flex;align-items:flex-start;gap:9px;padding:9px 9px;
   border-radius:8px;font-size:13px;transition:.13s;cursor:pointer;
@@ -186,15 +208,19 @@
 .tdue.allday{color:var(--orange);background:var(--orange-soft)}
 .tdue.time{color:var(--text-3);background:transparent;font-weight:600}
 .today-subs{display:flex;flex-direction:column;gap:1px}
+/* 整行不再是开关：只有左边这个小方块可勾选，点标题只会打开详情 */
 .today-sub{
   display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-2);
-  text-align:left;padding:1px 0;min-width:0;
+  text-align:left;min-width:0;
 }
-.today-sub:hover{color:var(--brand)}
+.today-sub .sub-dot-btn{
+  width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  border-radius:5px;cursor:pointer;margin-left:-5px;
+}
 .today-sub .sub-dot{
   width:9px;height:9px;border-radius:3px;border:1.5px solid var(--line);flex:0 0 auto;transition:.12s;
 }
-.today-sub:hover .sub-dot{border-color:var(--brand)}
+.today-sub .sub-dot-btn:hover .sub-dot{border-color:var(--brand);background:var(--brand-softer)}
 .today-sub span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .today-sub em{font-style:normal;font-size:10px;color:var(--text-3);flex:0 0 auto}
 /* 子项逾期：点变红、标签红字，和今天该做的区分开——父任务本身可能还不到期 */
@@ -217,3 +243,53 @@
 .sec-head .line{flex:1;height:1px;background:var(--line)}
 .sec-head .meta{font-size:11.5px;color:var(--text-3)}
 .sec-head .act{font-size:12px;color:var(--brand);font-weight:600;cursor:pointer}
+
+/* ---------- 清单 / 标签选色浮层 ---------- */
+/* 色块按传统色族分列，和颜色库的分类一致；清单只列冷色族、标签只列暖色族 */
+.color-pick{
+  /* 必须 fixed：popover 把 left/top 写在这上面，缺了定位模式坐标不生效，
+     面板会贴在文档流最后（屏幕底部之外） */
+  position:fixed;z-index:1000;
+  width:322px;max-height:min(430px,var(--fp-AH,430px));overflow-y:auto;overscroll-behavior:contain;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  box-shadow:var(--shadow-lg);padding:11px 12px 9px;
+}
+.cp-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+.cp-title{
+  font-size:12.5px;font-weight:700;color:var(--text);min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.cp-auto{
+  display:flex;align-items:center;gap:3px;height:24px;padding:0 8px;border-radius:7px;flex:0 0 auto;
+  font-size:11px;color:var(--text-2);background:var(--panel-2);border:1px solid var(--line);
+  transition:.12s;font-family:inherit;
+}
+.cp-auto:hover{color:var(--brand);border-color:var(--brand-2);background:var(--brand-softer)}
+.cp-auto.on{color:var(--brand);border-color:var(--brand-2);background:var(--brand-soft)}
+.cp-auto svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cp-row{display:flex;align-items:flex-start;gap:7px;padding:5px 0}
+.cp-row+.cp-row{border-top:1px dashed var(--line-2)}
+.cp-fam{
+  width:15px;flex:0 0 auto;font-size:11px;color:var(--text-3);
+  line-height:20px;text-align:center;
+}
+.cp-sw-row{display:flex;flex-wrap:wrap;gap:4px;flex:1;min-width:0}
+.cp-sw{
+  width:19px;height:19px;border-radius:5px;background:var(--sw);position:relative;
+  border:1px solid rgba(0,0,0,.07);transition:transform .1s,box-shadow .1s;
+}
+.cp-sw:hover{transform:scale(1.16);box-shadow:0 2px 7px rgba(0,0,0,.2);z-index:1}
+.cp-sw.on{box-shadow:0 0 0 2px var(--panel),0 0 0 3.5px var(--sw)}
+/* 已被别的项占用：右下角一个小三角，不阻止选择 —— 用户想撞色是用户的事 */
+.cp-sw.used::after{
+  content:"";position:absolute;right:1px;bottom:1px;width:0;height:0;
+  border-left:5px solid transparent;border-bottom:5px solid rgba(255,255,255,.92);
+}
+.cp-foot{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  margin-top:6px;padding-top:7px;border-top:1px solid var(--line);
+}
+.cp-now{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-2);font-weight:600}
+.cp-now i{width:11px;height:11px;border-radius:3px;display:block}
+.cp-src{font-size:10.5px;color:var(--text-3)}
+.cp-src.manual{color:var(--brand);font-weight:600}

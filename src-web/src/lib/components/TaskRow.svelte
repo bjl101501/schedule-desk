@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Task } from '$lib/domain/types';
   import { doneText, durText, parseYmd, shortDate, dayDiff } from '$lib/domain/date';
+  import { listColorFor } from '$lib/store/palette.svelte';
   import { repeatLabel, subStats, timeRangeText } from '$lib/domain/task';
   import { taskState } from '$lib/domain/window';
   import { clock, todayD } from '$lib/store/clock.svelte';
@@ -87,7 +88,9 @@
       <RemindChip {t} />
       <TagChips tags={t.tags} />
       {#if t.list && t.list !== '收集箱'}
-        <span class="m"><Icon name="inbox" />{t.list}</span>
+        <span class="list-chip" style="--lc:{listColorFor(t.list).hex}" title={'清单：' + t.list + ' · ' + listColorFor(t.list).name}>
+          <Icon name="inbox" /><span class="lc-t">{t.list}</span>
+        </span>
       {/if}
     </div>
   </div>

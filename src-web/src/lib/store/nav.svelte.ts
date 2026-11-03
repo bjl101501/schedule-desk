@@ -1,12 +1,12 @@
 /* 视图切换与抽屉：与旧 09-app.js 的 goView / openDrawer / closeDrawer 对应 */
 import type { KanbanGroup, VMode, ViewKey } from '$lib/domain/types';
-import { PAGE, app, scrollContentTop } from './app.svelte';
+import { PAGE, app, resetFilters, scrollContentTop } from './app.svelte';
 
 export function goView(v: ViewKey): void {
   app.view = v;
   app.selectedList = null;
   app.selectedTag = null;
-  app.listLimit = PAGE;
+  resetFilters();
   app.drawer = false;
   if (v === 'calendar' && !app.cursor) app.cursor = new Date();
   scrollContentTop();
@@ -15,7 +15,7 @@ export function goView(v: ViewKey): void {
 export function selectList(name: string | null): void {
   app.selectedList = name;
   app.selectedTag = null;
-  app.listLimit = PAGE;
+  resetFilters();
   app.drawer = false;
   scrollContentTop();
 }
@@ -23,7 +23,7 @@ export function selectList(name: string | null): void {
 export function selectTag(name: string | null): void {
   app.selectedTag = name;
   app.selectedList = null;
-  app.listLimit = PAGE;
+  resetFilters();
   app.drawer = false;
   scrollContentTop();
 }

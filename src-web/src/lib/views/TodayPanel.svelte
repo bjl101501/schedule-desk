@@ -107,6 +107,24 @@
     return { tick, t0, total, overdue, rows, remind, tailOf, segsOf };
   });
 
+  let bodyEl = $state<HTMLDivElement | null>(null);
+  let hasMore = $state(false);
+
+  function syncMore(): void {
+    const el = bodyEl;
+    if (!el) {
+      hasMore = false;
+      return;
+    }
+    hasMore = el.scrollHeight - el.scrollTop - el.clientHeight > 6;
+  }
+
+  $effect(() => {
+    void view.rows.length;
+    const id = requestAnimationFrame(syncMore);
+    return () => cancelAnimationFrame(id);
+  });
+
   function rowClick(id: string): void {
     if (isSuppressed()) return;
     toggleTaskDetail(id);
@@ -127,45 +145,51 @@
       {view.total ? view.total + ' 项待处理 · 逾期 ' + view.overdue.length + ' 项' : '今天没有要处理的'}
     </span>
   </div>
-  <div class="today-body">
-    {#if !view.rows.length}
-      <div class="today-empty"><Icon name="check" />今天没有待办，享受这份清闲吧</div>
-    {:else}
-      {#each view.rows as r (r.t.id)}
-        {@const tail = view.tailOf(r.t, r.kind)}
-        {@const st = subStats(r.t)}
-        {@const segs = view.segsOf(r.t)}
-        <div class="today-row" data-tid={r.t.id} onclick={() => rowClick(r.t.id)}>
-          <span class="tag-mini {r.kind}">{r.label}</span>
-          <div class="today-main">
-            <div class="today-l1">
-              <span class="tt">{r.t.title}</span>
-              {#if st.n}<span class="today-subchip">{st.done}/{st.n}</span>{/if}
-              {#if tail.text}<span class="tdue {tail.cls}">{tail.text}</span>{/if}
-            </div>
-            {#if segs.length}
-              <div class="today-subs">
-                {#each segs as g (g.i)}
-                  {@const lab = subLabel(g)}
-                  <button
-                    class="today-sub{lab.over ? ' over' : ''}"
-                    data-subdone="{r.t.id}|{g.i}"
-                    onclick={(e) => { e.stopPropagation(); toggleSubAt(r.t, g.i); }}
-                  >
-                    <i class="sub-dot"></i><span>{g.title}</span><em>{lab.text}</em>
-                  </button>
-                {/each}
+  <div class="today-wrap">
+    <div class="today-body" bind:this={bodyEl} onscroll={syncMore}>
+      {#if !view.rows.length}
+        <div class="today-empty"><Icon name="check" />今天没有待办，享受这份清闲吧</div>
+      {:else}
+        {#each view.rows as r (r.t.id)}
+          {@const tail = view.tailOf(r.t, r.kind)}
+          {@const st = subStats(r.t)}
+          {@const segs = view.segsOf(r.t)}
+          <div class="today-row" data-tid={r.t.id} onclick={() => rowClick(r.t.id)}>
+            <span class="tag-mini {r.kind}">{r.label}</span>
+            <div class="today-main">
+              <div class="today-l1">
+                <span class="tt">{r.t.title}</span>
+                {#if st.n}<span class="today-subchip">{st.done}/{st.n}</span>{/if}
+                {#if tail.text}<span class="tdue {tail.cls}">{tail.text}</span>{/if}
               </div>
-            {/if}
+              {#if segs.length}
+                <div class="today-subs">
+                  {#each segs as g (g.i)}
+                    {@const lab = subLabel(g)}
+                    <div class="today-sub{lab.over ? ' over' : ''}" data-subdone="{r.t.id}|{g.i}" data-nodrag>
+                      <button
+                        class="sub-dot-btn"
+                        title="勾选子项"
+                        onclick={(e) => { e.stopPropagation(); toggleSubAt(r.t, g.i); }}
+                      ><i class="sub-dot"></i></button>
+                      <span>{g.title}</span><em>{lab.text}</em>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+            <button
+              class="go"
+              data-done={r.t.id}
+              title="完成"
+              onclick={(e) => { e.stopPropagation(); toggleDone(r.t.id); }}
+            ><Icon name="check" /></button>
           </div>
-          <button
-            class="go"
-            data-done={r.t.id}
-            title="完成"
-            onclick={(e) => { e.stopPropagation(); toggleDone(r.t.id); }}
-          ><Icon name="check" /></button>
-        </div>
-      {/each}
+        {/each}
+      {/if}
+    </div>
+    {#if hasMore}
+      <div class="today-scroll-cue" aria-hidden="true"><Icon name="chevD" /></div>
     {/if}
   </div>
 </section>

@@ -17,6 +17,16 @@ export interface Sub {
 }
 
 /**
+ * 编辑期的子项：min / days 允许 null。
+ * 新建一行时给 0 会让输入框里显示一个「0」，用户不知道该填分钟还是天；
+ * 给 null 才能让 placeholder 起作用。落库前由 cleanSubs() 归一成数字。
+ */
+export interface SubDraft extends Omit<Sub, 'min' | 'days'> {
+  min: number | null;
+  days: number | null;
+}
+
+/**
  * 打开任务编辑器时携带的意图。之前是 Record<string, unknown>，下游一路 as 到底。
  */
 export interface EditorPreset {

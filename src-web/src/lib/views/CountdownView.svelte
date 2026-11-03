@@ -72,17 +72,12 @@
     });
     const ordered = orderNames(names, meta.cdGroupOrder);
     const first = all[0];
+    const firstDiff = first ? dayDiff(t0, nextOccur(first)) : 0;
     return {
       all,
       t0,
-      note: first
-        ? '共 <b>' + all.length + '</b> 个日子 · 最近「' + first.name + '」' +
-          (dayDiff(t0, nextOccur(first)) === 0
-            ? '就是今天'
-            : dayDiff(t0, nextOccur(first)) > 0
-              ? '还有 <b>' + dayDiff(t0, nextOccur(first)) + '</b> 天'
-              : '已过去 ' + Math.abs(dayDiff(t0, nextOccur(first))) + ' 天')
-        : '共 ' + all.length + ' 个日子',
+      first,
+      firstDiff,
       groups: ordered.map((g) => {
         const list = map[g].slice().sort((a, b) => nextOccur(a).getTime() - nextOccur(b).getTime());
         const soon = list[0];
@@ -106,13 +101,20 @@
 {:else}
   <div class="view-bar">
     <button class="btn btn-pri view-add" data-cdadd onclick={() => edit('')}><Icon name="plus" />添加纪念日</button>
-    <div class="view-note">{@html groups.note} · 拖动分组标题可调整顺序</div>
+    <div class="view-note">
+      {#if groups.first}
+        共 <b>{groups.all.length}</b> 个日子 · 最近「{groups.first.name}」{#if groups.firstDiff === 0}就是今天{:else if groups.firstDiff > 0}还有 <b>{groups.firstDiff}</b> 天{:else}已过去 {Math.abs(groups.firstDiff)} 天{/if} · 拖动分组标题可调整顺序
+      {:else}
+        共 {groups.all.length} 个日子 · 拖动分组标题可调整顺序
+      {/if}
+    </div>
   </div>
   <div
   class="cd-grid cd-flat"
   use:pointerDrag={{
     handle: '[data-cdgh]',
-    threshold: 6,
+    slop: 8,
+    holdMs: 160,
     onStart: (el, _e, origin) => {
       beginDragSession();
       el.closest('.cdgroup')?.classList.add('dragging');
@@ -149,12 +151,14 @@
             class="cdcard{cd.sys === 'holiday' ? ' cd-holiday' : ''}"
             data-cid={cd.id || (cd.sys ? 'sys:' + cd.sys : '')}
             style="background:linear-gradient(135deg,{cd.color},{darken(cd.color)})"
-            onclick={() => edit(cd.id)}
           >
             {#if cd.sys === 'holiday'}
               <span class="cd-ribbon">{(cd.note || '').indexOf('预估') > -1 ? '预估' : 'API'}</span>
             {/if}
-            <div class="cdn">{cd.name}<small>{cd.type}{isRepeat ? ' · 每年' : ''}</small></div>
+            <div class="cdn">
+              <span class="cdn-name">{cd.name}<button class="cd-edit" data-cdedit={cd.id || (cd.sys ? 'sys:' + cd.sys : '')} title="编辑纪念日" onclick={() => edit(cd.id)}><Icon name="edit" /></button></span>
+              <small>{cd.type}{isRepeat ? ' · 每年' : ''}</small>
+            </div>
             <div class="cdv"><b>{Math.abs(diff)}</b><span>天 · {label}</span></div>
             <div class="cdfoot">{next.getFullYear()}-{pad2(next.getMonth() + 1)}-{pad2(next.getDate())}{cd.note ? ' · ' + cd.note : ''}</div>
           </div>

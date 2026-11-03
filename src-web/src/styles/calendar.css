@@ -176,6 +176,13 @@
 /* ---------- drag ---------- */
 .task,.kcard,.tcard{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .task.dragging,.kcard.dragging,.tcard.dragging{opacity:.3}
+/* 长按到位（armed）：告诉用户「现在松开是点、移动是拖」，此时还没生成 ghost */
+.drag-armed{
+  border-color:var(--brand)!important;
+  box-shadow:0 0 0 2px var(--brand-soft),0 10px 22px -12px rgba(23,124,176,.55)!important;
+  cursor:grabbing!important;
+}
+.drag-armed *{cursor:grabbing!important}
 /* 只补定位与阴影，圆角/底色/描边/padding 全部交给原类（.tcard / .task / .kcard） */
 .drag-ghost{
   position:fixed;z-index:900;pointer-events:none;

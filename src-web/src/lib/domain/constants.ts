@@ -18,13 +18,23 @@ export const PRIO_LABEL: Record<string, string> = { P0: '最高', P1: '高', P2:
 export const EB_OFFSETS = [0, 5, 30, 720, 1440, 2880, 5760, 10080, 21600];
 export const EB_LABEL = ['准时', '5 分钟', '30 分钟', '12 小时', '1 天', '2 天', '4 天', '7 天', '15 天'];
 
-export const LIST_COLORS = ['#177CB0', '#7A4E63', '#5E8C6A', '#C8892B', '#1685A9', '#C3272B', '#B4557A', '#8C8279'];
+/**
+ * 清单与标签的取色统一收到 domain/palette.ts：
+ * 清单 = 青蓝族 6 色（同族不同明度），标签 = 红/黄/绿/紫/褐 5 色。
+ * 这里保留数组形态，给「按索引取色」这类老调用点用；新代码请直接用 palette 里的函数，
+ * 它们还会带回传统色名（可用于悬停提示）。
+ */
+import { LIST_PALETTE, TAG_PALETTE, listColorAt } from './palette';
+
+export { LIST_PALETTE, TAG_PALETTE, listColorAt };
+
+export const LIST_COLORS = LIST_PALETTE.map((c) => c.hex);
+export const TAG_COLORS = TAG_PALETTE.map((c) => c.hex);
 export const LEGACY_COLORS: Record<string, string> = {
   '#2f6bff': '#177CB0', '#1f55e0': '#0E5F8A', '#8b5cf6': '#7A4E63', '#ec4899': '#B4557A',
   '#17a673': '#5E8C6A', '#0ea5b7': '#1685A9', '#f59f1b': '#C8892B', '#e5484d': '#C3272B',
   '#64748b': '#8C8279', '#cbd3df': '#8C8279', '#d5dbe4': '#8C8279'
 };
-export const TAG_COLORS = ['c0', 'c1', 'c2', 'c3', 'c4'];
 
 export const REPEAT_OPTS = ['不重复', '每天', '每周', '每月', '每年', '工作日'];
 export const QUAD_LABEL: Record<string, string> = {

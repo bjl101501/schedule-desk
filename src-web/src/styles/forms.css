@@ -1,15 +1,23 @@
 /* ---------- 表单层次：分组卡片，输入 / 胶囊 / 按钮三种形态一眼可分 ---------- */
-.inp-title{height:46px;font-size:16px;font-weight:600;letter-spacing:.2px}
+.inp-title{height:38px;font-size:15.5px;font-weight:600;letter-spacing:.2px}
+/* 分组标题（时间安排 / 提醒 / 子项…）已删：下面每个 .field 的 label 说的是同一件事，
+   5 个标题白占 110px，是编辑器需要滚动的主因 */
 .ed-sec{
-  border:1px solid var(--line);border-radius:12px;background:var(--panel-2);
-  padding:12px 13px 13px;display:flex;flex-direction:column;gap:11px;
-}
-.ed-sec-t{
-  font-size:11px;font-weight:700;letter-spacing:.6px;color:var(--text-3);
-  text-transform:uppercase;margin-bottom:-2px;
+  border:1px solid var(--line);border-radius:10px;background:var(--panel-2);
+  padding:9px 11px 9px;display:flex;flex-direction:column;gap:6px;
 }
 .ed-sec .field>label{color:var(--text-2)}
 .ed-sec .inp{background:var(--field-bg)}
+/* 编辑器专用压缩：只作用于分组卡片内部，不影响设置 / 备份等其它弹窗。
+   目标是在 1320×940、面板 440 宽下「新建」默认态不出现滚动。 */
+.ed-sec .field{gap:2px}
+.ed-sec .inp{height:34px;font-size:13px;border-radius:8px}
+.ed-sec textarea.inp{height:auto;padding:7px 10px;line-height:1.5}
+.ed-sec .seg{gap:3px;padding:2px}
+.ed-sec .seg button{height:26px;font-size:11.5px;border-radius:6px}
+.ed-sec .chip-p{height:26px;padding:0 9px;font-size:11.5px;border-radius:7px}
+#edTitle{height:38px;font-size:15.5px}
+#edNote{min-height:30px;max-height:110px}
 
 /* 悬浮说明：小问号 + 单例浮层，默认在触发点上方，不压住输入框 */
 .tip-i{

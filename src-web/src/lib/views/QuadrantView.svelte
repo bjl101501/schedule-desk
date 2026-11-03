@@ -5,7 +5,7 @@
   import { sortTasks } from '$lib/domain/selectors';
   import { app } from '$lib/store/app.svelte';
   import { clock, todayD } from '$lib/store/clock.svelte';
-  import { data } from '$lib/store/data.svelte';
+  import { data, toggleDone } from '$lib/store/data.svelte';
   import { toggleTaskDetail } from '$lib/store/ui.svelte';
   import { isSuppressed } from '$lib/actions/suppress';
   import { beginDrag, type DragFx } from '$lib/actions/dragFx';
@@ -34,12 +34,12 @@
       else q4.push(t);
     });
     const total = live.length || 1;
-    const defs = [
-      { cls: 'q1', num: 'Ⅰ', name: '重要 · 不紧急', sub: '计划做，决定长期', items: q1 },
-      { cls: 'q2', num: 'Ⅱ', name: '重要 · 紧急', sub: '立即做，别拖', items: q2 },
-      { cls: 'q4', num: 'Ⅳ', name: '不重要 · 不紧急', sub: '不做，别沉迷', items: q4 },
-      { cls: 'q3', num: 'Ⅲ', name: '不重要 · 紧急', sub: '少做或转交', items: q3 }
-    ];
+const defs = [
+  { cls: 'q1', num: 'Ⅰ', name: '重要 · 不紧急', sub: '安排时间，持续推进', items: q1 },
+  { cls: 'q2', num: 'Ⅱ', name: '重要 · 紧急', sub: '优先处理，马上动手', items: q2 },
+  { cls: 'q4', num: 'Ⅳ', name: '不重要 · 不紧急', sub: '暂时搁置，不必挂心', items: q4 },
+  { cls: 'q3', num: 'Ⅲ', name: '不重要 · 紧急', sub: '速办或转交，别占主线', items: q3 }
+];
     return {
       live,
       total,
@@ -115,7 +115,11 @@
             {@const diff = t.date ? dayDiff(today, parseYmd(t.date)) : null}
             {@const st = subStats(t)}
             <div class="kcard" data-tid={t.id} onclick={() => open(t)}>
-              <div class="kcard-title"><Flags {t} />{t.title}</div>
+              <div class="kcard-title">
+                <div class="chk" data-done={t.id} data-nodrag onclick={(e) => { e.stopPropagation(); toggleDone(t.id); }}><Icon name="check" /></div>
+                <Flags {t} />
+                <span class="kcard-t">{t.title}</span>
+              </div>
               {#if st.n}
                 <div class="sub-inline">
                   <span class="sub-bar{st.all ? ' full' : ''}"><i style="width:{st.pct}%"></i></span>

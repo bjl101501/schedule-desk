@@ -36,7 +36,7 @@
     <div class="m-body">
       <div style="font-size:13.5px;color:var(--text-2);line-height:1.9">
         数据全部保存在本机一个 <b>schedule.json</b> 里，断网也能用。
-        先选一个存放目录；不确定就用默认位置（`%APPDATA%\\ScheduleDesk`）。
+        先选一个存放目录；不确定就用默认位置（<code>%APPDATA%\ScheduleDesk</code>）。
       </div>
       <div class="field">
         <label>数据目录</label>

@@ -5,6 +5,7 @@
 import type { Task } from '$lib/domain/types';
 import { stampNow, uid } from '$lib/domain/date';
 import { cloneNextRepeat, subStats, syncDoneFromSubs } from '$lib/domain/task';
+import { setJournalLabel } from '$lib/bridge/db';
 import { cacheLocal } from './cache.svelte';
 import { data, findTask, pushProxied } from './state.svelte';
 import { toast } from '../toast.svelte';
@@ -13,6 +14,7 @@ import { apiAddTask, apiDeleteTask, apiUpdateTask } from './write';
 export function toggleDone(id: string): void {
   const t = findTask(id);
   if (!t) return;
+  setJournalLabel((t.done ? '取消完成「' : '完成「') + t.title + '」');
   t.done = !t.done;
   t.doneAt = t.done ? stampNow() : '';
   const fields = ['已完成', '完成时间'];
@@ -34,6 +36,7 @@ export function toggleDone(id: string): void {
 export function toggleSubAt(t: Task, idx: number): boolean {
   if (!t || !t.subs || !t.subs[idx]) return false;
   const s = t.subs[idx];
+  setJournalLabel((s.done ? '取消子项「' : '勾选子项「') + s.title + '」');
   s.done = !s.done;
   s.doneAt = s.done ? stampNow() : '';
   const flipped = syncDoneFromSubs(t);
@@ -61,6 +64,9 @@ export function spawnNextRepeat(t: Task): Task | null {
 }
 
 export function deleteTask(id: string): void {
+  // 标题要在 filter 之前取：删完就查不到了
+  const t = findTask(id);
+  setJournalLabel('删除「' + (t?.title || '事项') + '」');
   data.tasks = data.tasks.filter((x) => x.id !== id);
   cacheLocal();
   apiDeleteTask(id);
@@ -71,6 +77,7 @@ export function saveTask(t: Task): Promise<void> {
   // QuickAdd 会先给一个本地 uid()（好让列表 keyed each 有键），
   // 只凭 id 非空就判更新，会写到不存在的 recordId 上 —— 界面加了、重启就没了。
   const known = !!t.id && data.tasks.some((x) => x.id === t.id);
+  setJournalLabel((known ? '修改「' : '新增「') + t.title + '」');
   cacheLocal();
   if (known) return apiUpdateTask(t);
   // 先给一个本地 id 占位：列表是 keyed each，空键会直接报错

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Task } from '$lib/domain/types';
   import { dateLabel, dayDiff, doneText, durText, parseYmd, shortDate } from '$lib/domain/date';
+  import { listColorFor } from '$lib/store/palette.svelte';
   import { subStats, timeRangeText } from '$lib/domain/task';
   import { taskState } from '$lib/domain/window';
   import { PAGE, app } from '$lib/store/app.svelte';
@@ -171,6 +172,11 @@
         <div class="tcard-foot">
           <StateChip {t} />
           <TagChips tags={t.tags} />
+          {#if t.list && t.list !== '收集箱'}
+            <span class="list-chip" style="--lc:{listColorFor(t.list).hex}" title={'清单：' + t.list + ' · ' + listColorFor(t.list).name}>
+              <Icon name="inbox" /><span class="lc-t">{t.list}</span>
+            </span>
+          {/if}
           {#if t.estimate}<span class="est-badge">{durText(t.estimate)}</span>{/if}
           {#if t.time}<span class="tcard-time"><Icon name="clock" />{timeRangeText(t)}</span>{/if}
           {#if t.date}

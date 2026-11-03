@@ -2,8 +2,10 @@
 import { toast } from './toast.svelte';
 import { apiUpdateTask, cacheLocal, data } from './data.svelte';
 import {
-  addCustomList, addCustomTag, archiveList, isArchived, meta, setListOrder, setTagOrder, unarchiveList
+  addCustomList, addCustomTag, archiveList, dropColorKey, isArchived, meta, moveColorKey,
+  setListOrder, setTagOrder, unarchiveList
 } from './meta.svelte';
+import { ensureColors } from './palette.svelte';
 import { app } from './app.svelte';
 import { uiState } from './ui.svelte';
 
@@ -21,6 +23,7 @@ export function renameList(oldName: string): void {
       meta.customLists = arr;
       addCustomList(v);
       setListOrder(meta.listOrder.map((x) => (x === oldName ? v : x)));
+      moveColorKey('list', oldName, v);
       data.tasks.forEach((t) => {
         if ((t.list || '收集箱') === oldName) {
           t.list = v;
@@ -39,8 +42,8 @@ export function removeList(name: string): void {
   uiState.confirm = {
     title: '删除清单',
     desc:
-      '「' + name + '」' + (n ? '里有 <b>' + n + '</b> 条日程，删除后这些日程会移到「收集箱」。' : '目前没有日程。') +
-      '<br><br>清单本身会被移除，事项不会被删除。',
+      '「' + name + '」' + (n ? '里有 ' + n + ' 条日程，删除后这些日程会移到「收集箱」。' : '目前没有日程。') +
+      '\n\n清单本身会被移除，事项不会被删除。',
     okText: '删除清单',
     danger: true,
     onOk: () => {
@@ -53,6 +56,7 @@ export function removeList(name: string): void {
         }
       });
       if (app.selectedList === name) app.selectedList = null;
+      dropColorKey('list', name);
       cacheLocal();
       toast.show('已删除清单「' + name + '」');
     }
@@ -72,6 +76,7 @@ export function renameTag(oldName: string): void {
       meta.customTags = meta.customTags.filter((x) => x !== oldName);
       addCustomTag(v);
       setTagOrder(meta.tagOrder.map((x) => (x === oldName ? v : x)));
+      moveColorKey('tag', oldName, v);
       data.tasks.forEach((t) => {
         const j = (t.tags || []).indexOf(oldName);
         if (j > -1) {
@@ -92,7 +97,7 @@ export function removeTag(name: string): void {
   uiState.confirm = {
     title: '删除标签',
     desc: n
-      ? '有 <b>' + n + '</b> 条日程带着 #' + name + '，删除后只是去掉这个标签，日程本身不受影响。'
+      ? '有 ' + n + ' 条日程带着 #' + name + '，删除后只是去掉这个标签，日程本身不受影响。'
       : '这个标签还没有被使用。',
     okText: '删除标签',
     danger: true,
@@ -107,6 +112,7 @@ export function removeTag(name: string): void {
         }
       });
       if (app.selectedTag === name) app.selectedTag = null;
+      dropColorKey('tag', name);
       cacheLocal();
       toast.show('已删除标签 #' + name);
     }
@@ -133,6 +139,7 @@ export function createList(): void {
     okText: '创建',
     onOk: (v) => {
       addCustomList(v);
+      ensureColors();
       toast.show('已创建清单「' + v + '」');
     }
   };
@@ -149,6 +156,7 @@ export function createTag(): void {
       const v = String(raw || '').replace(/^#/, '').trim();
       if (!v) return;
       addCustomTag(v);
+      ensureColors();
       toast.show('已创建标签 #' + v);
     }
   };
