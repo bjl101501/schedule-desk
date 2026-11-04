@@ -83,37 +83,37 @@ def rows():
     review = rel(30)
     out = [
         task("d1", "产品评审会：日程台二期", today, hm(meeting), 120, prio="P0",
-             tags="#会议", important=True, urgent=True,
+             tags="会议", important=True, urgent=True,
              subs=[
-                 {"i": 0, "title": "过一遍上周的用户反馈", "days": 1, "done": True, "estimate": 30},
-                 {"i": 1, "title": "确认卡片视图的分组口径", "days": 0, "done": False, "estimate": 45},
-                 {"i": 2, "title": "排下一轮的优先级", "days": 0, "done": False, "estimate": 30},
+                 {"t": "过一遍上周的用户反馈", "dy": 1, "d": True, "m": 30},
+                 {"t": "确认卡片视图的分组口径", "dy": 0, "d": False, "m": 45},
+                 {"t": "排下一轮的优先级", "dy": 0, "d": False, "m": 30},
              ]),
-        task("d2", "整理本周项目周报", today, hm(review), 45, prio="P2", tags="#周报",
+        task("d2", "整理本周项目周报", today, hm(review), 45, prio="P2", tags="周报",
              subs=[
-                 {"i": 0, "title": "汇总各条线的进度", "days": 1, "done": False, "estimate": 20},
-                 {"i": 1, "title": "写一段风险说明", "days": 0, "done": False, "estimate": 15},
+                 {"t": "汇总各条线的进度", "dy": 1, "d": False, "m": 20},
+                 {"t": "写一段风险说明", "dy": 0, "d": False, "m": 15},
              ]),
         # 上午已经做完的三件
-        task("d3", "回复客户邮件：合同附件", today, "11:20", 20, prio="P1", tags="#沟通", done=True),
-        task("d4", "晨会：同步昨日进度", today, "09:30", 30, prio="P2", tags="#会议", done=True),
-        task("d5", "读书 30 分钟", today, "08:00", 30, prio="P3", lst="学习", tags="#阅读", done=True),
+        task("d3", "回复客户邮件：合同附件", today, "11:20", 20, prio="P1", tags="沟通", done=True),
+        task("d4", "晨会：同步昨日进度", today, "09:30", 30, prio="P2", tags="会议", done=True),
+        task("d5", "读书 30 分钟", today, "08:00", 30, prio="P3", lst="学习", tags="阅读", done=True),
         # 一条没做完的（真实感，也给「逾期」状态一个样本）
         task("d6", "读完《深度工作》第 3 章", today, "21:00", 40, prio="P2", lst="学习",
-             tags="#阅读", subs=[
-                 {"i": 0, "title": "精读正文", "days": 1, "done": False, "estimate": 25},
-                 {"i": 1, "title": "做读书笔记", "days": 0, "done": False, "estimate": 15},
+             tags="阅读", subs=[
+                 {"t": "精读正文", "dy": 1, "d": False, "m": 25},
+                 {"t": "做读书笔记", "dy": 0, "d": False, "m": 15},
              ]),
         # 明天 / 后天
-        task("d7", "提交季度总结", tomorrow, "09:30", 0, prio="P1", tags="#周报",
+        task("d7", "提交季度总结", tomorrow, "09:30", 0, prio="P1", tags="周报",
              important=True, plan=True, end_date=ymd(day(3))),
-        task("d8", "客户电话：二期验收范围", tomorrow, "14:00", 30, prio="P1", tags="#沟通"),
+        task("d8", "客户电话：二期验收范围", tomorrow, "14:00", 30, prio="P1", tags="沟通"),
         task("d9", "给妈妈打个电话", tomorrow, "20:30", 15, prio="P2", lst="生活"),
         task("d10", "预约体检", after, "10:00", 15, prio="P3", lst="生活"),
         # 未安排
-        task("d11", "整理读书笔记成一篇短文", "", "", 0, prio="P3", lst="学习", tags="#阅读"),
+        task("d11", "整理读书笔记成一篇短文", "", "", 0, prio="P3", lst="学习", tags="阅读"),
         # 昨天已完成
-        task("d12", "产品评审会：需求初稿", yesterday, "10:00", 90, prio="P0", tags="#会议", done=True),
+        task("d12", "产品评审会：需求初稿", yesterday, "10:00", 90, prio="P0", tags="会议", done=True),
         task("d13", "买猫粮", yesterday, "19:30", 15, prio="P3", lst="生活", done=True),
     ]
     return out
@@ -182,8 +182,8 @@ def main():
             COUNT: [{
                 "id": "c1",
                 "properties": {
-                    "名称": "项目上线",
-                    "类型": {"text": "倒数日"},
+                    "名称": {"text": "项目上线"},
+                    "类型": {"select": "倒数日"},
                     "日期": {"date": ymd(day(30))},
                     "备注": {"text": ""},
                     "颜色": {"text": "#177CB0"},

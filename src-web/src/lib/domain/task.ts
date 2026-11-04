@@ -235,7 +235,14 @@ export function cloneNextRepeat(t: Task, today: Date = today0()): Task | null {
     createdAt: ymd(today)
   };
   if (t.remindCfg && t.remindCfg.offsets) {
-    nt.remindCfg = { anchor: nd + ' ' + (t.time || '09:00'), offsets: t.remindCfg.offsets.slice(), read: [] };
+    const rc: NonNullable<Task['remindCfg']> = {
+      anchor: nd + ' ' + (t.time || '09:00'),
+      offsets: t.remindCfg.offsets.slice(),
+      read: []
+    };
+    if (t.remindCfg.snooze != null) rc.snooze = t.remindCfg.snooze;
+    if (t.remindCfg.end != null) rc.end = t.remindCfg.end;
+    nt.remindCfg = rc;
   }
   return nt;
 }

@@ -1,29 +1,37 @@
 <script lang="ts">
+  import { onMount, untrack } from 'svelte';
   import { THEMES } from '$lib/domain/constants';
-  import { clearTables, dataJob, hist, readDailySnaps, restoreDailySnap, seedDemo, undoTo, writeSafetySnapshot } from '$lib/store/data.svelte';
+  import { clearTables, dataJob, flushCache, hist, readDailySnaps, restoreDailySnap, seedDemo, undoTo, writeSafetySnapshot } from '$lib/store/data.svelte';
   import { sync } from '$lib/store/sync.svelte';
   import { setTheme, theme } from '$lib/store/theme.svelte';
   import { uiState } from '$lib/store/ui.svelte';
   import { toast } from '$lib/store/toast.svelte';
-  import { dbConfig, dbVersion } from '$lib/bridge/db';
+  import { dbConfig, dbVersion, emitUpdated, flushNow } from '$lib/bridge/db';
   import {
-    chooseDataDir, openDataDir, restartApp, updateCheck, updateInstall, webdavSave, webdavTest
+    chooseDataDir, openDataDir, restartApp, setCloseToTray, snapshotsList, updateCheck, updateInstall, webdavSave, webdavTest, type DiskSnapMeta
   } from '$lib/bridge/desktop';
   import ModalHead from '$lib/ui/ModalHead.svelte';
   import Icon from '$lib/ui/Icon.svelte';
   import { prepareForm } from '$lib/actions/prepare-form';
 
   const cfg = $derived(dbConfig());
-  const snaps = $derived(readDailySnaps());
+  const localSnaps = $derived(readDailySnaps());
+  let diskSnaps = $state<DiskSnapMeta[]>([]);
+
+  onMount(async () => {
+    const list = await snapshotsList();
+    if (list.length) diskSnaps = list;
+  });
 
   function hmOf(ts: number): string {
     const d = new Date(ts);
     return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   }
 
-  let davUrl = $state(cfg.webdav?.url || '');
-  let davUser = $state(cfg.webdav?.username || '');
-  let davPass = $state(cfg.webdav?.password || '');
+  let davUrl = $state(untrack(() => cfg.webdav?.url || ''));
+  let davUser = $state(untrack(() => cfg.webdav?.username || ''));
+  let davPass = $state(untrack(() => cfg.webdav?.password || ''));
+  let closeToTray = $state(untrack(() => cfg.closeToTray !== false));
   let davMsg = $state('');
   let updMsg = $state('');
   let updBusy = $state(false);
@@ -32,7 +40,16 @@
     uiState.settings = false;
   }
 
+  async function toggleCloseToTray(e: Event): Promise<void> {
+    const next = (e.currentTarget as HTMLInputElement).checked;
+    closeToTray = next;
+    cfg.closeToTray = next;
+    await setCloseToTray(next);
+  }
+
   async function changeDir(): Promise<void> {
+    flushNow();
+    flushCache();
     const r = await chooseDataDir();
     if (r.ok) {
       toast.show('已切换数据目录，正在重启…');
@@ -50,8 +67,16 @@
 
   async function saveDav(): Promise<void> {
     davMsg = '正在保存并同步…';
-    const r = await webdavSave({ url: davUrl.trim(), username: davUser.trim(), password: davPass });
-    davMsg = r.ok ? r.text || '已保存，正在同步' : r.error || r.__error || '保存失败';
+    const nextDav = { url: davUrl.trim(), username: davUser.trim(), password: davPass };
+    const r = await webdavSave(nextDav);
+    if (r.ok) {
+      cfg.webdav = { ...nextDav };
+      if (r.lastSync) cfg.lastSync = r.lastSync;
+      emitUpdated();
+      davMsg = r.text || '已保存并完成同步';
+    } else {
+      davMsg = r.error || r.__error || '保存失败';
+    }
   }
 
   async function checkUpd(): Promise<void> {
@@ -61,11 +86,16 @@
     updBusy = false;
     if (r.available && r.version) {
       updMsg = '发现新版本 ' + r.version;
-      const go = confirm('发现新版本 ' + r.version + '，现在更新？');
-      if (go) {
-        const x = await updateInstall();
-        updMsg = x.ok ? '更新已开始，应用会重启' : x.error || x.__error || '更新失败';
-      }
+      uiState.confirm = {
+        title: '发现新版本 ' + r.version,
+        desc: '是否现在下载并安装更新？安装开始后应用会自动重启。',
+        okText: '立即更新',
+        danger: false,
+        onOk: async () => {
+          const x = await updateInstall();
+          updMsg = x.ok ? '更新已开始，应用会重启' : x.error || x.__error || '更新失败';
+        }
+      };
       return;
     }
     updMsg = r.error ? '检查失败：' + r.error : '已是最新版本（' + (dbVersion() || '—') + '）';
@@ -116,9 +146,13 @@
     <label>数据存储</label>
     <div style="font-size:13.5px;color:var(--text-2);line-height:1.85">
       <div id="sdDirPath" style="word-break:break-all">{cfg.dataDir || '默认目录'}</div>
-      <div style="display:flex;gap:8px;margin-top:8px">
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
         <button class="btn btn-sec btn-sm" id="sdOpenDir" onclick={openDataDir}>打开目录</button>
         <button class="btn btn-sec btn-sm" id="sdChangeDir" onclick={changeDir}>更改目录</button>
+        <label style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-size:12.5px;color:var(--text-2);cursor:pointer;user-select:none">
+          <input type="checkbox" id="sdCloseTray" checked={closeToTray} onchange={toggleCloseToTray} />
+          关闭窗口时最小化到任务栏
+        </label>
       </div>
     </div>
   </div>
@@ -165,8 +199,15 @@
   <div class="field">
     <label>本地快照<span class="hint">每天首次打开自动生成，最多 7 份</span></label>
     <div style="display:flex;flex-direction:column;gap:8px">
-      {#if snaps.length}
-        {#each [...snaps].reverse() as s (s.day)}
+      {#if diskSnaps.length}
+        {#each diskSnaps as s (s.day)}
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+            <span style="flex:1;color:var(--text-2)">{s.day} · 磁盘快照（共 {s.count} 条记录）</span>
+            <button class="btn btn-sm btn-sec" data-snaprestore={s.day} onclick={() => restore(s.day)}>恢复</button>
+          </div>
+        {/each}
+      {:else if localSnaps.length}
+        {#each [...localSnaps].reverse() as s (s.day)}
           <div style="display:flex;align-items:center;gap:10px;font-size:13px">
             <span style="flex:1;color:var(--text-2)">{s.day} · {(s.tasks || []).length} 条日程 / {(s.habits || []).length} 个习惯 / {(s.countdowns || []).length} 个纪念日</span>
             <button class="btn btn-sm btn-sec" data-snaprestore={s.day} onclick={() => restore(s.day)}>恢复</button>
@@ -228,7 +269,7 @@
       · <b>配色</b>：中国传统色 —— 靛青 #177CB0（主色）、朱砂 #C3272B、杏黄 #C8892B、竹青 #5E8C6A、绛紫 #7A4E63、石青 #1685A9、宣纸 #F7F3EA（底）、玄色 #2A2925（字）；色名与色值参照 sealuo.com 传统色卡整理<br>
       · <b>字体</b>：霞鹜文楷 GB — LXGW WenKai GB，作者 LXGW，SIL Open Font License 1.1；经 jsDelivr CDN 分片加载，加载失败自动回落到系统字体。
       顶栏时钟用 Digital-7（作者 Style-7 / Sizenko Alexander），作者声明免费使用，商业分发需另行取得授权<br>
-      · <b>节假日数据</b>：holiday.ailcc.com 公开接口，仅取「下一个法定节假日」，每日缓存 6 小时；接口不可用时用内置的固定日期表兜底，并标注「预估」<br>
+      · <b>节假日数据</b>：holiday.ailcc.com 公开接口，仅取「下一个法定节假日」，本地缓存 2 小时；接口不可用时用内置的固定日期表兜底，并标注「预估」<br>
       · <b>桌面外壳</b>：Tauri 2（MIT / Apache-2.0 双许可）
     </div>
   </div>

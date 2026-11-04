@@ -2,9 +2,10 @@
   本地缓存与快照：260ms 合并写入、每日快照、种子标记。
   写库失败时靠这里兜底，重载后不会白屏。
 */
-import type { Countdown, Habit, Task } from '$lib/domain/types';
+import type { Countdown, Habit, Pomodoro, Task } from '$lib/domain/types';
 import { today0, ymd } from '$lib/domain/date';
-import { STORAGE_KEYS, readJson, readRaw, writeJson, writeRaw } from '../storage';
+import { hasHost } from '$lib/bridge/invoke';
+import { STORAGE_KEYS, readJson, readRaw, removeKey, writeJson, writeRaw } from '../storage';
 import { data } from './state.svelte';
 
 /* ---------- 本地缓存（260ms 合并写入） ---------- */
@@ -92,6 +93,7 @@ export interface DailySnap {
   tasks: Task[];
   habits: Habit[];
   countdowns: Countdown[];
+  pomodoros?: Pomodoro[];
 }
 
 export function readDailySnaps(): DailySnap[] {
@@ -101,6 +103,11 @@ export function readDailySnaps(): DailySnap[] {
 
 export function autoSnapshotDaily(): void {
   try {
+    // 桌面真机已有 Rust 磁盘快照（snapshots/YYYY-MM-DD.json），不再在 localStorage 重复存 7 份整库
+    if (hasHost()) {
+      removeKey(DAILY_KEY);
+      return;
+    }
     const day = ymd(today0());
     let arr = readDailySnaps();
     if (arr.some((x) => x.day === day)) return;
@@ -110,7 +117,8 @@ export function autoSnapshotDaily(): void {
       at: Date.now(),
       tasks: $state.snapshot(data.tasks) as Task[],
       habits: $state.snapshot(data.habits) as Habit[],
-      countdowns: $state.snapshot(data.countdowns) as Countdown[]
+      countdowns: $state.snapshot(data.countdowns) as Countdown[],
+      pomodoros: $state.snapshot(data.pomodoros) as Pomodoro[]
     });
     if (arr.length > 7) arr = arr.slice(arr.length - 7);
     writeJson(DAILY_KEY, arr);

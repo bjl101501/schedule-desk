@@ -1,7 +1,7 @@
 /* 番茄计时：全应用第三个定时器（只在运行时存在） */
 import { FOCUS_MODES, type FocusMode } from '$lib/domain/constants';
 import { stampNow, today0, ymd } from '$lib/domain/date';
-import { data, apiAddPomo } from './data.svelte';
+import { data, apiAddPomo, pushProxied } from './data.svelte';
 import { toast } from './toast.svelte';
 
 export const focus = $state({
@@ -16,6 +16,7 @@ export const focus = $state({
   pauseCount: 0,
   pauseSec: 0,
   pauseStart: 0,
+  endAt: 0,
   round: 1
 });
 
@@ -23,7 +24,11 @@ let timer: ReturnType<typeof setInterval> | null = null;
 
 function tick(): void {
   if (!focus.running) return;
-  focus.left = Math.max(0, focus.left - 1);
+  if (focus.endAt > 0) {
+    focus.left = Math.max(0, Math.round((focus.endAt - Date.now()) / 1000));
+  } else {
+    focus.left = Math.max(0, focus.left - 1);
+  }
   if (focus.left <= 0) finish();
 }
 
@@ -33,16 +38,21 @@ function ensureTimer(): void {
 }
 
 export function startFocus(): void {
-  focus.running = true;
   if (focus.pauseStart) {
     focus.pauseSec += Math.round((Date.now() - focus.pauseStart) / 1000);
     focus.pauseStart = 0;
   }
+  focus.endAt = Date.now() + focus.left * 1000;
+  focus.running = true;
   ensureTimer();
 }
 
 export function pauseFocus(): void {
+  if (focus.running && focus.endAt > 0) {
+    focus.left = Math.max(0, Math.round((focus.endAt - Date.now()) / 1000));
+  }
   focus.running = false;
+  focus.endAt = 0;
   focus.pauseCount++;
   focus.pauseStart = Date.now();
 }
@@ -57,17 +67,26 @@ export function setMode(k: FocusMode): void {
   focus.total = FOCUS_MODES[k].min * 60;
   focus.left = focus.total;
   focus.running = false;
+  focus.endAt = 0;
+  focus.pauseCount = 0;
+  focus.pauseSec = 0;
+  focus.pauseStart = 0;
 }
 
 export function resetFocus(): void {
   focus.left = focus.total;
   focus.running = false;
+  focus.endAt = 0;
   focus.pauseCount = 0;
   focus.pauseSec = 0;
   focus.pauseStart = 0;
 }
 
 export function finish(): void {
+  if (focus.pauseStart) {
+    focus.pauseSec += Math.round((Date.now() - focus.pauseStart) / 1000);
+    focus.pauseStart = 0;
+  }
   const wasFocus = focus.mode === 'focus';
   const minutes = Math.round(focus.total / 60);
   const rec = {
@@ -75,28 +94,34 @@ export function finish(): void {
     task: focus.taskTitle || '未命名专注',
     type: wasFocus ? '专注' : FOCUS_MODES[focus.mode].name,
     duration: minutes,
-    start: stampNow(new Date(Date.now() - focus.total * 1000)),
+    start: stampNow(new Date(Date.now() - (focus.total + focus.pauseSec) * 1000)),
     date: ymd(today0()),
     sub: focus.subTitle || '',
     pauseCount: focus.pauseCount,
     pauseSec: focus.pauseSec
   };
   if (wasFocus) {
-    data.pomodoros.push(rec);
-    apiAddPomo(rec);
+    const stored = pushProxied(data.pomodoros, rec);
+    apiAddPomo(stored);
     toast.show('完成一个番茄：' + minutes + ' 分钟');
     focus.round++;
   } else {
     toast.show('休息结束，继续加油');
   }
   focus.running = false;
+  focus.endAt = 0;
   focus.left = FOCUS_MODES[focus.mode].min * 60;
   focus.pauseCount = 0;
   focus.pauseSec = 0;
+  focus.pauseStart = 0;
 }
 
 export function skipFocus(): void {
   focus.running = false;
+  focus.endAt = 0;
   focus.left = focus.total;
+  focus.pauseCount = 0;
+  focus.pauseSec = 0;
+  focus.pauseStart = 0;
 }
 

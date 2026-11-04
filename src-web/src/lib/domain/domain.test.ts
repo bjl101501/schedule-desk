@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { taskState, taskWindow, reminderState } from './window';
-import { cdGroupOf, nextRepeatDate, normTask, shiftPlanTo, subPlan, taskSpan } from './task';
-import { attention, alertSummary, applyFilters, inScope, sortTasks } from './selectors';
+import { cdGroupOf, cloneNextRepeat, nextRepeatDate, normTask, shiftPlanTo, subPlan, taskSpan } from './task';
+import { attention, alertSummary, applyFilters, inScope, sortTasks, syncRemindAnchor } from './selectors';
 import { parseQuick } from './quickparse';
 import { parseBundleText, bundleCount } from './backup';
 import { addDays, ymd } from './date';
@@ -335,5 +335,49 @@ describe('备份解析', () => {
       JSON.stringify({ tasks: [{ title: 'x', remindCfg: { anchor: '不是时间', offsets: [0] } }] })
     );
     expect(b.tasks[0].remindCfg).toBeNull();
+  });
+  test('备份导入保留提醒配置里的 snooze 与 end', () => {
+    const b = parseBundleText(
+      JSON.stringify({
+        tasks: [{ title: 'x', date: T, remindCfg: { anchor: T + ' 09:00', offsets: [-10], read: [], snooze: 5, end: 1 } }]
+      })
+    );
+    expect(b.tasks[0].remindCfg?.snooze).toBe(5);
+    expect(b.tasks[0].remindCfg?.end).toBe(1);
+  });
+});
+
+describe('R32 审查修复回归', () => {
+  test('syncRemindAnchor 与 cloneNextRepeat 保留 snooze 和 end', () => {
+    const t = mk({
+      date: T,
+      time: '09:00',
+      repeat: '每天',
+      remindMode: '单次提醒',
+      remindCfg: { anchor: T + ' 09:00', offsets: [-10], read: [0], snooze: 5, end: 1 }
+    });
+    t.date = T1;
+    syncRemindAnchor(t, '09:00');
+    expect(t.remindCfg?.anchor).toBe(T1 + ' 09:00');
+    expect(t.remindCfg?.read).toEqual([]);
+    expect(t.remindCfg?.snooze).toBe(5);
+    expect(t.remindCfg?.end).toBe(1);
+
+    const next = cloneNextRepeat(t, NOW_D)!;
+    expect(next.remindCfg?.snooze).toBe(5);
+    expect(next.remindCfg?.end).toBe(1);
+  });
+
+  test('跨天计划在昨天开始、明天结束时仍命中 next7 视图', () => {
+    const ctx = { view: 'next7' as const, selectedList: null, selectedTag: null };
+    const spanTask = mk({ date: Y1, plan: true, endDate: T1 });
+    expect(inScope(spanTask, ctx, NOW_D)).toBe(true);
+  });
+
+  test('快速添加支持全角感叹号优先级与「夜里」时段', () => {
+    const d = parseQuick('夜里9点半看书 ！p0', NOW_D);
+    expect(d.prio).toBe('P0');
+    expect(d.time).toBe('21:30');
+    expect(d.title).toBe('看书');
   });
 });

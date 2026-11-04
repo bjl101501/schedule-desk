@@ -164,45 +164,55 @@ fn window_of(props: &Value, anchor_ms: i64) -> Option<Window> {
     let end_time = text_of(props, "结束时间");
     let start_date = date_of(props, "日期");
 
+    // 计划的结束时刻：has_end=false 表示只到「结束日 24:00」
+    let plan_end: Option<(i64, bool)> = if plan {
+        parse_date(&end_date)
+            .or_else(|| parse_date(&start_date))
+            .and_then(|ed| match parse_hm(&end_time) {
+                Some((h, m)) => at_ms(ed, h, m).map(|ms| (ms, true)),
+                None => ed
+                    .succ_opt()
+                    .and_then(|next| at_ms(next, 0, 0))
+                    .map(|ms| (ms, false)),
+            })
+    } else {
+        None
+    };
+
     let mut end = anchor_ms;
     let mut has_end = false;
 
-    if plan {
-        if let Some(ed) = parse_date(&end_date) {
-            match parse_hm(&end_time) {
-                Some((h, m)) => {
-                    if let Some(ms) = at_ms(ed, h, m) {
-                        end = ms;
-                        has_end = true;
-                    }
-                }
-                None => {
-                    // 结束日 24:00
-                    if let Some(next) = ed.succ_opt() {
-                        if let Some(ms) = at_ms(next, 0, 0) {
-                            end = ms;
-                        }
-                    }
-                }
-            }
-        }
-    } else if !all_day && est > 0 {
-        end = anchor_ms + est * 60_000;
-        has_end = true;
-    } else if all_day {
-        if let Some(sd) = parse_date(&start_date) {
+    if all_day {
+        if let Some((p_ms, p_has)) = plan_end {
+            end = p_ms;
+            has_end = p_has;
+        } else if let Some(sd) = parse_date(&start_date) {
             if let Some(next) = sd.succ_opt() {
                 if let Some(ms) = at_ms(next, 0, 0) {
                     end = ms;
                 }
             }
         }
+    } else {
+        let by_est = if est > 0 { anchor_ms + est * 60_000 } else { anchor_ms };
+        if let Some((p_ms, p_has)) = plan_end {
+            if p_ms > by_est {
+                end = p_ms;
+                has_end = p_has;
+            } else {
+                end = by_est;
+                has_end = est > 0;
+            }
+        } else {
+            end = by_est;
+            has_end = est > 0;
+        }
     }
 
     if end < anchor_ms {
         end = anchor_ms;
     }
-    Some(Window { start: anchor_ms, end: end, all_day: all_day, has_end: has_end })
+    Some(Window { start: anchor_ms, end, all_day, has_end })
 }
 
 fn hm_of(ms: i64) -> String {

@@ -3,7 +3,7 @@
   import { dayDiff, parseYmd, ymd } from '$lib/domain/date';
   import { allLists, allTags } from '$lib/domain/selectors';
   import { app } from '$lib/store/app.svelte';
-  import { clock, todayD } from '$lib/store/clock.svelte';
+  import { todayD } from '$lib/store/clock.svelte';
   import { data } from '$lib/store/data.svelte';
   import { isArchived, meta } from '$lib/store/meta.svelte';
   import { goView, selectList, selectTag } from '$lib/store/nav.svelte';
@@ -14,27 +14,46 @@
   import { pointerDrag, hitAt } from '$lib/actions/drag';
   import { reorderSidebar } from '$lib/store/dndActions.svelte';
 
-  const tick = $derived(clock.now);
   const today = $derived(todayD());
   const t0 = $derived(ymd(today));
 
   const counts = $derived.by(() => {
-    void tick;
     const notDone = data.tasks.filter((t) => !t.done);
-    return {
-      today: notDone.filter((t) => t.date && t.date <= t0).length,
-      next7: notDone.filter((t) => {
-        if (!t.date) return false;
+    const listMap: Record<string, number> = {};
+    const tagMap: Record<string, number> = {};
+    let todayCnt = 0;
+    let next7Cnt = 0;
+    let inboxCnt = 0;
+
+    for (const t of notDone) {
+      const lk = t.list || '收集箱';
+      listMap[lk] = (listMap[lk] || 0) + 1;
+      for (const g of t.tags) tagMap[g] = (tagMap[g] || 0) + 1;
+
+      if (t.date && t.date <= t0) todayCnt++;
+      if (t.date) {
         const d = dayDiff(today, parseYmd(t.date));
-        return d >= 0 && d < 7;
-      }).length,
-      inbox: notDone.filter((t) => !t.date || (t.list || '收集箱') === '收集箱').length,
-      habit: data.habits.filter((h) => h.log.indexOf(t0) === -1).length
+        if (d >= 0 && d < 7) {
+          next7Cnt++;
+        } else if (d < 0 && t.plan && t.endDate) {
+          const ed = parseYmd(t.endDate);
+          if (ed && dayDiff(today, ed) >= 0) next7Cnt++;
+        }
+      }
+      if (!t.date || lk === '收集箱') inboxCnt++;
+    }
+
+    return {
+      today: todayCnt,
+      next7: next7Cnt,
+      inbox: inboxCnt,
+      habit: data.habits.filter((h) => h.log.indexOf(t0) === -1).length,
+      listMap,
+      tagMap
     };
   });
 
   const lists = $derived.by(() => {
-    void tick;
     const all = allLists(data.tasks, meta.customLists, meta.listOrder);
     return {
       live: all.filter((n) => !isArchived(n)),
@@ -42,18 +61,7 @@
     };
   });
 
-  const tags = $derived.by(() => {
-    void tick;
-    return allTags(data.tasks, meta.customTags, meta.tagOrder);
-  });
-
-  function listCount(nm: string): number {
-    return data.tasks.filter((t) => !t.done && (t.list || '收集箱') === nm).length;
-  }
-
-  function tagCount(g: string): number {
-    return data.tasks.filter((t) => !t.done && t.tags.indexOf(g) > -1).length;
-  }
+  const tags = $derived(allTags(data.tasks, meta.customTags, meta.tagOrder));
 
   function more(kind: 'list' | 'tag', name: string, e: MouseEvent): void {
     e.stopPropagation();
@@ -145,7 +153,7 @@
         >
           <span class="dot" style="background:{lc.hex}" title={'清单色：' + lc.name}></span>
           <span class="nm">{nm}</span>
-          {#if listCount(nm)}<span class="cnt">{listCount(nm)}</span>{/if}
+          {#if counts.listMap[nm]}<span class="cnt">{counts.listMap[nm]}</span>{/if}
           {#if nm !== '收集箱'}
             <button class="side-more" data-listmore={nm} title="管理清单" onclick={(e) => more('list', nm, e)}><Icon name="more" /></button>
           {/if}
@@ -192,7 +200,7 @@
           <div class="side-item{app.selectedTag === g ? ' on' : ''}" data-tag={g} data-drag-name={g} onclick={() => { if (!isSuppressed()) selectTag(g); }}>
             <span class="tag-dot" style="background:{tc.hex}" title={'标签色：' + tc.name}></span>
             <span class="nm"># {g}</span>
-            {#if tagCount(g)}<span class="cnt">{tagCount(g)}</span>{/if}
+            {#if counts.tagMap[g]}<span class="cnt">{counts.tagMap[g]}</span>{/if}
             <button class="side-more" data-tagmore={g} title="管理标签" onclick={(e) => more('tag', g, e)}><Icon name="more" /></button>
           </div>
         {/each}

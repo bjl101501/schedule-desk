@@ -81,6 +81,7 @@ function normCfg(raw: unknown): RemindCfg | null {
     .filter((i) => i >= 0 && i < offsets.length);
   const out: RemindCfg = { anchor, offsets, read };
   if (r.snooze != null) out.snooze = num(r.snooze, 5);
+  if (r.end != null) out.end = num(r.end, 0);
   return out;
 }
 

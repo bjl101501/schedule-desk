@@ -9,7 +9,8 @@ import { normCountdown, normHabit, normPomo, normTask } from '$lib/domain/task';
 import { calcStreak } from '$lib/domain/selectors';
 import { buildSeed } from '$lib/domain/seed';
 import { db, dbAvailable, flushNow, muteJournal } from '$lib/bridge/db';
-import type { Bundle } from '$lib/domain/backup';
+import { snapshotLoad } from '$lib/bridge/desktop';
+import { parseBundleText, type Bundle } from '$lib/domain/backup';
 import { app } from '../app.svelte';
 import { markOffline, markSynced, markSyncing } from '../sync.svelte';
 import { toast } from '../toast.svelte';
@@ -135,10 +136,10 @@ export async function clearTables(which: TableKey[], label = '正在清空'): Pr
         }
       }
     }
-    data.tasks = [];
-    data.habits = [];
-    data.countdowns = [];
-    data.pomodoros = [];
+    if (which.includes('tasks')) data.tasks = [];
+    if (which.includes('habits')) data.habits = [];
+    if (which.includes('countdowns')) data.countdowns = [];
+    if (which.includes('pomodoros')) data.pomodoros = [];
     // 不标记的话，下次 loadAll 会把示例数据重新种回来
     markSeeded();
     flushCache();
@@ -179,7 +180,7 @@ export async function importBundle(
     let step = 0;
     const bump = async (): Promise<void> => {
       dataJob.done++;
-      if (++step % 20 === 0) await new Promise((r) => setTimeout(r, 0));
+      if (++step % 200 === 0) await new Promise((r) => setTimeout(r, 0));
     };
 
     for (const t of b.tasks) {
@@ -210,6 +211,7 @@ export async function importBundle(
       pushProxied(data.pomodoros, p);
       await bump();
     }
+    flushNow();
     markSeeded();
     flushCache();
   } finally {
@@ -226,19 +228,38 @@ export async function seedDemo(): Promise<void> {
   // 示例数据不是用户动作，不进撤销栈（否则一路 Ctrl+Z 会被一屏示例挡住）
   muteJournal(true);
   try {
+    const taskKeys = new Set(data.tasks.map((x) => x.title + '|' + x.date));
+    const habitKeys = new Set(data.habits.map((x) => x.name));
+    const cdKeys = new Set(data.countdowns.map((x) => (x.sys ? 'sys:' + x.sys : x.name + '|' + x.date)));
+    const pomoKeys = new Set(data.pomodoros.map((x) => x.task + '|' + x.start));
+
+    const ops: Promise<unknown>[] = [];
     for (const t of bundle.tasks) {
-      await apiAddTask(pushProxied(data.tasks, t));
+      const k = t.title + '|' + t.date;
+      if (taskKeys.has(k)) continue;
+      taskKeys.add(k);
+      ops.push(apiAddTask(pushProxied(data.tasks, t)));
     }
     for (const h of bundle.habits) {
+      if (habitKeys.has(h.name)) continue;
+      habitKeys.add(h.name);
       h.streak = calcStreak(h, today0());
-      await apiSaveHabit(pushProxied(data.habits, h));
+      ops.push(apiSaveHabit(pushProxied(data.habits, h)));
     }
     for (const c of bundle.countdowns) {
-      await apiSaveCountdown(pushProxied(data.countdowns, c));
+      const k = c.sys ? 'sys:' + c.sys : c.name + '|' + c.date;
+      if (cdKeys.has(k)) continue;
+      cdKeys.add(k);
+      ops.push(apiSaveCountdown(pushProxied(data.countdowns, c)));
     }
     for (const p of bundle.pomodoros) {
-      await apiAddPomo(pushProxied(data.pomodoros, p));
+      const k = p.task + '|' + p.start;
+      if (pomoKeys.has(k)) continue;
+      pomoKeys.add(k);
+      ops.push(apiAddPomo(pushProxied(data.pomodoros, p)));
     }
+    await Promise.all(ops);
+    flushNow();
   } finally {
     muteJournal(false);
   }
@@ -246,8 +267,19 @@ export async function seedDemo(): Promise<void> {
   toast.show('已预置示例数据，可在「备份」里一键清空');
 }
 
-/** 恢复每日快照：必须真写库，否则重载后被库里的旧数据盖回去 */
+/** 恢复每日快照：优先读磁盘 snapshots/YYYY-MM-DD.json，无宿主时回退 localStorage */
 export async function restoreDailySnap(day: string): Promise<boolean> {
+  const disk = await snapshotLoad(day);
+  if (disk && disk.ok && disk.tables) {
+    try {
+      const bundle = parseBundleText(JSON.stringify({ tables: disk.tables }));
+      await importBundle(bundle, 'replace', ['tasks', 'habits', 'countdowns', 'pomodoros']);
+      toast.show('已恢复到 ' + day + ' 的快照');
+      return true;
+    } catch {
+      /* fallthrough */
+    }
+  }
   const hit = readDailySnaps().filter((x) => x.day === day)[0];
   if (!hit) return false;
   await importBundle(
@@ -255,10 +287,10 @@ export async function restoreDailySnap(day: string): Promise<boolean> {
       tasks: hit.tasks || [],
       habits: hit.habits || [],
       countdowns: hit.countdowns || [],
-      pomodoros: []
+      pomodoros: hit.pomodoros || []
     },
     'replace',
-    ['tasks', 'habits', 'countdowns']
+    hit.pomodoros ? ['tasks', 'habits', 'countdowns', 'pomodoros'] : ['tasks', 'habits', 'countdowns']
   );
   toast.show('已恢复到 ' + day + ' 的快照');
   return true;

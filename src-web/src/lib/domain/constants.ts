@@ -20,16 +20,12 @@ export const EB_LABEL = ['准时', '5 分钟', '30 分钟', '12 小时', '1 天'
 
 /**
  * 清单与标签的取色统一收到 domain/palette.ts：
- * 清单 = 青蓝族 6 色（同族不同明度），标签 = 红/黄/绿/紫/褐 5 色。
- * 这里保留数组形态，给「按索引取色」这类老调用点用；新代码请直接用 palette 里的函数，
- * 它们还会带回传统色名（可用于悬停提示）。
+ * 清单 = 冷色 16 色，标签 = 暖色 13 色。
  */
-import { LIST_PALETTE, TAG_PALETTE, listColorAt } from './palette';
+import { LIST_PALETTE, TAG_PALETTE } from './palette';
 
-export { LIST_PALETTE, TAG_PALETTE, listColorAt };
+export { LIST_PALETTE, TAG_PALETTE };
 
-export const LIST_COLORS = LIST_PALETTE.map((c) => c.hex);
-export const TAG_COLORS = TAG_PALETTE.map((c) => c.hex);
 export const LEGACY_COLORS: Record<string, string> = {
   '#2f6bff': '#177CB0', '#1f55e0': '#0E5F8A', '#8b5cf6': '#7A4E63', '#ec4899': '#B4557A',
   '#17a673': '#5E8C6A', '#0ea5b7': '#1685A9', '#f59f1b': '#C8892B', '#e5484d': '#C3272B',

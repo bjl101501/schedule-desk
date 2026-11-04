@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { Countdown } from '$lib/domain/types';
-  import { dayDiff, pad2, parseYmd, today0 } from '$lib/domain/date';
+  import { dayDiff, pad2, parseYmd } from '$lib/domain/date';
   import { cdGroupOf } from '$lib/domain/task';
   import { orderNames } from '$lib/domain/selectors';
-  import { clock } from '$lib/store/clock.svelte';
+  import { todayD } from '$lib/store/clock.svelte';
   import { data } from '$lib/store/data.svelte';
   import { meta } from '$lib/store/meta.svelte';
   import { uiState } from '$lib/store/ui.svelte';
@@ -14,13 +14,12 @@
   import { setCdGroupOrder } from '$lib/store/meta.svelte';
   import { beginDragSession, endDragSession } from '$lib/store/dragSession.svelte';
 
-  const tick = $derived(clock.now);
+  const t0 = $derived(todayD());
 
-  function nextOccur(cd: Countdown): Date {
+  function nextOccur(cd: Countdown, now: Date = t0): Date {
     const d = parseYmd(cd.date);
     if (!d) return new Date();
     if (cd.type === '倒数日') return d;
-    const now = today0();
     let cand = new Date(now.getFullYear(), d.getMonth(), d.getDate());
     if (cand < now) cand = new Date(now.getFullYear() + 1, d.getMonth(), d.getDate());
     return cand;
@@ -57,9 +56,8 @@
   }
 
   const groups = $derived.by(() => {
-    void tick;
-    const t0 = today0();
-    const all = data.countdowns.slice().sort((a, b) => nextOccur(a).getTime() - nextOccur(b).getTime());
+    const now = t0;
+    const all = data.countdowns.slice().sort((a, b) => nextOccur(a, now).getTime() - nextOccur(b, now).getTime());
     const map: Record<string, Countdown[]> = {};
     const names: string[] = [];
     all.forEach((cd) => {
@@ -72,16 +70,16 @@
     });
     const ordered = orderNames(names, meta.cdGroupOrder);
     const first = all[0];
-    const firstDiff = first ? dayDiff(t0, nextOccur(first)) : 0;
+    const firstDiff = first ? dayDiff(now, nextOccur(first, now)) : 0;
     return {
       all,
-      t0,
+      t0: now,
       first,
       firstDiff,
       groups: ordered.map((g) => {
-        const list = map[g].slice().sort((a, b) => nextOccur(a).getTime() - nextOccur(b).getTime());
+        const list = map[g].slice().sort((a, b) => nextOccur(a, now).getTime() - nextOccur(b, now).getTime());
         const soon = list[0];
-        const sdiff = soon ? dayDiff(t0, nextOccur(soon)) : 0;
+        const sdiff = soon ? dayDiff(now, nextOccur(soon, now)) : 0;
         return { name: g, list, sdiff, hasSoon: !!soon };
       })
     };

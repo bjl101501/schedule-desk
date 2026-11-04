@@ -310,6 +310,16 @@ export function dbReady(): Promise<DbState> {
   return p;
 }
 
+/**
+ * 外部变更（WebDAV 同步完成 / 托盘立即同步）后，强制向宿主重新拉取最新表与配置。
+ * 拉取前先冲刷本地 80ms 队列，避免尚未落盘的修改被冲掉。
+ */
+export function reloadDb(): Promise<DbState> {
+  flushNow();
+  ready = null;
+  return dbReady();
+}
+
 export function dbConfig(): DesktopConfig {
   return state.config;
 }

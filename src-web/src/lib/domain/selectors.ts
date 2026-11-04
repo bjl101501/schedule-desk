@@ -62,7 +62,13 @@ export function inScope(t: Task, ctx: ScopeCtx, today: Date): boolean {
     const d = parseYmd(t.date);
     if (!d) return false;
     const diff = dayDiff(today, d);
-    return diff >= 0 && diff < 7;
+    if (diff >= 0 && diff < 7) return true;
+    // 跨天计划：开始日在今天之前、但结束日落在今天或之后，也属于最近 7 天要跟进的事项
+    if (diff < 0 && t.plan && t.endDate) {
+      const ed = parseYmd(t.endDate);
+      if (ed && dayDiff(today, ed) >= 0) return true;
+    }
+    return false;
   }
   if (ctx.view === 'inbox') return !t.date || (t.list || '收集箱') === '收集箱';
   return true;
@@ -226,9 +232,14 @@ export function pendingReminders(tasks: Task[], now: number): { task: Task; r: N
 export function syncRemindAnchor(t: Task, oldTime: string): boolean {
   if (!t || !t.remindCfg) return false;
   const cfg = t.remindCfg;
+  const keepExtras = (base: NonNullable<Task['remindCfg']>): NonNullable<Task['remindCfg']> => {
+    if (cfg.snooze != null) base.snooze = cfg.snooze;
+    if (cfg.end != null) base.end = cfg.end;
+    return base;
+  };
   if (!t.date) {
     if (!cfg.anchor) return false;
-    t.remindCfg = { anchor: '', offsets: (cfg.offsets || EB_OFFSETS).slice(), read: [] };
+    t.remindCfg = keepExtras({ anchor: '', offsets: (cfg.offsets || EB_OFFSETS).slice(), read: [] });
     return true;
   }
   const a = parseAnchor(cfg.anchor);
@@ -243,8 +254,8 @@ export function syncRemindAnchor(t: Task, oldTime: string): boolean {
   const next = t.date + ' ' + hhmm;
   const cur = String(cfg.anchor || '').replace('T', ' ').slice(0, 16);
   if (cur === next) return false;
-  // 日子变了，原来的「已提醒」标记作废
-  t.remindCfg = { anchor: next, offsets: (cfg.offsets || EB_OFFSETS).slice(), read: [] };
+  // 日子变了，原来的「已提醒」标记作废，但「稍后提醒 / 结束提醒」设置保留
+  t.remindCfg = keepExtras({ anchor: next, offsets: (cfg.offsets || EB_OFFSETS).slice(), read: [] });
   return true;
 }
 

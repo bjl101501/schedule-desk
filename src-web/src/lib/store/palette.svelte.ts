@@ -101,17 +101,6 @@ export function colorName(palette: TraditionalColor[], hex: string): string {
   return byHex(palette, hex)?.name || '';
 }
 
-/**
- * 新建清单 / 标签时，如果不想等 effect，可以先问一下「下一个会是什么色」。
- * 只读，不写。用于提示语里告诉用户「已分配「竹绿」」这类信息。
- */
-export function peekNextColor(kind: 'list' | 'tag'): TraditionalColor {
-  const palette = kind === 'list' ? LIST_PALETTE : TAG_PALETTE;
-  const book = kind === 'list' ? meta.listColors : meta.tagColors;
-  const used = new Set(Object.values(book.c));
-  return palette.find((c) => !used.has(c.hex)) || palette[0];
-}
-
 /** 该色是否已被同类别的别人占着（选色面板给个「已被 X 使用」的提示，但不阻止） */
 export function colorOwner(kind: 'list' | 'tag', hex: string, except: string): string {
   const book = kind === 'list' ? meta.listColors : meta.tagColors;

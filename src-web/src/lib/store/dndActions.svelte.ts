@@ -1,6 +1,7 @@
 /* 拖拽落地后的数据变更：集中一处，视图只负责算落点 */
 import { addDays, parseYmd, stampNow, ymd } from '$lib/domain/date';
-import { apiUpdateTask, cacheLocal, data } from './data.svelte';
+import { shiftPlanTo, subStats } from '$lib/domain/task';
+import { apiUpdateTask, cacheLocal, data, spawnNextRepeat } from './data.svelte';
 import { setListOrder, setTagOrder, meta } from './meta.svelte';
 import { syncRemindAnchor } from '$lib/domain/selectors';
 import { applyDateChange, taskById } from './taskActions.svelte';
@@ -28,10 +29,13 @@ export function dropKanban(taskId: string, key: string, kind: string): void {
   if (kind === 'date') {
     if (key === 'none') {
       const oldTime = t.time;
-      t.date = '';
+      const hadPlan = t.plan;
+      shiftPlanTo(t, '');
       syncRemindAnchor(t, oldTime);
       cacheLocal();
-      apiUpdateTask(t, ['日期', '提醒设置']);
+      const noneFields = ['日期', '提醒设置'];
+      if (hadPlan) noneFields.push('计划', '结束日期', '结束时间');
+      apiUpdateTask(t, noneFields);
       return;
     }
     const base = ymd(new Date());
@@ -56,18 +60,32 @@ export function dropKanban(taskId: string, key: string, kind: string): void {
     }
   } else if (kind === 'status') {
     if (key === 'done') {
-      t.done = true;
-      t.doneAt = stampNow();
-      fields.push('已完成', '完成时间');
+      if (!t.done) {
+        t.done = true;
+        t.doneAt = stampNow();
+        fields.push('已完成', '完成时间');
+        if (t.subs && t.subs.length && subStats(t).done < t.subs.length) {
+          t.subs.forEach((x) => {
+            if (!x.done) {
+              x.done = true;
+              x.doneAt = t.doneAt;
+            }
+          });
+          fields.push('拆分');
+        }
+        spawnNextRepeat(t);
+      }
     } else {
       if (t.done) {
         t.done = false;
         t.doneAt = '';
         fields.push('已完成', '完成时间');
       }
-      if (key === 'doing' && !t.date) {
-        t.date = ymd(new Date());
-        fields.push('日期');
+      const todayS = ymd(new Date());
+      if (key === 'doing' && t.date !== todayS) {
+        if (fields.length) apiUpdateTask(t, Array.from(new Set(fields)));
+        applyDateChange(t, { date: todayS });
+        return;
       }
     }
   }

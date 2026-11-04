@@ -35,6 +35,8 @@ pub struct SyncStatus {
     pub text: String,
     #[serde(default)]
     pub detail: String,
+    #[serde(default)]
+    pub last_sync: i64,
 }
 
 impl Default for SyncStatus {
@@ -43,6 +45,7 @@ impl Default for SyncStatus {
             mode: "local".into(),
             text: "本地模式".into(),
             detail: "数据只保存在本机".into(),
+            last_sync: 0,
         }
     }
 }
@@ -274,10 +277,12 @@ fn run_sync(app: &AppHandle) -> serde_json::Value {
         Err(e) => return serde_json::json!({ "ok": false, "error": e.to_string() }),
     };
     if let Ok(mut st) = state.sync.lock() {
+        let prev_sync = st.last_sync;
         *st = SyncStatus {
             mode: "syncing".into(),
             text: "同步中".into(),
             detail: String::new(),
+            last_sync: prev_sync,
         };
     }
     let outcome = {
@@ -301,25 +306,29 @@ fn run_sync(app: &AppHandle) -> serde_json::Value {
             } else {
                 format!("已同步 · 远端并入 {} 条 · 本机较新 {} 条", o.remote_wins, o.local_wins)
             };
+            let ts = store::now_ms();
             if let Ok(mut st) = state.sync.lock() {
                 *st = SyncStatus {
                     mode: "synced".into(),
                     text: "已同步".into(),
                     detail: text.clone(),
+                    last_sync: ts,
                 };
             }
             if let Ok(mut c) = state.config.lock() {
-                c.last_sync = store::now_ms();
+                c.last_sync = ts;
                 let _ = c.save();
             }
-            serde_json::json!({ "ok": true, "text": text })
+            serde_json::json!({ "ok": true, "text": text, "lastSync": ts })
         }
         Err(e) => {
             if let Ok(mut st) = state.sync.lock() {
+                let prev_sync = st.last_sync;
                 *st = SyncStatus {
                     mode: "error".into(),
                     text: "同步失败".into(),
                     detail: e.clone(),
+                    last_sync: prev_sync,
                 };
             }
             serde_json::json!({ "ok": false, "error": e })
@@ -384,6 +393,33 @@ fn update_install(app: AppHandle, state: State<'_, AppState>) -> serde_json::Val
 fn notify_now(app: AppHandle, title: String, body: String) -> Result<(), String> {
     let id = app.config().identifier.clone();
     notify::send(&id, &title, &body, true)
+}
+
+#[tauri::command]
+fn set_close_to_tray(state: State<'_, AppState>, on: bool) -> Result<(), String> {
+    let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
+    cfg.close_to_tray = on;
+    cfg.save().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn snapshots_list(app: AppHandle) -> serde_json::Value {
+    let dir = data_dir_of(&app);
+    let list: Vec<serde_json::Value> = Store::snapshots(&dir)
+        .into_iter()
+        .map(|(day, count)| serde_json::json!({ "day": day, "count": count }))
+        .collect();
+    serde_json::json!(list)
+}
+
+#[tauri::command]
+fn snapshot_load(app: AppHandle, day: String) -> Result<serde_json::Value, String> {
+    let dir = data_dir_of(&app);
+    match Store::restore_snapshot(&dir, &day) {
+        Some(st) => Ok(serde_json::json!({ "ok": true, "tables": st.tables })),
+        None => Err("未找到该日期的磁盘快照".into()),
+    }
 }
 
 // ---------------------------------------------------------------- helpers
@@ -761,7 +797,10 @@ fn main() {
             export_file,
             update_check,
             update_install,
-            notify_now
+            notify_now,
+            set_close_to_tray,
+            snapshots_list,
+            snapshot_load
         ])
         .setup(move |app| {
             let cfg = Config::load();
@@ -786,15 +825,15 @@ fn main() {
             if store.device_id.is_empty() {
                 store.device_id = cfg.device_id.clone();
             }
-            let first_run = !cfg.first_run_done;
-            let _ = first_run;
-            let public_cfg = cfg.to_public_json(&dir);
-            let _ = public_cfg;
 
+            let init_sync = SyncStatus {
+                last_sync: cfg.last_sync,
+                ..SyncStatus::default()
+            };
             app.manage(AppState {
                 config: Mutex::new(cfg),
                 store: Mutex::new(store.clone()),
-                sync: Mutex::new(SyncStatus::default()),
+                sync: Mutex::new(init_sync),
                 data_dir: dir.clone(),
             });
 
@@ -851,9 +890,18 @@ fn main() {
             let win_handle = window.clone();
             window.on_window_event(move |event| match event {
                 WindowEvent::CloseRequested { api, .. } => {
-                    api.prevent_close();
                     save_window_state(&win_handle);
-                    let _ = win_handle.hide();
+                    let to_tray = win_handle
+                        .app_handle()
+                        .state::<AppState>()
+                        .config
+                        .lock()
+                        .map(|c| c.close_to_tray)
+                        .unwrap_or(true);
+                    if to_tray {
+                        api.prevent_close();
+                        let _ = win_handle.hide();
+                    }
                 }
                 WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
                     schedule_window_save(&win_handle);

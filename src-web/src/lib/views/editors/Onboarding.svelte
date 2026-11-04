@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { flushNow } from '$lib/bridge/db';
   import { chooseDataDirQuiet, defaultDataDir, finishOnboarding, restartApp } from '$lib/bridge/desktop';
+  import { flushCache } from '$lib/store/data.svelte';
   import { toast } from '$lib/store/toast.svelte';
   import ModalHead from '$lib/ui/ModalHead.svelte';
 
@@ -19,6 +21,8 @@
   async function start(): Promise<void> {
     if (busy) return;
     busy = true;
+    flushNow();
+    flushCache();
     const r = await finishOnboarding(dir);
     if (r.ok) {
       toast.show('正在启动…');

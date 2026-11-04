@@ -359,6 +359,7 @@ export class TaskForm {
       this.offsets = [...t.remindCfg.offsets];
       this.onceOffset = t.remindCfg.offsets[0];
       this.snooze = !!t.remindCfg.snooze;
+      this.endRemind = !!t.remindCfg.end;
     }
   }
 

@@ -3,7 +3,7 @@ import type { QuickDraft } from './types';
 import { addDays, dayDiff, pad2, startOfWeek, today0, ymd } from './date';
 
 function applyAmPm(h: number, kw?: string): number {
-  if (kw === '下午' || kw === '傍晚' || kw === '晚上') return h < 12 ? h + 12 : h;
+  if (kw === '下午' || kw === '傍晚' || kw === '晚上' || kw === '夜里') return h < 12 ? h + 12 : h;
   if (kw === '中午') return h < 11 ? h + 12 : h;
   if (kw === '凌晨') return h === 12 ? 0 : h;
   return h;
@@ -16,8 +16,8 @@ export function parseQuick(raw: string, today: Date = today0()): QuickDraft {
   const t0 = today;
   let rest = text;
 
-  // 优先级 !p0 / !0
-  const pm = rest.match(/!\s*(p?[0-3])/i);
+  // 优先级 !p0 / !0（兼容全角感叹号 ！p0）
+  const pm = rest.match(/[!！]\s*(p?[0-3])/i);
   if (pm) {
     out.prio = 'P' + pm[1].replace(/[pP]/, '');
     rest = rest.replace(pm[0], ' ');

@@ -168,13 +168,6 @@ export function parseAnchor(s?: string | null): Date | null {
   );
 }
 
-export function tagColor(name: string, palette: string[]): string {
-  let n = 0;
-  const s = String(name);
-  for (let i = 0; i < s.length; i++) n = (n * 31 + s.charCodeAt(i)) % 997;
-  return palette[n % palette.length];
-}
-
 /** 'YYYY-MM-DD HH:mm' → 'YYYY-MM-DDTHH:mm'（给 datetime-local 语义用） */
 export function toDtLocal(s?: string | null): string {
   const m = String(s || '').match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/);

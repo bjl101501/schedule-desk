@@ -51,8 +51,8 @@ export async function webdavTest(f: WebDavForm): Promise<{ ok?: boolean; text?: 
   return (await invokeSafe('webdav_test', { ...f })) as { ok?: boolean; text?: string; error?: string };
 }
 
-export async function webdavSave(f: WebDavForm): Promise<{ ok?: boolean; text?: string; error?: string; __error?: string }> {
-  return (await invokeSafe('webdav_save_and_sync', { ...f })) as { ok?: boolean; text?: string; error?: string };
+export async function webdavSave(f: WebDavForm): Promise<{ ok?: boolean; text?: string; lastSync?: number; error?: string; __error?: string }> {
+  return (await invokeSafe('webdav_save_and_sync', { ...f })) as { ok?: boolean; text?: string; lastSync?: number; error?: string };
 }
 
 export async function updateCheck(): Promise<UpdateInfo> {
@@ -63,4 +63,22 @@ export async function updateCheck(): Promise<UpdateInfo> {
 
 export async function updateInstall(): Promise<{ ok?: boolean; error?: string; __error?: string }> {
   return (await invokeSafe('update_install')) as { ok?: boolean; error?: string };
+}
+
+export async function setCloseToTray(on: boolean): Promise<{ __error?: string }> {
+  return (await invokeSafe('set_close_to_tray', { on })) as { __error?: string };
+}
+
+export interface DiskSnapMeta {
+  day: string;
+  count: number;
+}
+
+export async function snapshotsList(): Promise<DiskSnapMeta[]> {
+  const r = await invokeSafe<DiskSnapMeta[]>('snapshots_list');
+  return Array.isArray(r) ? r : [];
+}
+
+export async function snapshotLoad(day: string): Promise<{ ok?: boolean; tables?: Record<string, unknown>; __error?: string }> {
+  return (await invokeSafe('snapshot_load', { day })) as { ok?: boolean; tables?: Record<string, unknown>; __error?: string };
 }

@@ -5,6 +5,27 @@
 
 ---
 
+## v3.7.1 · 2026-11-04（R32 全量代码审查修复与专项优化）
+
+### 修复
+
+- **修复「清空事项」误删习惯、纪念日与专注记录**（`bulk.svelte.ts`）。`clearTables(which)` 改为仅清空 `which` 指定的内存数组，不再把未勾选的表一并清空。
+- **修复 WebDAV 同步完成后前端不刷新最新数据**（`src-tauri/src/main.rs`、`bridge/db.ts`、`main.ts`、`SettingsModal.svelte`）。Rust `SyncStatus` 补齐 `lastSync` 时间戳；`db.ts` 新增 `reloadDb()` 强制重新调用 `db_bootstrap` 拉取合并后的表数据；「保存并同步」与后台定时同步完成后自动刷新前端界面。
+- **修复拖拽改期、生成重复日程、备份导入、模板填充时丢失「稍后提醒 (`snooze`)」与「结束提醒 (`end`)」**（`selectors.ts`、`task.ts`、`backup.ts`、`form.svelte.ts`）。
+- **修复跨天计划在「最近 7 天」、侧栏计数及日历「周 / 多周」视图中漏显后续天**（`selectors.ts`、`Sidebar.svelte`、`CalendarView.svelte`）。同时将 Rust 后端 `remind.rs` 的 `window_of` 与前端 `taskWindow()` 完全对齐（计划与预计时长并存时取较晚结束点）。
+- **修复看板（Kanban）按状态/日期拖放的联动漏洞**（`dndActions.svelte.ts`）。拖到「已完成」列时自动勾选未完成子项并生成下一期重复日程；拖到「今天」列时自动将未来/无日期事项改期到今天；拖到「未安排」列时自动清理跨天计划字段。
+- **修复 `schedule.json` 损坏时静默覆盖备份文件**（`src-tauri/src/store.rs`）。`Store::load` 在主数据文件解析失败时自动回退读取 `schedule.backup.json`；并在窗口卸载、切换目录或引导重启前主动调用 `flushNow()` 与 `flushCache()`。
+- **交互一致性与细节修正**：检查更新弹窗改用自定义 `uiState.confirm`（去掉原生 `window.confirm`）；顶栏「重做」按钮在编辑器打开时与「撤销」同步禁用；「重新生成示例数据」增加去重；快速添加支持全角 `！p0` 与「夜里」时段；消除 `svelte-check` 全部 5 处 `state_referenced_locally` 警告。
+
+### 优化
+
+- **每日快照接入 Rust 磁盘 `snapshots/`**（`src-tauri/src/main.rs`、`bridge/desktop.ts`、`cache.svelte.ts`、`bulk.svelte.ts`、`SettingsModal.svelte`）。桌面端直接使用磁盘 `snapshots/YYYY-MM-DD.json` 列出并恢复整库快照（含专注记录），不再在 5MB 上限的 `localStorage` 中重复存放 7 份整库副本。
+- **侧栏、统计与纪念日视图渲染复杂度从 $O(N \times M)$ 降至 $O(N)$**（`Sidebar.svelte`、`StatsView.svelte`、`CountdownView.svelte`）。一次遍历预聚合清单计数、标签计数与按日完成字典，并移除对 15 秒心跳 `clock.now` 的无关重算依赖。
+- **番茄专注计时器改为基于目标时间戳（Wall-Clock）防后台漂移**（`focus.svelte.ts`）。隐藏到托盘或 WebView2 后台节流时仍按真实流逝时间计算剩余秒数，并补齐暂停状态清理与 `pushProxied` 代理写入。
+- **新增「关闭窗口时最小化到任务栏」开关与搜索弹窗 `↑ / ↓` 键盘选行**（`src-tauri/src/main.rs`、`SettingsModal.svelte`、`SearchModal.svelte`）。
+
+---
+
 ## v3.7.0 · 2026-11-03
 
 ### 优化与修复

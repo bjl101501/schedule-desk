@@ -121,6 +121,12 @@ export function installMockBridge(): void {
       case 'notify_now':
         console.info('[mock notify]', a.title, a.body);
         return null;
+      case 'set_close_to_tray':
+        return null;
+      case 'snapshots_list':
+        return [];
+      case 'snapshot_load':
+        return { ok: false };
       default:
         return null;
     }

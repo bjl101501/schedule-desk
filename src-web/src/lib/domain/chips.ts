@@ -39,13 +39,6 @@ export function remindChip(t: Task, now: number): RemindChipView | null {
   return { text: relTime(r.at, now), cls: 'soon' };
 }
 
-export function quadName(imp: boolean, urg: boolean): string {
-  if (imp && urg) return '· 重要紧急（立即做）';
-  if (imp) return '· 重要不紧急（计划做）';
-  if (urg) return '· 不重要紧急（少做）';
-  return '· 不重要不紧急（不做）';
-}
-
 /** 详情 / 列表里只显示象限名，不带动作提示：括号里的「立即做」不是正式信息 */
 export function quadShort(imp: boolean, urg: boolean): string {
   if (imp && urg) return '重要紧急';

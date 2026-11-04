@@ -372,6 +372,13 @@
                 {t.title}
               </div>
             {/each}
+            {#each spanningOn(ymd(d)) as t (t.id + ':cont')}
+              {@const dayN = Math.round((d.getTime() - parseYmd(t.date)!.getTime()) / 86400000) + 1}
+              <div class="wev {prioCls(t)}{t.done ? ' done' : ''} cont" data-tid={t.id} onclick={() => openTask(t.id)}>
+                <div class="wt"><i class="sub-br">├</i>第{dayN}天</div>
+                {t.title}
+              </div>
+            {/each}
           </div>
         </div>
       {/each}
@@ -392,6 +399,10 @@
             <div class="md-allday" data-cdate={ymd(d)} onclick={(e) => { if ((e.target as HTMLElement).closest('[data-tid]')) return; openDay(ymd(d)); }}>
               {#each tasksOn(ymd(d)).filter((t) => !t.time) as t (t.id)}
                 <span class="md-adchip {prioCls(t)}" data-tid={t.id} onclick={() => openTask(t.id)}>{t.title}</span>
+              {/each}
+              {#each spanningOn(ymd(d)) as t (t.id + ':cont')}
+                {@const dayN = Math.round((d.getTime() - parseYmd(t.date)!.getTime()) / 86400000) + 1}
+                <span class="md-adchip {prioCls(t)} cont" data-tid={t.id} onclick={() => openTask(t.id)}><i class="sub-br">├</i><b>第{dayN}天</b>{t.title}</span>
               {/each}
             </div>
           {/each}

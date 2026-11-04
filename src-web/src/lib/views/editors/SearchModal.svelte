@@ -7,11 +7,17 @@
   import { prepareForm } from '$lib/actions/prepare-form';
 
   let kw = $state(app.filters.kw);
+  let activeIdx = $state(-1);
 
   const rows = $derived.by(() => {
     const k = kw.trim();
     if (!k) return [];
     return data.tasks.filter((t) => matchTaskKw(t, k)).slice(0, 30);
+  });
+
+  $effect(() => {
+    void kw;
+    activeIdx = -1;
   });
 
   function close(): void {
@@ -29,9 +35,23 @@
   }
 
   function onKey(e: KeyboardEvent): void {
+    if (e.key === 'ArrowDown' && rows.length) {
+      e.preventDefault();
+      activeIdx = activeIdx < rows.length - 1 ? activeIdx + 1 : 0;
+      return;
+    }
+    if (e.key === 'ArrowUp' && rows.length) {
+      e.preventDefault();
+      activeIdx = activeIdx > 0 ? activeIdx - 1 : rows.length - 1;
+      return;
+    }
     if (e.key === 'Enter') {
       e.preventDefault();
-      applyFilter();
+      if (activeIdx >= 0 && rows[activeIdx]) {
+        pick(rows[activeIdx].id);
+      } else {
+        applyFilter();
+      }
     }
   }
 </script>
@@ -44,11 +64,11 @@
   {#if kw.trim()}
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn btn-sec btn-sm" onclick={applyFilter}>把「{kw.trim()}」作为筛选条件</button>
-      <span class="hint">{rows.length} 条结果</span>
+      <span class="hint">{rows.length} 条结果{#if rows.length} · ↑↓ 选行回车打开{/if}</span>
     </div>
     {#if rows.length}
-      {#each rows as t (t.id)}
-        <button class="tpl-row" onclick={() => pick(t.id)}>
+      {#each rows as t, i (t.id)}
+        <button class="tpl-row{i === activeIdx ? ' on' : ''}" onmouseenter={() => (activeIdx = i)} onclick={() => pick(t.id)}>
           <span class="tpl-t">{t.title}</span>
           <span class="tpl-m">{t.date || '未安排'}{t.list ? ' · ' + t.list : ''}{t.done ? ' · 已完成' : ''}</span>
         </button>

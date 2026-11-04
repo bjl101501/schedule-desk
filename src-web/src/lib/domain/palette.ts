@@ -247,13 +247,8 @@ export const TAG_PALETTE: TraditionalColor[] = [
   { name: '琥珀', hex: '#CA6924' } // 橙 · 暗金
 ];
 
-/** 清单色下标 → 颜色；越界自动取模，清单数量不受限 */
-export function listColorAt(i: number): TraditionalColor {
-  return LIST_PALETTE[i % LIST_PALETTE.length];
-}
-
 /**
- * 通用选色板：习惯 / 纪念日的颜色选择器用（28 色）。
+ * 通用选色板：习惯 / 纪念日的颜色选择器用（29 色）。
  * 直接复用清单 + 标签两套色板：同一个应用里不该有第三套「只有选色器才出现」的颜色，
  * 用户给习惯选的颜色，也应该能在清单和标签里见到。
  */

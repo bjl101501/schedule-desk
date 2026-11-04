@@ -3,9 +3,9 @@ import { mount } from 'svelte';
 import App from './App.svelte';
 import { hasHost } from '$lib/bridge/invoke';
 import { installMockBridge } from '$lib/bridge/mock';
-import { dbReady, emitUpdated, onUpdated } from '$lib/bridge/db';
+import { dbReady, emitUpdated, flushNow, onUpdated, reloadDb } from '$lib/bridge/db';
 import { hydrateMeta } from '$lib/store/meta.svelte';
-import { loadAll } from '$lib/store/data.svelte';
+import { flushCache, loadAll } from '$lib/store/data.svelte';
 import { startClock } from '$lib/store/clock.svelte';
 import { applyStatus } from '$lib/store/sync.svelte';
 import { uiState } from '$lib/store/ui.svelte';
@@ -43,19 +43,21 @@ if (!document.getElementById('float-root')) {
 }
 
 // 数据先到再挂时钟，避免首屏用空数据算状态
+let lastSync = '';
 dbReady()
-  .then(() => loadAll())
+  .then((st) => {
+    lastSync = String(st?.config?.lastSync || '0');
+    return loadAll();
+  })
   .catch((e) => console.error('[boot] 初始化失败', e));
 
-
-let lastSync = '';
 startClock(() => {
   syncStatus().then((st) => {
     applyStatus(st);
     // 远端有新版本 → 通知一次，让界面在安全时机重载
-    const mark = String(st?.lastSync || '');
-    if (mark && lastSync && mark !== lastSync) emitUpdated();
-    if (mark) lastSync = mark;
+    const mark = String(st?.lastSync || '0');
+    if (mark !== '0' && lastSync && mark !== lastSync) emitUpdated();
+    if (mark !== '0') lastSync = mark;
   });
 });
 
@@ -67,8 +69,16 @@ onUpdated(() => {
   reloadTimer = setTimeout(() => {
     reloadTimer = null;
     if (uiState.editorId || isDragging()) return;
-    void loadAll();
+    void reloadDb().then(() => loadAll());
   }, 320);
 });
+
+// 窗口卸载或刷新前主动冲刷 80ms 写入队列与 260ms 缓存队列
+const onUnload = () => {
+  flushNow();
+  flushCache();
+};
+window.addEventListener('beforeunload', onUnload);
+window.addEventListener('pagehide', onUnload);
 
 installTestFacade();

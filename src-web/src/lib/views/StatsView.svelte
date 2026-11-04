@@ -1,37 +1,54 @@
 <script lang="ts">
-  import { addDays, dayDiff, parseYmd, stampDay, startOfWeek, today0, ymd } from '$lib/domain/date';
+  import { addDays, dayDiff, parseYmd, stampDay, startOfWeek, ymd } from '$lib/domain/date';
   import { calcStreak } from '$lib/domain/selectors';
   import { taskState } from '$lib/domain/window';
-  import { clock } from '$lib/store/clock.svelte';
+  import { clock, todayD } from '$lib/store/clock.svelte';
   import { data } from '$lib/store/data.svelte';
   import Icon from '$lib/ui/Icon.svelte';
 
   const tick = $derived(clock.now);
+  const t0 = $derived(todayD());
+  const overdue = $derived(data.tasks.filter((t) => taskState(t, tick).key === 'overdue').length);
 
   const s = $derived.by(() => {
-    void tick;
-    const t0 = today0();
     const t0s = ymd(t0);
-    const doneAll = data.tasks.filter((t) => t.done);
-    const doneToday = doneAll.filter((t) => stampDay(t.doneAt) === t0s).length;
-    const ws = startOfWeek(t0);
-    const doneWeek = doneAll.filter((t) => {
-      const d = parseYmd(t.doneAt);
-      return d && dayDiff(ws, d) >= 0 && dayDiff(ws, d) < 7;
-    }).length;
-    const live = data.tasks.filter((t) => !t.done).length;
-    const overdue = data.tasks.filter((t) => taskState(t, tick).key === 'overdue').length;
+    const doneByDay: Record<string, number> = {};
+    const createdByDay: Record<string, number> = {};
+    const tagMap: Record<string, number> = {};
 
+    const ws = startOfWeek(t0);
     const monthAgo = addDays(t0, -29);
-    const inMonth = data.tasks.filter((t) => {
-      if (!t.date) return false;
-      const d = parseYmd(t.date);
-      if (!d) return false;
-      const diff = dayDiff(monthAgo, d);
-      return diff >= 0 && diff <= 29;
-    });
-    const doneMonth = inMonth.filter((t) => t.done).length;
-    const rate = inMonth.length ? Math.round((doneMonth / inMonth.length) * 100) : 0;
+    let live = 0;
+    let doneWeek = 0;
+    let inMonthCount = 0;
+    let doneMonth = 0;
+
+    for (const t of data.tasks) {
+      if (t.date) {
+        createdByDay[t.date] = (createdByDay[t.date] || 0) + 1;
+        const d = parseYmd(t.date);
+        if (d) {
+          const diff = dayDiff(monthAgo, d);
+          if (diff >= 0 && diff <= 29) {
+            inMonthCount++;
+            if (t.done) doneMonth++;
+          }
+        }
+      }
+      for (const g of t.tags) tagMap[g] = (tagMap[g] || 0) + 1;
+
+      if (t.done) {
+        const sd = stampDay(t.doneAt);
+        if (sd) doneByDay[sd] = (doneByDay[sd] || 0) + 1;
+        const dd = parseYmd(t.doneAt);
+        if (dd && dayDiff(ws, dd) >= 0 && dayDiff(ws, dd) < 7) doneWeek++;
+      } else {
+        live++;
+      }
+    }
+
+    const doneToday = doneByDay[t0s] || 0;
+    const rate = inMonthCount ? Math.round((doneMonth / inMonthCount) * 100) : 0;
 
     const weekPomos = data.pomodoros.filter((p) => {
       const d = parseYmd(p.date);
@@ -43,15 +60,13 @@
     const weekDays = Array.from({ length: 7 }, (_, i) => {
       const d = addDays(t0, -(6 - i));
       const ds = ymd(d);
-      const dn = doneAll.filter((t) => stampDay(t.doneAt) === ds).length;
-      const created = data.tasks.filter((t) => t.date === ds).length;
+      const dn = doneByDay[ds] || 0;
+      const created = createdByDay[ds] || 0;
       if (dn > maxDone) maxDone = dn;
       if (created > maxDone) maxDone = created;
       return { d, done: dn, total: created };
     });
 
-    const tagMap: Record<string, number> = {};
-    data.tasks.forEach((t) => t.tags.forEach((g) => (tagMap[g] = (tagMap[g] || 0) + 1)));
     const tagKeys = Object.keys(tagMap).sort((a, b) => tagMap[b] - tagMap[a]).slice(0, 6);
     const tagTotal = tagKeys.reduce((a, k) => a + tagMap[k], 0) || 1;
     const colors = ['#177CB0', '#7A4E63', '#5E8C6A', '#C8892B', '#0ea5b7', '#C3272B'];
@@ -64,23 +79,24 @@
       return seg;
     });
 
-    const heatStart = addDays(startOfWeek(t0), -17 * 7);
+    const heatStart = addDays(ws, -17 * 7);
     const heat = Array.from({ length: 18 }, (_, w2) =>
       Array.from({ length: 7 }, (_, k2) => {
         const dds = ymd(addDays(heatStart, w2 * 7 + k2));
-        const n = doneAll.filter((t) => stampDay(t.doneAt) === dds).length;
+        const n = doneByDay[dds] || 0;
         return { ds: dds, lv: n === 0 ? '' : n <= 1 ? 'l1' : n <= 2 ? 'l2' : n <= 4 ? 'l3' : 'l4', n };
       })
     );
 
     const habits = data.habits.map((h) => {
+      const logSet = new Set(h.log);
       let last30 = 0;
-      for (let q = 0; q < 30; q++) if (h.log.indexOf(ymd(addDays(t0, -q))) > -1) last30++;
+      for (let q = 0; q < 30; q++) if (logSet.has(ymd(addDays(t0, -q)))) last30++;
       return { name: h.name, color: h.color, last30, streak: calcStreak(h, t0) };
     });
 
     return {
-      live, overdue, doneToday, doneWeek, rate, doneMonth, inMonthCount: inMonth.length,
+      live, doneToday, doneWeek, rate, doneMonth, inMonthCount,
       weekFocusMin, weekPomoCount: weekPomos.length, maxDone, weekDays, tagMap, tagKeys, colors, ringSegs, heat, habits
     };
   });
@@ -90,7 +106,7 @@
   <div class="scard">
     <div class="sl"><Icon name="inbox" />待办事项</div>
     <div class="sv"><b>{s.live}</b><small>项</small></div>
-    <div class="sd">其中逾期 <b style="color:var(--red)">{s.overdue}</b> 项</div>
+    <div class="sd">其中逾期 <b style="color:var(--red)">{overdue}</b> 项</div>
   </div>
   <div class="scard">
     <div class="sl"><Icon name="check" />今日完成</div>

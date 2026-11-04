@@ -142,7 +142,7 @@ html[data-theme="dusk"] .tip-layer,html[data-theme="ink"] .tip-layer{
   display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;
   border:1px solid var(--line-2);background:var(--panel-2);text-align:left;transition:.12s;
 }
-.tpl-row:hover{border-color:var(--brand-2);background:var(--brand-softer)}
+.tpl-row:hover,.tpl-row.on{border-color:var(--brand-2);background:var(--brand-softer)}
 .tpl-t{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto;min-width:0}
 .tpl-m{font-size:11px;color:var(--text-3);white-space:nowrap;flex:0 0 auto}
 .tpl-n{font-size:10.5px;color:var(--brand);background:var(--brand-soft);padding:1px 6px;border-radius:5px;flex:0 0 auto}

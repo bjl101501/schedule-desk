@@ -3,6 +3,7 @@
     编辑器外壳：只负责装配 —— 表单状态在 task/form.svelte.ts，分区在 task/*.svelte。
     这里留下的是「存哪去」：改现有条目走 apiUpdateTask，新建走 saveTask。
   */
+  import { untrack } from 'svelte';
   import type { Layer } from '$lib/store/overlay.svelte';
   import { openTemplatePicker } from '$lib/store/overlay.svelte';
   import { apiUpdateTask, cacheLocal, deleteTask, saveTask } from '$lib/store/data.svelte';
@@ -19,7 +20,7 @@
   import MetaSection from './task/MetaSection.svelte';
 
   let { layer }: { layer: Extract<Layer, { kind: 'editor' }> } = $props();
-  const form = new TaskForm(layer);
+  const form = untrack(() => new TaskForm(layer));
 
   let titleEl = $state<HTMLInputElement | null>(null);
   let noteEl = $state<HTMLTextAreaElement | null>(null);

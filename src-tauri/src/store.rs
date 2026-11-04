@@ -86,10 +86,17 @@ pub fn now_ms() -> i64 {
 impl Store {
     pub fn load(dir: &Path) -> Self {
         let path = dir.join(DB_FILE);
-        let mut store = match fs::read_to_string(&path) {
-            Ok(text) => serde_json::from_str::<Store>(&text).unwrap_or_default(),
-            Err(_) => Store::default(),
+        let backup = dir.join(DB_BACKUP);
+        let parse_file = |p: &Path| -> Option<Store> {
+            let text = fs::read_to_string(p).ok()?;
+            if text.trim().is_empty() {
+                return None;
+            }
+            serde_json::from_str::<Store>(&text).ok()
         };
+        let mut store = parse_file(&path)
+            .or_else(|| parse_file(&backup))
+            .unwrap_or_default();
         store.migrate();
         store
     }
@@ -198,17 +205,6 @@ impl Store {
             self.updated_at = now_ms();
         }
         (local_wins, remote_wins)
-    }
-
-    pub fn to_boot_json(&self, config: &Value, first_run: bool) -> String {
-        let mut root = serde_json::Map::new();
-        root.insert(
-            "tables".into(),
-            serde_json::to_value(&self.tables).unwrap_or(Value::Null),
-        );
-        root.insert("config".into(), config.clone());
-        root.insert("firstRun".into(), Value::Bool(first_run));
-        Value::Object(root).to_string()
     }
 
     // ---------- persistence ----------

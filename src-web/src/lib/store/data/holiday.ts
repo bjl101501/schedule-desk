@@ -8,7 +8,7 @@ import { cleanHolidayName, fallbackHoliday, HOLIDAY_API, type HolidayInfo } from
 import { muteJournal } from '$lib/bridge/db';
 import { STORAGE_KEYS, readJson, writeJson } from '../storage';
 import { cacheLocal } from './cache.svelte';
-import { data } from './state.svelte';
+import { data, pushProxied } from './state.svelte';
 import { apiSaveCountdown } from './write';
 
 const HOLIDAY_CACHE = STORAGE_KEYS.holiday;
@@ -90,9 +90,9 @@ export function ensureHolidayCountdown(): void {
           id: '', name: nm, type: '倒数日', date: h.date, note, color: '#C3272B',
           group: '假期', sys: 'holiday', createdAt: ymd(today0())
         };
-        data.countdowns.push(c);
+        const stored = pushProxied(data.countdowns, c);
         cacheLocal();
-        apiSaveCountdown(c);
+        apiSaveCountdown(stored);
         return;
       }
       if (item.date !== h.date || item.name !== nm || item.note !== note || item.group !== '假期') {

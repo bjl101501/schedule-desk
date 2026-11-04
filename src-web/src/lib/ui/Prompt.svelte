@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { PromptReq } from '$lib/store/overlay.svelte';
   import { pop } from '$lib/store/overlay.svelte';
   import ModalHead from './ModalHead.svelte';
@@ -6,7 +7,7 @@
   let { req }: { req: PromptReq } = $props();
 
   let input = $state<HTMLInputElement | null>(null);
-  let val = $state(req.value);
+  let val = $state(untrack(() => req.value));
 
   $effect(() => {
     const id = setTimeout(() => {

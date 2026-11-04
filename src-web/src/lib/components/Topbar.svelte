@@ -139,7 +139,7 @@
       class="icon-btn"
       id="btnRedo"
       data-tip={hist.redo.length ? '重做：' + hist.redo[hist.redo.length - 1].label + '（Ctrl+Shift+Z）' : '没有可重做的操作'}
-      disabled={!hist.redo.length || hist.busy}
+      disabled={!hist.redo.length || hist.busy || !!uiState.editorId}
       onclick={() => void redo()}
     >
       <Icon name="redo" />
